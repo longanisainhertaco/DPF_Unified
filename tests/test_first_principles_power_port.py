@@ -28,7 +28,9 @@ import pytest
 from dpf.fields.hybrid_simulator import _circuit_udpf_for_step
 from dpf.fields.source_geometry import SigmaPSurfacePacket as _SigmaPSurfacePacket
 from dpf.first_principles.power_port import (
+    _SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED,
     _WP_N1B_LEDGER_KEYS,
+    _sigma_p_packet_from_ledger,
     ACCEPTANCE_BLOCKING_CHANNELS,
     POWER_PORT_SOURCE_REFS,
     REQUIRED_POWER_PORT_CHANNELS,
@@ -802,13 +804,32 @@ def test_f5_emitted_packet_source_references_include_verified_auluck() -> None:
 # ===========================================================================
 
 
+_SIGN_CONV_SENTINEL = object()  # sentinel: caller did not pass sign_convention
+
+
 def _sigma_p_packet_with(
     *,
     velocity: str = "blocked",
     resistivity: str = "blocked",
     n_faces: int = 3,
+    sign_convention: Any = _SIGN_CONV_SENTINEL,
+    moving_classification_status: str = "available",
 ) -> _SigmaPSurfacePacket:
-    """Return a Sigma_p packet with a present face set and tunable v/eta."""
+    """Return a Sigma_p packet with a present face set and tunable v/eta.
+
+    S3R.5: now also accepts ``sign_convention`` and
+    ``moving_classification_status`` so negative tests can control them
+    explicitly.  Default moving_classification_status is ``"available"`` so
+    tests that only care about v/eta behaviour are not affected by the S3R.5
+    moving-classification gate.
+
+    Pass ``sign_convention=None`` explicitly to create a packet with no sign
+    convention (triggers the sign-convention blocker negative test).
+    Default (sentinel) uses ``{"eq6_term_signs": {"term_ii": "+"}}`` so
+    existing tests that don't care about sign_convention continue to pass.
+    """
+    if sign_convention is _SIGN_CONV_SENTINEL:
+        sign_convention = {"eq6_term_signs": {"term_ii": "+"}}
     return _SigmaPSurfacePacket(
         status="candidate_sigma_p_surface_packet_not_validation",
         source_refs=("WP_N3_SIGMA_P_RUNTIME_INTERFACE_SPEC.md:1-439",),
@@ -833,11 +854,12 @@ def _sigma_p_packet_with(
         resistivity_status=resistivity,
         centering={"time_centering": "candidate_step_consistent_not_accepted"},
         quadrature="midpoint_one_point_per_face",
-        sign_convention={"eq6_term_signs": {"term_ii": "+"}},
+        sign_convention=sign_convention,
         operand_blockers={
             "v": "material_velocity_v_not_available_on_sigma_p_faces",
             "eta": "resistivity_eta_not_available_on_sigma_p_faces",
         },
+        moving_classification_status=moving_classification_status,
     )
 
 
@@ -979,3 +1001,116 @@ def test_s33_blocked_sigma_p_packet_cannot_support_acceptance() -> None:
     # forcing the acceptance flag is rejected at construction.
     with pytest.raises(ValueError, match="must not claim"):
         _dc_replace(sp, can_support_first_principles_acceptance=True)
+
+
+def test_s3r5_dict_form_packet_is_not_silently_ignored() -> None:
+    """S3R.5 A7: a dict-form sigma_p_surface_packet must NOT be silently
+    ignored. When all required fields are present it must be reconstructed into
+    a SigmaPSurfacePacket; otherwise a named blocker must be emitted.
+    """
+    sp_instance = _sigma_p_packet_with(velocity="available", resistivity="available")
+    d = sp_instance.to_dict()
+    ledger = {"sigma_p_surface_packet": d}
+    reconstructed = _sigma_p_packet_from_ledger(ledger)
+    # Must come back as a SigmaPSurfacePacket, not None or a default block.
+    assert isinstance(reconstructed, _SigmaPSurfacePacket)
+    # The reconstructed packet must carry the same face count.
+    assert reconstructed.n_sigma_p_faces == sp_instance.n_sigma_p_faces
+    # The status must NOT be the named "not supported" blocker.
+    assert reconstructed.status != _SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED
+
+
+def test_s3r5_dict_form_packet_missing_required_field_emits_named_blocker() -> None:
+    """S3R.5 A7: a dict-form packet missing required fields must emit a named
+    'serialized_sigma_p_packet_not_supported' blocker -- not a silent discard.
+    """
+    sp_instance = _sigma_p_packet_with()
+    d = sp_instance.to_dict()
+    # Remove a required field to trigger reconstruction failure.
+    del d["n_sigma_p_faces"]
+    ledger = {"sigma_p_surface_packet": d}
+    result = _sigma_p_packet_from_ledger(ledger)
+    # Must emit the named blocker, not silently proceed.
+    assert isinstance(result, _SigmaPSurfacePacket)
+    assert result.status == _SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED, (
+        f"expected named blocker {_SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED!r}, "
+        f"got {result.status!r}"
+    )
+
+
+def test_s3r5_missing_sign_convention_blocks_sigma_p_terms() -> None:
+    """S3R.5 A7: a Sigma_p packet with no sign_convention must block all four
+    Sigma_p terms with the sign-convention blocker -- even when all other
+    operands (face set, v, eta, B, E, J) are available.
+    """
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available",
+        resistivity="available",
+        sign_convention=None,  # no sign convention
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        packet = packets[key]
+        assert packet["status"] == "blocked", key
+        assert packet["missing_operand"] == "sign_convention", key
+        assert "sign_convention" in packet["blocker"], (
+            f"{key}: expected sign_convention blocker, got {packet['blocker']!r}"
+        )
+    # sign_convention gap must not produce a genuine residual.
+    assert wp["residual_J"] is None
+
+
+def test_s3r5_absent_moving_classification_blocks_sigma_p_terms() -> None:
+    """S3R.5 A7: a Sigma_p packet whose moving_classification_status is
+    'not_classified' must block all four Sigma_p terms -- Auluck p.8 requires
+    stationary boundaries to contribute zero; without classification the
+    distinction cannot be enforced.
+    """
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available",
+        resistivity="available",
+        moving_classification_status="not_classified",
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        packet = packets[key]
+        assert packet["status"] == "blocked", key
+        assert packet["missing_operand"] == "moving_classification", key
+    # Without classification, the residual must stay None.
+    assert wp["residual_J"] is None
+
+
+def test_s3r5_full_operand_presence_does_not_compute_terms_before_sprint4() -> None:
+    """S3R.5 A7: even with every operand (face set, v, eta, B, E, J, sign
+    convention, moving classification) present the four Sigma_p terms must
+    remain blocked -- the surface integral is Sprint 4 work and S3.3 is
+    plumbing only.
+
+    This is the definitive gate: full operand presence NEVER authorises a
+    Sprint 3 term value.
+    """
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available",
+        resistivity="available",
+        moving_classification_status="available",
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    packets = wp["energy_ledger_term_packets"]
+    for key in _SIGMA_P_TERMS:
+        assert packets[key]["status"] == "blocked", (
+            f"{key}: must stay blocked even with all operands present"
+        )
+        assert packets[key]["value_J"] is None, key
+        # The blocker must name the Sprint 4 reason, not a missing operand.
+        assert "sprint4" in packets[key]["blocker"], (
+            f"{key}: blocker must cite sprint4 when all operands present"
+        )
+        assert packets[key].get("operands_available") is True, key
+    # The residual must still be None with all four Sigma_p terms blocked.
+    assert wp["residual_J"] is None
+    assert wp["all_six_terms_computed_independently"] is False

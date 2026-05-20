@@ -220,7 +220,10 @@ def test_blocked_field_rejects_a_fabricated_value() -> None:
         sg.PF1000GeometryField(
             name="anode_hollow_bore_radius_m", value=0.05, units="m",
             status="blocked", scope_tag="pf1000_krauz2012",
-            blocker_id="PF1000-BLK-009-anode-bore-radius-no-kr-source",
+            blocker_id=(
+                "PF1000-BLK-009-anode-bore-radius-"
+                "source_available_not_target_extracted"
+            ),
         )
 
 
@@ -569,3 +572,284 @@ def test_sigma_p_packet_operand_status_reports_per_operand_availability() -> Non
     assert blocked.operand_status("eta") is False
     with pytest.raises(ValueError, match="unknown Sigma_p operand"):
         blocked.operand_status("not_an_operand")
+
+
+# ===========================================================================
+# S3R.4 negative tests (A4, A5)
+#
+# Authority: Sprint 3R remediation handoff -- "Required negative tests / S3R.4"
+# ===========================================================================
+
+def test_s3r4_blocked_insulator_outer_radius_cannot_produce_source_backed_insulator_faces() -> None:
+    """S3R.4 N1: insulator outer radius is blocked (PF1000-BLK-014). The
+    insulator_material_faces mask is therefore candidate_projection not
+    source_supported -- a blocked dimension may not back a source-backed mask.
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    status = manifest["mask_class_status"]["insulator_material_faces"]
+    assert status != "source_supported", (
+        "insulator_material_faces must not be source_supported when "
+        "insulator_outer_radius_m is blocked"
+    )
+    assert status in ("candidate_projection_not_source_mask", "blocked"), (
+        f"unexpected status: {status!r}"
+    )
+
+
+def test_s3r4_conflict_cathode_cage_radius_cannot_produce_source_backed_cathode_shell() -> None:
+    """S3R.4 N2: cathode_cage_radius_m is a conflict field (two KR values disagree).
+    The cathode_rod_faces mask is therefore candidate_projection not source_supported.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    assert packet.fields["cathode_cage_radius_m"].status == "conflict", (
+        "pre-condition: cathode_cage_radius_m must be conflict"
+    )
+    partition = _partition(packet)
+    manifest = partition["manifest"]
+    status = manifest["mask_class_status"]["cathode_rod_faces"]
+    assert status != "source_supported", (
+        "cathode_rod_faces must not be source_supported when "
+        "cathode_cage_radius_m is a conflict field"
+    )
+    assert status in ("candidate_projection_not_source_mask", "blocked"), (
+        f"unexpected status: {status!r}"
+    )
+
+
+def test_s3r4_mask_class_status_field_present_for_all_mask_classes() -> None:
+    """S3R.4: every mask class in PF1000_MASK_CLASSES has an explicit status entry."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    for name in sg.PF1000_MASK_CLASSES:
+        assert name in manifest["mask_class_status"], (
+            f"mask_class_status missing entry for {name!r}"
+        )
+        status = manifest["mask_class_status"][name]
+        assert status in (
+            "source_supported",
+            "candidate_projection_not_source_mask",
+            "blocked",
+        ), f"{name!r}: unexpected status {status!r}"
+
+
+def test_s3r4_source_supported_masks_have_non_empty_sha256() -> None:
+    """S3R.4: masks with status source_supported carry a 64-char SHA-256.
+    Blocked masks must have an empty-string sentinel, not a real hash.
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    for name in sg.PF1000_MASK_CLASSES:
+        status = manifest["mask_class_status"][name]
+        sha = manifest["mask_sha256_by_class"][name]
+        if status == "blocked":
+            assert sha == "", (
+                f"{name!r}: blocked mask must have empty SHA-256 sentinel, got {sha!r}"
+            )
+        else:
+            assert len(sha) == 64, (
+                f"{name!r}: produced mask (status={status!r}) must have 64-char SHA-256"
+            )
+
+
+def test_s3r4_under_resolved_insulator_surface_fails_closed() -> None:
+    """S3R.4/A5: when insulator_exposed_length_m is source_supported and the
+    axial grid cannot resolve it, the partition build fails closed.
+
+    This test uses a custom packet with a source-supported insulator length
+    and a coarse axial grid (dz too large to resolve the feature).
+    """
+    krauz = sg.PF1000GeometryPacket.krauz_2012()
+    # Override insulator_exposed_length_m to be source_supported with a small
+    # value that a coarse axial grid won't resolve.  We patch the field dict.
+    from dataclasses import replace as _dc_replace
+    patched_fields = dict(krauz.fields)
+    patched_fields["insulator_exposed_length_m"] = sg.PF1000GeometryField(
+        name="insulator_exposed_length_m",
+        value=0.010,  # 10 mm -- small enough to be under-resolved
+        units="m",
+        status="source_supported",
+        scope_tag=krauz.scope_tag,
+        source_ref=(
+            "KnowledgeReference/experimental-study-of-the-structure-of-the-"
+            "plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md:349-350"
+        ),
+    )
+    patched_packet = _dc_replace(krauz, fields=patched_fields)
+    # dz = 0.10 m: 10 mm / 0.10 m = 0.1 cells << 4 -> under-resolved.
+    coarse_axial = Maxwell3DGrid(shape=(80, 80, 20), spacing=(0.0175, 0.0175, 0.10))
+    with pytest.raises(ValueError, match="insulator_exposed_length_m"):
+        _partition(patched_packet, grid=coarse_axial)
+
+
+def test_s3r4_no_fallback_to_generic_wall_material_class_when_masks_requested() -> None:
+    """S3R.4 N4: the partition must emit the five distinct material sub-classes.
+    There is no fallback to a single generic 'wall_material_faces' class even
+    when a sub-class relies on a conflict/blocked dimension.
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    masks = partition["_label_masks"]
+    # All five named sub-classes must be present, never collapsed into one.
+    for name in sg.PF1000_MATERIAL_SUBCLASSES:
+        assert name in masks, f"material sub-class {name!r} is missing"
+    # The generic wall_material_faces class is the union of sub-classes, not
+    # a replacement for them.
+    assert "wall_material_faces" in masks
+
+
+def test_s3r4_12_rod_packet_rod_faces_status_is_candidate_projection() -> None:
+    """S3R.4: with 12 rods (conflict) and conflict cage radius, cathode_rod_faces
+    is candidate_projection_not_source_mask -- the heuristic cage geometry must
+    not be promoted to source_supported.
+    """
+    packet = sg.PF1000GeometryPacket.akel_shot_12581()
+    assert packet.fields["cathode_rod_count"].status == "conflict"
+    assert packet.fields["cathode_cage_radius_m"].status == "conflict"
+    partition = _partition(packet)
+    status = partition["manifest"]["mask_class_status"]["cathode_rod_faces"]
+    assert status == "candidate_projection_not_source_mask"
+
+
+def test_s3r4_backplate_mask_is_source_supported() -> None:
+    """S3R.4: backplate_source_interface_faces is built from the source-interface
+    z-index (k_port) which is a solver parameter, not a heuristic. It must be
+    reported as source_supported.
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    assert (
+        manifest["mask_class_status"]["backplate_source_interface_faces"]
+        == "source_supported"
+    )
+
+
+def test_s3r4_chamber_wall_mask_is_candidate_until_target_extracted() -> None:
+    """S3R.4: chamber_wall_faces must not be promoted to source_supported while
+    chamber wall material/thickness are only KR text-parity and not target-extracted.
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    assert (
+        manifest["mask_class_status"]["chamber_wall_faces"]
+        == "candidate_projection_not_source_mask"
+    )
+
+
+def test_s3r4_chamber_wall_candidate_even_if_cage_radius_is_sourced() -> None:
+    """S3R.4: sourcing the cathode cage split is not enough to promote the
+    chamber-wall mask while wall material/thickness remain blocked.
+    """
+    from dataclasses import replace as _dc_replace
+
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    fields = dict(packet.fields)
+    fields["cathode_cage_radius_m"] = sg.PF1000GeometryField(
+        name="cathode_cage_radius_m",
+        value=0.16,
+        units="m",
+        status="source_supported",
+        scope_tag=packet.scope_tag,
+        source_ref=packet.conflicts[
+            packet.fields["cathode_cage_radius_m"].conflict_group
+        ].candidate_source_refs[0],
+    )
+    patched_packet = _dc_replace(packet, fields=fields)
+
+    partition = _partition(patched_packet)
+    assert (
+        partition["manifest"]["mask_class_status"]["chamber_wall_faces"]
+        == "candidate_projection_not_source_mask"
+    )
+
+
+def test_s3r4_source_available_blockers_use_honest_taxonomy() -> None:
+    """S3R.4: source-available values stay blocked until target extraction, but
+    their blocker IDs must not claim there is no KR source.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    assert (
+        packet.fields["anode_hollow_bore_radius_m"].blocker_id
+        == "PF1000-BLK-009-anode-bore-radius-source_available_not_target_extracted"
+    )
+    assert (
+        packet.fields["chamber_wall_material"].blocker_id
+        == "PF1000-BLK-021-chamber-wall-material-source_available_not_target_extracted"
+    )
+    assert (
+        packet.fields["chamber_wall_thickness_m"].blocker_id
+        == "PF1000-BLK-022-chamber-wall-thickness-source_available_not_target_extracted"
+    )
+
+
+def test_s3r4_mask_class_status_survives_to_dict_serialization() -> None:
+    """S3R.4: mask_class_status must be present in the manifest's to_dict() output."""
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest_dict = partition["manifest"]
+    # The manifest is already a dict (to_dict() called by build_pf1000_material_partition)
+    assert "mask_class_status" in manifest_dict
+    assert isinstance(manifest_dict["mask_class_status"], dict)
+    assert set(manifest_dict["mask_class_status"]) == set(sg.PF1000_MASK_CLASSES)
+
+
+# ===========================================================================
+# S3R.5 SigmaPSurfacePacket digest fields (A6)
+# ===========================================================================
+
+def test_s3r5_blocked_packet_carries_digest_field_sentinels() -> None:
+    """S3R.5 A6: a blocked SigmaPSurfacePacket must carry the digest fields --
+    even when blocked they must be present (empty-string sentinels, not absent).
+    """
+    sp = sg.SigmaPSurfacePacket.blocked()
+    assert hasattr(sp, "sigma_p_face_set_sha256")
+    assert hasattr(sp, "moving_classification_sha256")
+    assert hasattr(sp, "omega_partition_sha256")
+    assert hasattr(sp, "material_mask_sha256_by_class")
+    assert hasattr(sp, "moving_classification_status")
+    # blocked sentinel values.
+    assert sp.sigma_p_face_set_sha256 == ""
+    assert sp.moving_classification_sha256 == ""
+    assert sp.omega_partition_sha256 == ""
+    assert sp.material_mask_sha256_by_class == {}
+
+
+def test_s3r5_build_sigma_p_blocked_path_preserves_geometry_hash() -> None:
+    """S3R.5 A6: the blocked return path of build_sigma_p_surface_packet must
+    preserve the source geometry hash so a reviewer can confirm which S3.2
+    geometry drove the blocked packet.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    partition = _partition(packet)
+    sp = sg.build_sigma_p_surface_packet(partition)
+    # The blocked packet must carry the hash derived from the S3.2 manifest.
+    assert sp.source_geometry_hash is not None, (
+        "blocked build_sigma_p_surface_packet must preserve source geometry hash"
+    )
+    assert len(sp.source_geometry_hash) == 64, (
+        f"expected 64-char hex SHA-256, got {sp.source_geometry_hash!r}"
+    )
+
+
+def test_s3r5_blocked_build_without_partition_still_has_sentinel_hash() -> None:
+    """S3R.5: calling build_sigma_p_surface_packet(None) yields a blocked packet
+    whose source_geometry_hash is None (no partition supplied -- that is fine,
+    the field is present even if None).
+    """
+    sp = sg.build_sigma_p_surface_packet(None)
+    assert sp.status == "blocked_sigma_p_surface_packet_not_available"
+    # source_geometry_hash is an attribute even when no partition was supplied.
+    assert hasattr(sp, "source_geometry_hash")
+
+
+def test_s3r5_digest_fields_in_to_dict_output() -> None:
+    """S3R.5 A6: digest fields must appear in to_dict() so they survive serialization."""
+    sp = sg.SigmaPSurfacePacket.blocked()
+    d = sp.to_dict()
+    for key in (
+        "sigma_p_face_set_sha256",
+        "moving_classification_sha256",
+        "omega_partition_sha256",
+        "material_mask_sha256_by_class",
+        "moving_classification_status",
+    ):
+        assert key in d, f"to_dict() missing S3R.5 field {key!r}"
+    assert d["moving_classification_status"] == "not_classified"

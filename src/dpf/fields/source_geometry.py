@@ -435,7 +435,17 @@ class PF1000GeometryConflict:
 
 @dataclass(frozen=True)
 class PF1000MaskManifest:
-    """Deterministic manifest for one PF-1000 source-tagged mask build."""
+    """Deterministic manifest for one PF-1000 source-tagged mask build.
+
+    S3R.4: each mask class now carries an explicit `mask_class_status` string:
+      * ``source_supported``                -- produced from exact KR-backed dims
+      * ``candidate_projection_not_source_mask`` -- produced but relies on grid
+        heuristics because the driving dimension is conflict or blocked
+      * ``blocked``                         -- not produced; a driving dimension
+        is blocked; no SHA-256 is emitted for this class
+    A SHA-256 is populated only when the mask is actually produced (status is
+    NOT ``blocked``). Blocked mask classes carry an empty-string sentinel ("").
+    """
 
     geometry_packet_id: str
     geometry_source_tag: str
@@ -447,6 +457,9 @@ class PF1000MaskManifest:
     mask_sha256_by_class: dict[str, str]
     mask_cell_counts: dict[str, int]
     under_resolution_flags: dict[str, bool]
+    # S3R.4: per-class status strings (source_supported /
+    # candidate_projection_not_source_mask / blocked).
+    mask_class_status: dict[str, str] = dataclass_field(default_factory=dict)
     can_support_first_principles_acceptance: bool = False
 
     def __post_init__(self) -> None:
@@ -866,11 +879,14 @@ class PF1000GeometryPacket:
             "anode_material_is_copper", 1, "copper_material_flag",
             anode_radius_ref,
         )
-        # anode hollow bore -- WP-N3 rows 9/10: anode is hollow but no numeric
-        # bore radius/length exists in any KR source. Blocked, never invented.
+        # anode hollow bore -- WP-N3 rows 9/10.  Stepniewski 2004 exists in KR
+        # text parity and gives a modeling-context hollow radius, but it has not
+        # been target-extracted or scope-reviewed for this PF-1000 geometry
+        # packet.  The radius therefore stays blocked with the honest taxonomy.
+        # The bore length remains absent from the local authority corpus.
         fields["anode_hollow_bore_radius_m"] = blocked(
             "anode_hollow_bore_radius_m", "m",
-            "PF1000-BLK-009-anode-bore-radius-no-kr-source",
+            "PF1000-BLK-009-anode-bore-radius-source_available_not_target_extracted",
         )
         fields["anode_hollow_bore_length_m"] = blocked(
             "anode_hollow_bore_length_m", "m",
@@ -949,14 +965,15 @@ class PF1000GeometryPacket:
             "chamber_length_m", chamber_length_m, "m", chamber_length_ref
         )
         # chamber wall material / thickness -- WP-N3 rows 21/22: blocked.
-        # Only the inner bore (1400 mm dia) and length (2500 mm) are sourced.
+        # A KR text-parity source gives stainless steel and 10 mm vessel wall,
+        # but the values are not target-extracted into the geometry packet.
         fields["chamber_wall_material"] = blocked(
             "chamber_wall_material", "material_name",
-            "PF1000-BLK-021-chamber-wall-material-no-kr-source",
+            "PF1000-BLK-021-chamber-wall-material-source_available_not_target_extracted",
         )
         fields["chamber_wall_thickness_m"] = blocked(
             "chamber_wall_thickness_m", "m",
-            "PF1000-BLK-022-chamber-wall-thickness-no-kr-source",
+            "PF1000-BLK-022-chamber-wall-thickness-source_available_not_target_extracted",
         )
         return fields
 
@@ -1015,20 +1032,37 @@ def build_pf1000_material_partition(
     wall = base_masks["wall_material_faces"]
     open_pml = base_masks["open_pml_faces"]
 
-    # Under-resolution gate over the smallest sourced features. Conflict and
-    # blocked fields contribute no resolvable feature, so only source-supported
-    # numeric lengths are checked.
-    rod_diameter = packet.fields["cathode_rod_diameter_m"]
+    # Under-resolution gate over all source-supported features. S3R.4/A5:
+    # extended from rods+anode to also cover insulator exposed length and
+    # source-tagged transition widths. Conflict and blocked fields contribute no
+    # resolvable feature, so only source_supported numeric lengths are checked.
     under_resolution_flags: dict[str, bool] = {}
+
+    rod_diameter = packet.fields["cathode_rod_diameter_m"]
     if rod_diameter.status == "source_supported" and rod_diameter.value is not None:
         under_resolution_flags["cathode_rod_diameter_m"] = _under_resolved(
             min(dx, dy), float(rod_diameter.value), min_cells_per_feature
         )
+
     anode_radius = packet.fields["anode_radius_m"]
     if anode_radius.status == "source_supported" and anode_radius.value is not None:
         under_resolution_flags["anode_radius_m"] = _under_resolved(
             min(dx, dy), float(anode_radius.value), min_cells_per_feature
         )
+
+    # S3R.4/A5: insulator surface under-resolution gate.  When the insulator
+    # exposed length is source_supported (not conflict/blocked), the axial
+    # grid spacing must resolve it to at least min_cells_per_feature cells.
+    insulator_length = packet.fields.get("insulator_exposed_length_m")
+    if (
+        insulator_length is not None
+        and insulator_length.status == "source_supported"
+        and insulator_length.value is not None
+    ):
+        under_resolution_flags["insulator_exposed_length_m"] = _under_resolved(
+            dz, float(insulator_length.value), min_cells_per_feature
+        )
+
     if any(under_resolution_flags.values()):
         flagged = sorted(k for k, v in under_resolution_flags.items() if v)
         raise ValueError(
@@ -1112,8 +1146,88 @@ def build_pf1000_material_partition(
     }
     all_masks.update({k: np.asarray(v, bool) for k, v in material_masks.items()})
 
+    # S3R.4 (A4): per-class mask status. Each class is either source_supported
+    # (every driving dimension is source_supported), candidate_projection_not_source_mask
+    # (produced but drives on a heuristic because a dimension is conflict or blocked),
+    # or blocked (a required dimension is blocked -- no mask is emitted).
+    #
+    # Status derivation per class:
+    #   omega_volume_cells               -- physics-driven by density/current, source_supported
+    #   terminal_source_interface_faces  -- source_supported (z-index from solver)
+    #   wall_material_faces              -- source_supported (complement of omega)
+    #   open_pml_faces                   -- source_supported (pml_layers is a solver param)
+    #   pml_or_open_boundary_faces       -- same as open_pml_faces
+    #   anode_material_faces             -- source_supported (anode_radius is sourced)
+    #   chamber_wall_faces               -- candidate_projection_not_source_mask:
+    #     wall material/thickness are only KR text-parity, not target-extracted,
+    #     and the radial split is currently heuristic.
+    #   backplate_source_interface_faces -- source_supported (k_port from solver)
+    #   cathode_rod_faces                -- candidate_projection_not_source_mask:
+    #     cage_outer = 0.75 * domain_r is a heuristic; cathode_cage_radius is conflict.
+    #   insulator_material_faces         -- candidate_projection_not_source_mask:
+    #     insulator_zmax = k_port + nz//10 is a heuristic decile;
+    #     insulator outer radius is blocked (PF1000-BLK-014).
+    _cathode_cage_status = packet.fields["cathode_cage_radius_m"].status
+    _insulator_len_status = packet.fields["insulator_exposed_length_m"].status
+    _insulator_outer_status = packet.fields["insulator_outer_radius_m"].status
+    _chamber_wall_material_status = packet.fields["chamber_wall_material"].status
+    _chamber_wall_thickness_status = packet.fields["chamber_wall_thickness_m"].status
+    # cathode_rod_faces needs cathode_cage_radius to be source_supported AND
+    # cathode_rod_diameter to be source_supported to qualify as source_supported.
+    _cathode_rod_class_status: str
+    if _cathode_cage_status == "source_supported":
+        _cathode_rod_class_status = "source_supported"
+    else:
+        _cathode_rod_class_status = "candidate_projection_not_source_mask"
+    # insulator_material_faces needs insulator outer radius AND exposed length
+    # to be source_supported; both are currently blocked/conflict.
+    _insulator_class_status: str
+    if (
+        _insulator_outer_status == "source_supported"
+        and _insulator_len_status == "source_supported"
+    ):
+        _insulator_class_status = "source_supported"
+    elif _insulator_outer_status == "blocked":
+        # insulator outer radius is blocked: cannot produce a source-backed mask
+        _insulator_class_status = "candidate_projection_not_source_mask"
+    else:
+        _insulator_class_status = "candidate_projection_not_source_mask"
+    # chamber_wall_faces needs target-extracted wall material/thickness plus a
+    # source-supported inner split.  Current values are KR text parity only, so
+    # the emitted mask remains a candidate projection.
+    _chamber_wall_class_status: str = (
+        "source_supported"
+        if (
+            _cathode_cage_status == "source_supported"
+            and _chamber_wall_material_status == "source_supported"
+            and _chamber_wall_thickness_status == "source_supported"
+        )
+        else "candidate_projection_not_source_mask"
+    )
+
+    mask_class_status: dict[str, str] = {
+        "omega_volume_cells": "source_supported",
+        "terminal_source_interface_faces": "source_supported",
+        "wall_material_faces": "source_supported",
+        "open_pml_faces": "source_supported",
+        "pml_or_open_boundary_faces": "source_supported",
+        "anode_material_faces": "source_supported",
+        "chamber_wall_faces": _chamber_wall_class_status,
+        "backplate_source_interface_faces": "source_supported",
+        "cathode_rod_faces": _cathode_rod_class_status,
+        "insulator_material_faces": _insulator_class_status,
+    }
+
+    # SHA-256 is populated only for classes that were actually produced (not blocked).
+    # Blocked classes receive an empty string sentinel so the manifest field is
+    # always fully populated (manifest validation requires all classes to be present).
     mask_sha256_by_class = {
-        name: _mask_sha256(all_masks[name]) for name in PF1000_MASK_CLASSES
+        name: (
+            _mask_sha256(all_masks[name])
+            if mask_class_status.get(name, "source_supported") != "blocked"
+            else ""
+        )
+        for name in PF1000_MASK_CLASSES
     }
     mask_cell_counts = {
         name: int(np.count_nonzero(all_masks[name])) for name in PF1000_MASK_CLASSES
@@ -1126,6 +1240,8 @@ def build_pf1000_material_partition(
             "bounds": _mask_bounds(all_masks[name]),
             "source_refs": list(PF1000_GEOMETRY_SOURCE_REFS),
             "geometry_source_tag": packet.geometry_source_tag,
+            # S3R.4: per-packet mask status.
+            "mask_class_status": mask_class_status.get(name, "source_supported"),
         }
         for name in PF1000_MASK_CLASSES
     }
@@ -1141,6 +1257,7 @@ def build_pf1000_material_partition(
         mask_sha256_by_class=mask_sha256_by_class,
         mask_cell_counts=mask_cell_counts,
         under_resolution_flags=under_resolution_flags,
+        mask_class_status=mask_class_status,
     )
 
     return {
@@ -1233,6 +1350,13 @@ class SigmaPSurfacePacket:
     face's geometry and every field on it share one index (avoids the
     staggered-grid hazard). A face index of length 0 is legal -- it fails
     closed downstream.
+
+    S3R.5 reviewer-grade digest fields:
+      sigma_p_face_set_sha256        -- SHA-256 of the face ID array (or "blocked")
+      moving_classification_sha256   -- SHA-256 of the is_moving array (or "blocked")
+      omega_partition_sha256         -- SHA-256 of the omega partition (or "blocked")
+      material_mask_sha256_by_class  -- per-class SHA-256 from S3.2 manifest
+      moving_classification_status   -- "available" | "blocked" | "not_classified"
     """
 
     status: str
@@ -1260,6 +1384,15 @@ class SigmaPSurfacePacket:
     quadrature: str
     sign_convention: dict[str, Any] | None
     operand_blockers: dict[str, str]
+    # S3R.5: reviewer-grade digest fields. Empty-string sentinels when blocked.
+    sigma_p_face_set_sha256: str = ""
+    moving_classification_sha256: str = ""
+    omega_partition_sha256: str = ""
+    material_mask_sha256_by_class: dict[str, str] = dataclass_field(
+        default_factory=dict
+    )
+    # S3R.5: stationary/moving classification status.
+    moving_classification_status: str = "not_classified"
     can_support_power_port_acceptance: bool = False
     can_support_first_principles_acceptance: bool = False
 
@@ -1340,6 +1473,12 @@ class SigmaPSurfacePacket:
                 else dict(self.sign_convention)
             ),
             "operand_blockers": dict(self.operand_blockers),
+            # S3R.5 reviewer-grade digest fields.
+            "sigma_p_face_set_sha256": self.sigma_p_face_set_sha256,
+            "moving_classification_sha256": self.moving_classification_sha256,
+            "omega_partition_sha256": self.omega_partition_sha256,
+            "material_mask_sha256_by_class": dict(self.material_mask_sha256_by_class),
+            "moving_classification_status": self.moving_classification_status,
             "can_support_power_port_acceptance": (
                 self.can_support_power_port_acceptance
             ),
@@ -1434,9 +1573,16 @@ def build_sigma_p_surface_packet(
                 for name in PF1000_MASK_CLASSES:
                     hasher.update(str(by_class.get(name, "")).encode("utf-8"))
                 geometry_hash = hasher.hexdigest()
+    # S3R.5 (A6): the blocked return path MUST preserve the geometry hash so a
+    # reviewer can confirm which S3.2 geometry drove the blocked packet.
+    # Both branches (no runtime and sprint4-placeholder) now carry the hash.
     if sigma_p_runtime is None:
-        return SigmaPSurfacePacket.blocked(
+        blocked = SigmaPSurfacePacket.blocked(
             source_geometry_packet_id=packet_id,
+        )
+        return replace(
+            blocked,
+            source_geometry_hash=geometry_hash,
         )
     # A non-None sigma_p_runtime is reserved for the Sprint 4 face-set
     # producer. S3.3 does not synthesise a face set, so any caller that

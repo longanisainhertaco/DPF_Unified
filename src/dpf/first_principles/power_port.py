@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace as _dc_replace
 from typing import Any
+
+import numpy as _np
 
 from dpf.fields.source_geometry import (
     SIGMA_P_BLOCKERS,
@@ -456,6 +459,85 @@ _SIGMA_P_INTEGRAL_IS_SPRINT4 = (
 )
 
 
+_SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED = (
+    "serialized_sigma_p_packet_not_supported"
+)
+
+# S3R.5 (A7): fields required to reconstruct a SigmaPSurfacePacket from dict.
+_SIGMA_P_PACKET_REQUIRED_DICT_KEYS = (
+    "status",
+    "source_refs",
+    "source_geometry_packet_id",
+    "source_geometry_hash",
+    "n_sigma_p_faces",
+    "face_count_total_sigma",
+    "geometry_review_status",
+    "face_ids",
+    "dS_outward_m2",
+    "face_area_m2",
+    "outward_normal",
+    "face_material_class",
+    "is_moving",
+    "omega_side",
+    "excluded_interface_side",
+    "outward_normal_convention",
+    "field_sampler_status",
+    "velocity_status",
+    "resistivity_status",
+    "centering",
+    "quadrature",
+    "sign_convention",
+    "operand_blockers",
+)
+
+def _sigma_p_packet_from_dict(d: Mapping[str, Any]) -> SigmaPSurfacePacket:
+    """Reconstruct a SigmaPSurfacePacket from its to_dict() form.
+
+    S3R.5 (A7): dict-form packets must NOT be silently discarded. If any
+    required field is absent the function raises KeyError so the caller can
+    emit a named `serialized_sigma_p_packet_not_supported` blocker.
+    """
+    def _arr(v: Any) -> _np.ndarray | None:
+        return None if v is None else _np.asarray(v)
+
+    return SigmaPSurfacePacket(
+        status=d["status"],
+        source_refs=tuple(d["source_refs"]),
+        source_geometry_packet_id=d["source_geometry_packet_id"],
+        source_geometry_hash=d["source_geometry_hash"],
+        n_sigma_p_faces=int(d["n_sigma_p_faces"]),
+        face_count_total_sigma=int(d["face_count_total_sigma"]),
+        geometry_review_status=d["geometry_review_status"],
+        face_ids=_arr(d["face_ids"]),
+        dS_outward_m2=_arr(d["dS_outward_m2"]),
+        face_area_m2=_arr(d["face_area_m2"]),
+        outward_normal=_arr(d["outward_normal"]),
+        face_material_class=tuple(d["face_material_class"]),
+        is_moving=_arr(d["is_moving"]),
+        omega_side=d["omega_side"],
+        excluded_interface_side=d["excluded_interface_side"],
+        outward_normal_convention=d["outward_normal_convention"],
+        field_sampler_status=dict(d["field_sampler_status"]),
+        velocity_status=d["velocity_status"],
+        resistivity_status=d["resistivity_status"],
+        centering=dict(d["centering"]),
+        quadrature=d["quadrature"],
+        sign_convention=(
+            None if d["sign_convention"] is None else dict(d["sign_convention"])
+        ),
+        operand_blockers=dict(d["operand_blockers"]),
+        sigma_p_face_set_sha256=str(d.get("sigma_p_face_set_sha256", "")),
+        moving_classification_sha256=str(d.get("moving_classification_sha256", "")),
+        omega_partition_sha256=str(d.get("omega_partition_sha256", "")),
+        material_mask_sha256_by_class=dict(
+            d.get("material_mask_sha256_by_class") or {}
+        ),
+        moving_classification_status=str(
+            d.get("moving_classification_status", "not_classified")
+        ),
+    )
+
+
 def _sigma_p_packet_from_ledger(
     ledger: Mapping[str, Any] | None,
 ) -> SigmaPSurfacePacket:
@@ -465,12 +547,44 @@ def _sigma_p_packet_from_ledger(
     `SigmaPSurfacePacket` instance or its `to_dict()` form) it is used;
     otherwise a fully fail-closed packet is built. `power_port.py` never
     fabricates a Sigma_p face set.
+
+    S3R.5 (A7): dict-form packets are reconstructed via `_sigma_p_packet_from_dict`.
+    If reconstruction fails the function emits a named
+    `serialized_sigma_p_packet_not_supported` blocked packet -- it does NOT
+    silently discard the dict-form input and proceed as if nothing arrived.
     """
     candidate = None if ledger is None else ledger.get("sigma_p_surface_packet")
     if isinstance(candidate, SigmaPSurfacePacket):
         return candidate
+    if isinstance(candidate, Mapping):
+        # Attempt dict-form reconstruction. Any missing required field or
+        # validation failure -> named blocker, not silent discard.
+        try:
+            # Verify all required keys are present before constructing.
+            missing = [k for k in _SIGMA_P_PACKET_REQUIRED_DICT_KEYS if k not in candidate]
+            if missing:
+                raise KeyError(f"dict-form packet missing keys: {missing}")
+            return _sigma_p_packet_from_dict(candidate)
+        except Exception as exc:
+            blocked = build_sigma_p_surface_packet(None)
+            return _dc_replace(
+                blocked,
+                status=_SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED,
+                operand_blockers={
+                    **blocked.operand_blockers,
+                    "serialization": str(exc),
+                },
+            )
     # No reviewed Sigma_p geometry from the runtime: build the blocked default.
     return build_sigma_p_surface_packet(None)
+
+
+_SIGMA_P_SIGN_CONVENTION_BLOCKER = (
+    "sigma_p_eq6_sign_convention_not_recorded"
+)
+_SIGMA_P_MOVING_CLASSIFICATION_BLOCKER = (
+    "sigma_p_moving_stationary_classification_not_recorded"
+)
 
 
 def _sigma_p_surface_term(
@@ -490,11 +604,20 @@ def _sigma_p_surface_term(
       * missing v -> blocks II, IV, VI;
       * missing eta -> blocks V.
 
+    S3R.5 additional controls (A7) — checked after all field operands pass:
+      * missing sign convention -> blocks all Sigma_p terms that otherwise have
+        all operands present (recorded after face-set/v/eta check)
+      * absent moving/stationary classification -> blocks all Sigma_p terms
+        (Auluck p.8: "stationary boundaries do not contribute"; without
+        classification the integral cannot be formed correctly)
+
     S3.3 is plumbing only. Even with every operand present the term is NOT
     computed -- the surface integral is Sprint 4 work, so the term stays
     blocked with `_SIGMA_P_INTEGRAL_IS_SPRINT4`. No term is ever derived as
     `I*V` minus the others.
     """
+    # Field operand checks (sigma_p face set, v, eta, B, E, J) -- these take
+    # priority so the blocker names the most upstream missing thing.
     for operand in SIGMA_P_TERM_OPERANDS[term_key]:
         if not sigma_p.operand_status(operand):
             reason = sigma_p.operand_blockers.get(
@@ -505,7 +628,36 @@ def _sigma_p_surface_term(
             packet["missing_operand"] = operand
             packet["consumes"] = "sigma_p_surface_packet"
             return packet
-    # all operands present: S3.3 plumbing stops here -- the integral is S4.
+
+    # S3R.5 (A7) sign-convention negative control: a sign-unverified surface
+    # integral cannot be a genuine power-balance contribution. Checked after
+    # field operands so the blocker distinguishes "face set absent" from "sign
+    # convention absent when face set is present".
+    if not sigma_p.has_sign_convention():
+        reason = sigma_p.operand_blockers.get(
+            "sign_convention",
+            SIGMA_P_BLOCKERS.get("sign_convention", _SIGMA_P_SIGN_CONVENTION_BLOCKER),
+        )
+        packet = _term_blocked_packet(reason, source_ref=source_ref)
+        packet["integrand"] = integrand
+        packet["missing_operand"] = "sign_convention"
+        packet["consumes"] = "sigma_p_surface_packet"
+        return packet
+
+    # S3R.5 (A7) moving/stationary classification negative control.  Checked
+    # after sign convention: Auluck p.8 requires stationary boundaries to
+    # contribute zero; without classification the distinction cannot be enforced.
+    if sigma_p.moving_classification_status not in ("available",):
+        packet = _term_blocked_packet(
+            _SIGMA_P_MOVING_CLASSIFICATION_BLOCKER, source_ref=source_ref
+        )
+        packet["integrand"] = integrand
+        packet["missing_operand"] = "moving_classification"
+        packet["consumes"] = "sigma_p_surface_packet"
+        packet["moving_classification_status"] = sigma_p.moving_classification_status
+        return packet
+
+    # all operands + controls satisfied: S3.3 plumbing stops here -- integral is S4.
     packet = _term_blocked_packet(
         _SIGMA_P_INTEGRAL_IS_SPRINT4, source_ref=source_ref
     )

@@ -128,6 +128,19 @@ packet's fail-closed posture. Since WP-N2 guarantees 0 computed channels of 13,
 tests added for accepted-mode spoof payload, reviewed-without-hashes payload,
 seeded-layer mode, and the CLI blocker propagation.
 
+`2a3e891` — S3R.3 neutron-authority status splits + NumPy 2 trapezoid fallback
+(closes A2, A3). A2: scalar yield is now permanently `candidate_comparator_only`
+— `_accepted_channels_from_targets()` skips `accepted.add()` for
+`neutron_scalar_yield` and emits decision
+`candidate_comparator_only_scalar_not_mechanism_authority`; `_channel_statuses()`
+returns `candidate_comparator_only` for `same_scope_scalar_yield` regardless of
+the accepted set. A3: `beam_target.py:91` uses the lazy `hasattr` fallback
+(`integrator = np.trapezoid if hasattr(np, "trapezoid") else np.trapz`) so the
+diagnostic does not raise `AttributeError` on NumPy 2 where `np.trapz` is
+absent. Negative tests cover scalar-only authority denial, accepted target
+metadata without mechanism histories, missing stopping/detector keeping
+total-yield blocked, and `_trapezoid_integral` working under NumPy 2.
+
 ## Changed paths
 
 ### Sprint 1
