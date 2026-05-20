@@ -580,7 +580,7 @@ def test_sigma_p_packet_operand_status_reports_per_operand_availability() -> Non
 # ===========================================================================
 
 def test_s3r4_blocked_insulator_outer_radius_cannot_produce_source_backed_insulator_faces() -> None:
-    """S3R.4 N1: insulator outer radius is blocked (PF1000-BLK-014). The
+    """S3R.4 N1: insulator outer radius is blocked (PF1000-BLK-015). The
     insulator_material_faces mask is therefore candidate_projection not
     source_supported -- a blocked dimension may not back a source-backed mask.
     """
@@ -860,3 +860,169 @@ def test_s3r5_digest_fields_in_to_dict_output() -> None:
     ):
         assert key in d, f"to_dict() missing S3R.5 field {key!r}"
     assert d["moving_classification_status"] == "not_classified"
+
+
+# ===========================================================================
+# Sprint 4 Priority 1 -- PF-1000 geometry authority closures.
+#
+# Authority: Sprint 4 hardware-scope review 2026-05-20.
+# KR source: KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md
+#            KnowledgeReference/experimental-study-of-the-structure-of-the-
+#              plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md
+#            KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md
+# ===========================================================================
+
+def test_s4p1a_stepniewski_hollow_bore_stays_blocked_simulation_parameter_only() -> None:
+    """S4-P1a: Stepniewski 2004 hollow-bore 0.015 m is a simulation parameter,
+    not a hardware measurement. Verdict: BLOCKED (hardware-scope review failed).
+
+    [KR: doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md:310-314] "The parameters
+    of PF-1000 facility have been taken for the simulations" -- this is a
+    simulation parameter section, not a hardware drawing. The value does not
+    qualify for source_supported status in the PF1000GeometryPacket.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    bore_field = packet.fields["anode_hollow_bore_radius_m"]
+    assert bore_field.status == "blocked", (
+        "anode_hollow_bore_radius_m must stay blocked: Stepniewski 2004 "
+        "reports it in a simulation-parameter section, not a hardware context"
+    )
+    assert bore_field.value is None
+    assert "target_extracted_modeling_context_requires_review" in bore_field.blocker_id
+
+
+def test_s4p1b_cathode_cage_conflict_documents_category_mismatch() -> None:
+    """S4-P1b: cathode_cage_radius_m conflict documents that Krauz 200 mm is a
+    hardware geometric measurement while Akel 160 mm is a Lee-fit parameter b.
+    The conflict is kept because no second independent hardware source confirms
+    200 mm, but the reason now documents the category mismatch.
+
+    [KR: experimental-study-of-the-structure-of-the-plasma-current-sheath-
+    on-the-pf-1000-facility-705bcc83.md:346-347] 'OE and CE radii are 200 mm
+    and 115.5 mm' -- direct geometric measurement.
+    [KR: radiation-physics-and-chemistry-188-2021-109633.md:264,267]
+    'b = 16 cm' in Lee model parameter table; b is the 'cathode radius'
+    (Lee-fit input, not a hardware metrology value).
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    conflict = packet.conflicts["cathode_cage_radius_b"]
+    assert set(conflict.candidate_values) == {0.200, 0.160}
+    assert "category mismatch" in conflict.reason or "Lee-fit" in conflict.reason, (
+        "conflict reason must document the category mismatch between hardware "
+        "geometry (Krauz 200 mm) and Lee-fit parameter (Akel 160 mm)"
+    )
+    assert "hardware" in conflict.reason.lower()
+    # The field itself must remain conflict (not source_supported) because no
+    # second confirming hardware-scope source is available.
+    cage_field = packet.fields["cathode_cage_radius_m"]
+    assert cage_field.status == "conflict"
+    assert cage_field.value is None
+
+
+def test_s4p1b_akel_constructor_cathode_cage_also_stays_conflict() -> None:
+    """S4-P1b: Akel constructor cage radius stays conflict -- Akel only provides
+    the Lee-fit parameter b=16 cm, not an independent hardware measurement.
+    """
+    packet = sg.PF1000GeometryPacket.akel_shot_12581()
+    cage_field = packet.fields["cathode_cage_radius_m"]
+    assert cage_field.status == "conflict"
+    assert cage_field.value is None
+
+
+def test_s4p1c_insulator_outer_radius_blocked_with_named_missing_data() -> None:
+    """S4-P1c: insulator outer radius is blocked. No KR source publishes the
+    PF-1000 alumina insulator outer radius as a numeric value.
+
+    KR search 2026-05-20 confirmed: Krauz 2012 [KR:348-350] names the material
+    and axial length only; Scholz 2007 [KR:223-224] gives exposed length only.
+    Verdict: BLOCKED (PF1000-BLK-015-insulator-outer-radius-no-kr-source).
+    """
+    for ctor in (
+        sg.PF1000GeometryPacket.krauz_2012,
+        sg.PF1000GeometryPacket.akel_shot_12581,
+        sg.PF1000GeometryPacket.scholz_gribkov_revision,
+    ):
+        packet = ctor()
+        fld = packet.fields["insulator_outer_radius_m"]
+        assert fld.status == "blocked", (
+            f"{ctor.__name__}: insulator_outer_radius_m must be blocked"
+        )
+        assert fld.value is None
+        assert fld.blocker_id == "PF1000-BLK-015-insulator-outer-radius-no-kr-source"
+
+
+def test_s4p1c_insulator_wall_thickness_blocked_with_named_missing_data() -> None:
+    """S4-P1c: insulator wall thickness is blocked. No KR source publishes the
+    PF-1000 alumina insulator wall thickness as a numeric value.
+
+    Verdict: BLOCKED (PF1000-BLK-016-insulator-wall-thickness-no-kr-source).
+    """
+    for ctor in (
+        sg.PF1000GeometryPacket.krauz_2012,
+        sg.PF1000GeometryPacket.akel_shot_12581,
+        sg.PF1000GeometryPacket.scholz_gribkov_revision,
+    ):
+        packet = ctor()
+        fld = packet.fields["insulator_wall_thickness_m"]
+        assert fld.status == "blocked", (
+            f"{ctor.__name__}: insulator_wall_thickness_m must be blocked"
+        )
+        assert fld.value is None
+        assert fld.blocker_id == "PF1000-BLK-016-insulator-wall-thickness-no-kr-source"
+
+
+def test_s4p1c_insulator_mask_stays_candidate_projection_not_source_mask() -> None:
+    """S4-P1c: insulator_material_faces mask is candidate_projection_not_source_mask
+    because insulator_outer_radius_m is blocked (PF1000-BLK-015).
+    """
+    partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
+    manifest = partition["manifest"]
+    assert (
+        manifest["mask_class_status"]["insulator_material_faces"]
+        == "candidate_projection_not_source_mask"
+    ), (
+        "insulator_material_faces must remain candidate_projection_not_source_mask "
+        "while insulator_outer_radius_m is blocked"
+    )
+
+
+def test_s4p1d_backplate_radial_extent_blocked_with_named_missing_data() -> None:
+    """S4-P1d: backplate radial extent is blocked. No KR source publishes the
+    PF-1000 back plate radial extent as a numeric value.
+
+    KR search 2026-05-20 confirmed: Krauz 2012 [KR:351-352] mentions 'back
+    plate of the OE' in context only (insulator shape), without dimensions.
+    Verdict: BLOCKED (PF1000-BLK-017-backplate-radial-extent-no-kr-source).
+    """
+    for ctor in (
+        sg.PF1000GeometryPacket.krauz_2012,
+        sg.PF1000GeometryPacket.akel_shot_12581,
+        sg.PF1000GeometryPacket.scholz_gribkov_revision,
+    ):
+        packet = ctor()
+        fld = packet.fields["backplate_radial_extent_m"]
+        assert fld.status == "blocked", (
+            f"{ctor.__name__}: backplate_radial_extent_m must be blocked"
+        )
+        assert fld.value is None
+        assert fld.blocker_id == "PF1000-BLK-017-backplate-radial-extent-no-kr-source"
+
+
+def test_s4p1d_backplate_axial_thickness_blocked_with_named_missing_data() -> None:
+    """S4-P1d: backplate axial thickness is blocked. No KR source publishes the
+    PF-1000 back plate axial thickness as a numeric value.
+
+    Verdict: BLOCKED (PF1000-BLK-018-backplate-axial-thickness-no-kr-source).
+    """
+    for ctor in (
+        sg.PF1000GeometryPacket.krauz_2012,
+        sg.PF1000GeometryPacket.akel_shot_12581,
+        sg.PF1000GeometryPacket.scholz_gribkov_revision,
+    ):
+        packet = ctor()
+        fld = packet.fields["backplate_axial_thickness_m"]
+        assert fld.status == "blocked", (
+            f"{ctor.__name__}: backplate_axial_thickness_m must be blocked"
+        )
+        assert fld.value is None
+        assert fld.blocker_id == "PF1000-BLK-018-backplate-axial-thickness-no-kr-source"

@@ -234,6 +234,14 @@ becomes source-supported; a focused test enforces this. Stepniewski 2004's
 `PF1000GeometryPacket` because it is a simulation-parameter context, not
 reviewed hardware-scope geometry. Tests: 165 passed.
 
+### Sprint 4 Priority closures (converts target extractions into source-supported-or-blocked closures)
+
+`66bed52` — Sprint 4 prep target extractions (above section): per
+`docs/FIRST_PRINCIPLES_TARGET_EXTRACTIONS_2026_05_20.md`, source-available KR
+material converted to typed target records; chamber-wall promoted to
+source_supported via Krasa 2008; Stepniewski 0.015 m extracted but not
+promoted into `PF1000GeometryPacket`.
+
 ## Changed paths
 
 ### Sprint 1

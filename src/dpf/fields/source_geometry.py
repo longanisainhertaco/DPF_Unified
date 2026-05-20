@@ -767,8 +767,24 @@ class PF1000GeometryPacket:
                     f"{krauz}:346-347", f"{akel}:264",
                 ),
                 reason=(
-                    "200 mm geometric cage radius (Krauz 2012) vs 160 mm "
-                    "Lee-model fit b (Akel 2021 / Lee course); not averaged"
+                    "Sprint 4 hardware-scope review verdict (2026-05-20): "
+                    "the two values are NOT measuring the same quantity. "
+                    "Krauz 2012 [KR:346-347] states 'OE and copper center "
+                    "electrode (CE) radii are 200 mm and 115.5 mm' -- this "
+                    "is a direct geometric measurement of the outer electrode "
+                    "cage radius. Akel 2021 [KR:264] lists 'b = 16 cm' in a "
+                    "Lee model code parameter table; line 267 labels b the "
+                    "'cathode radius' but it is a Lee-fit input, not a "
+                    "hardware metrology value. The conflict therefore "
+                    "reflects a category mismatch (hardware geometry vs "
+                    "Lee-fit parameter) rather than a genuine measurement "
+                    "disagreement. The physical hardware cage geometric "
+                    "radius is 200 mm per Krauz. However, no second "
+                    "independent hardware-scope source confirms the 200 mm "
+                    "value, so this conflict is kept and the field "
+                    "cathode_cage_radius_m remains status=conflict in both "
+                    "constructors pending a confirming hardware source. "
+                    "Not averaged."
                 ),
             ),
             PF1000GeometryConflict(
@@ -885,11 +901,19 @@ class PF1000GeometryPacket:
             "anode_material_is_copper", 1, "copper_material_flag",
             anode_radius_ref,
         )
-        # anode hollow bore -- WP-N3 rows 9/10.  Stepniewski 2004 is now
-        # target-extracted as a simulation-parameter source (0.015 m), but it
-        # is not yet a hardware-scope dimension accepted for this geometry
-        # packet.  The radius therefore stays blocked with the honest taxonomy.
-        # The bore length remains absent from the local authority corpus.
+        # anode hollow bore -- WP-N3 rows 9/10.  Sprint 4 hardware-scope review
+        # verdict (2026-05-20): Stepniewski 2004
+        # [KR: doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md:310-314] lists the
+        # PF-1000 geometry as "parameters ... taken for the simulations" --
+        # verbatim: "The parameters of PF-1000 facility have been taken for the
+        # simulations. They are as follows: radius of the inner electrode 0.12 m,
+        # outer electrode 0.18 m, hollow radius in the centre of the electrode
+        # 0.015 m, electrode length 0.60 m."  This is a SIMULATION PARAMETER
+        # section, not a hardware drawing or metrology report.  The 0.015 m
+        # value is therefore a simulation-scope value and does NOT qualify as a
+        # hardware-scope PF-1000 geometry field for this packet.
+        # Verdict: BLOCKED (hardware-scope review failed -- simulation parameter
+        # only; no independent KR hardware measurement available).
         fields["anode_hollow_bore_radius_m"] = blocked(
             "anode_hollow_bore_radius_m", "m",
             "PF1000-BLK-009-anode-bore-radius-target_extracted_modeling_context_requires_review",
@@ -944,16 +968,28 @@ class PF1000GeometryPacket:
                 "insulator_exposed_length_m", insulator_exposed_length_m, "m",
                 insulator_exposed_length_ref,
             )
-        # insulator outer radius / wall thickness -- WP-N3 rows 14/15: blocked.
+        # insulator outer radius / wall thickness -- WP-N3 rows 14/15.
+        # Sprint 4 KR search (2026-05-20) confirmed no KR file publishes the
+        # PF-1000 alumina insulator outer radius or wall thickness as a numeric
+        # value.  Krauz 2012 [KR:348-350] names the material (alumina) and gives
+        # the exposed axial length (85 mm) but provides no outer-radius or
+        # wall-thickness figure.  Scholz 2007 [KR:223-224] gives 113 mm exposed
+        # length, again no radial dimensions.  Verdict: BLOCKED with named
+        # missing data.
         fields["insulator_outer_radius_m"] = blocked(
             "insulator_outer_radius_m", "m",
-            "PF1000-BLK-014-insulator-outer-radius-no-kr-source",
+            "PF1000-BLK-015-insulator-outer-radius-no-kr-source",
         )
         fields["insulator_wall_thickness_m"] = blocked(
             "insulator_wall_thickness_m", "m",
-            "PF1000-BLK-015-insulator-wall-thickness-no-kr-source",
+            "PF1000-BLK-016-insulator-wall-thickness-no-kr-source",
         )
         # backplate radial extent / axial thickness -- WP-N3 rows 17/18.
+        # Sprint 4 KR search (2026-05-20) confirmed no KR file publishes the
+        # PF-1000 back plate (OE back plate) radial extent or axial thickness
+        # as numeric values.  Krauz 2012 [KR:351-352] mentions "back plate of
+        # the OE" in context only (describing insulator shape), not with
+        # dimensions.  Verdict: BLOCKED with named missing data.
         fields["backplate_radial_extent_m"] = blocked(
             "backplate_radial_extent_m", "m",
             "PF1000-BLK-017-backplate-radial-extent-no-kr-source",
@@ -1170,7 +1206,7 @@ def build_pf1000_material_partition(
     #     cage_outer = 0.75 * domain_r is a heuristic; cathode_cage_radius is conflict.
     #   insulator_material_faces         -- candidate_projection_not_source_mask:
     #     insulator_zmax = k_port + nz//10 is a heuristic decile;
-    #     insulator outer radius is blocked (PF1000-BLK-014).
+    #     insulator outer radius is blocked (PF1000-BLK-015).
     _cathode_cage_status = packet.fields["cathode_cage_radius_m"].status
     _insulator_len_status = packet.fields["insulator_exposed_length_m"].status
     _insulator_outer_status = packet.fields["insulator_outer_radius_m"].status
