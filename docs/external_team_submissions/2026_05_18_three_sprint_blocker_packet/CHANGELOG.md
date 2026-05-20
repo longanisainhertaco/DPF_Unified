@@ -708,6 +708,55 @@ immediately-following commit `8fba1bf` to account for the new
 `8fba1bf` — chore: regenerate module-source-vetting after Sprint 5 WS2
 addition.
 
+`558de6f` — docs(s5): CHANGELOG sync entries for 82694e7 + 8fba1bf so
+`test_changelog_covers_all_commits_since_base` stays green.
+
+### Codex Sprint 5 WS2 audit A1-A4 corrections
+
+`docs/CODEX_SPRINT5_WS2_AUDIT_2026_05_20.md` (Codex audit of Sprint 5 WS2
+at HEAD `558de6f`) **ACCEPTED Sprint 5 WS2** as a fail-closed source-
+availability and target-extraction pass, with four bookkeeping
+corrections required before WS3:
+
+- **A1** Bennett packet CH01 mapping ambiguity: the per-target
+  `fill_pressure_baseline.resolves` field listed `STARTUP-BVP-CH01` while
+  the top-level `resolves_blockers` did not. Corrected by setting the
+  per-target `resolves = ()`, adding `corroborative_only = True` and
+  `corroborative_for = ("STARTUP-BVP-CH01",)`, and adding a structural
+  test `test_sprint5_audit_a1_per_target_resolves_subset_of_top_level`
+  that asserts every per-target `resolves` is a subset of the packet's
+  top-level `resolves_blockers` (corroborative-only targets must have
+  empty `resolves`).
+- **A2** Te/Ti broad wording: the Sprint 5 free-acquisition memo said
+  "no DPF in any literature publishes pinch-phase spectroscopic Te/Ti."
+  That overstates the field-wide claim. Replaced with the narrow Codex-
+  accepted statement: "no accepted same-scope PF-1000 bulk pinch Te/Ti
+  history exists for the selected certificate scope," plus explicit
+  acknowledgement that Bernard 1977 contains direct historical
+  filament-phase Ti (wrong-scope) and Plasma Focus Update 2021 contains
+  PF-1000 local hot-spot Te method context (text-only). Doc-lint test
+  `test_sprint5_audit_a2_free_acquisitions_memo_no_broad_te_ti_wording`
+  rejects the broad phrasing.
+- **A3** "Closes blockers" overclaim: free-download URLs do not by
+  themselves close blockers. Replaced "closes" language with "may close
+  source availability after acquisition, KR ingestion, target
+  extraction, and review" throughout the memo. SRIM-2013, Munro 2012,
+  and PlasmaPy are explicitly relabeled as **substitute / cross-check
+  lanes** pending source-equivalence review. Doc-lint test
+  `test_sprint5_audit_a3_free_acquisitions_memo_softens_closes_language`
+  enforces the narrow qualifier.
+- **A4** Stale 74-vs-72 commit count: prior memory entry said "74
+  unpushed"; `git rev-list --count origin/codex/corpus..HEAD` reports
+  72 at HEAD `558de6f`. Memory entry corrected; no doc artifact carried
+  the 74 claim.
+
+No physics is accepted by these corrections; `accepted_runtime_claim`
+remains false on every blocker-ledger row;
+`can_support_first_principles_acceptance` remains false everywhere.
+The structural blockers (3D-runner-vs-acceptance-gate code gap;
+`same_scope.py` forcing Te/Ti as blocking) remain open exactly as the
+Codex audit's "Structural Blockers Remain" section instructs.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

@@ -6929,3 +6929,23 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   no acceptance state changed. Te/Ti may be proposed as an explicitly excluded
   non-validated observable for claim-limited certificates, but not as
   `caveat_accepted` or accepted same-scope evidence.
+
+### 2026-05-20: Sprint 5 WS2 Team Audit Completed
+
+- Work completed:
+  added the Codex audit of the team's Sprint 5 WS2 work:
+  `docs/CODEX_SPRINT5_WS2_AUDIT_2026_05_20.md`.
+- Audit state:
+  the target-extraction packet work passes focused tests and keeps all physics
+  acceptance flags false. The Braginskii Table 2 layout claim was independently
+  render-checked against the local PDF, and the latest periodic audit log shows
+  10/10 PASS at `558de6f`.
+- Required follow-up:
+  correct the Bennett CH01/corroborative-only mapping, replace broad Te/Ti
+  absence wording with the narrower same-scope PF-1000 bulk-pinch gap, and keep
+  free-acquisition entries framed as source-availability candidates rather than
+  blocker closures.
+- Boundary:
+  this audit does not promote startup, Braginskii transport, anomalous
+  resistivity, neutron stopping, Te/Ti, or whole-shot first-principles runtime
+  acceptance.

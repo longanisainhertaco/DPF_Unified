@@ -92,8 +92,16 @@ BENNETT_2017_STARTUP_EXTRACTION: Mapping[str, Any] = {
                 "with an initial density of 3.52 * 10^17 cm^-3 "
                 "(5.5 Torr of molecular deuterium, D_2)."
             ),
-            "resolves": ("STARTUP-BVP-CH01",),
-            "note": "corroborative only",
+            # Codex Sprint 5 WS2 audit A1: this target is corroborative
+            # context for STARTUP-BVP-CH01 (Bennett's MA-scale 5.5 Torr fill
+            # is not Akel-16-kV-scope) and is NOT counted in the packet's
+            # top-level ``resolves_blockers`` tuple. Per-target ``resolves``
+            # is empty when ``corroborative_only`` is true so downstream
+            # extractors cannot infer that Bennett closes CH01.
+            "resolves": (),
+            "corroborative_only": True,
+            "corroborative_for": ("STARTUP-BVP-CH01",),
+            "note": "corroborative only — does NOT close CH01",
         },
         "breakdown_delay": {
             "value": 20.0,

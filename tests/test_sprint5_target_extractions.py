@@ -7,9 +7,17 @@ These tests enforce structural invariants on the seven extraction packets:
 - the audit-row corrections (rows 6, 7, 8) and the negative findings
   (Bernard thermonuclear prefactor not found; 320/500 keV is FF-1 not
   PF-1000) are encoded in the packets and asserted here.
+- Codex Sprint 5 WS2 audit acceptance tests:
+    * A1 — per-target ``resolves`` is a subset of top-level
+      ``resolves_blockers`` (no per-target claim that the top level does
+      not endorse);
+    * A2 — the Sprint 5 free-acquisition memo does not assert the
+      broad "no DPF in any literature" Te/Ti wording.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import pytest
 
@@ -23,6 +31,11 @@ from dpf.first_principles.sprint5_target_extractions import (
     STEPNIEWSKI_2004_REVIEW_PACKET,
     UCSD_BEG_CURRENT_SHEATH_EXTRACTION,
     sprint5_local_target_extractions,
+)
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+FREE_ACQ_MEMO = (
+    REPO_ROOT / "docs" / "SPRINT5_FREE_ACQUISITIONS_2026_05_20.md"
 )
 
 
@@ -165,3 +178,118 @@ def test_audit_corrections_folded_in() -> None:
         "plasma_focus_update_320_500_kev_is_ff1_not_pf1000",
     }
     assert required.issubset(folded)
+
+
+def test_sprint5_audit_a1_per_target_resolves_subset_of_top_level() -> None:
+    """Codex Sprint 5 WS2 audit A1: every per-target ``resolves`` tuple must
+    be a subset of the packet's top-level ``resolves_blockers`` tuple.
+
+    Corroborative-only targets must carry ``corroborative_only = True`` and
+    their ``resolves`` tuple must be empty; their corroborative-for blockers
+    are recorded in a separate ``corroborative_for`` field and are not
+    counted against the top-level resolves set.
+    """
+    for source_id, packet in SPRINT_5_TARGET_EXTRACTIONS.items():
+        top_level = set(packet.get("resolves_blockers", ()))
+        targets = packet.get("targets", {})
+        if not isinstance(targets, dict):
+            continue
+        for target_name, target in targets.items():
+            if not isinstance(target, dict):
+                continue
+            per_target = set(target.get("resolves", ()))
+            corroborative = target.get("corroborative_only", False)
+            if corroborative:
+                assert per_target == set(), (
+                    f"{source_id}.targets[{target_name!r}] is "
+                    f"corroborative_only but has non-empty resolves "
+                    f"{per_target}; corroborative entries must use "
+                    "corroborative_for and leave resolves empty so "
+                    "downstream extractors cannot claim resolution."
+                )
+                continue
+            # Non-corroborative per-target resolves must be a subset of
+            # the top-level resolves_blockers set. Drop any qualifier
+            # suffix "(historical context only)" before the comparison.
+            top_level_normalized = {
+                entry.split(" (")[0] for entry in top_level
+            }
+            per_target_normalized = {
+                entry.split(" (")[0] for entry in per_target
+            }
+            extra = per_target_normalized - top_level_normalized
+            assert not extra, (
+                f"{source_id}.targets[{target_name!r}].resolves contains "
+                f"blockers {extra} that are NOT in the packet's "
+                f"top-level resolves_blockers {top_level}; either add "
+                "them to the top level or mark the target corroborative_only."
+            )
+
+
+def test_sprint5_audit_a2_free_acquisitions_memo_no_broad_te_ti_wording() -> None:
+    """Codex Sprint 5 WS2 audit A2: the Sprint 5 free-acquisition memo must
+    NOT assert the broad "no DPF in any literature" wording about Te/Ti.
+
+    The accepted narrow statement is "no accepted same-scope PF-1000 bulk
+    pinch Te/Ti history exists for the selected certificate scope." Bernard
+    1977 has filament-phase Ti (wrong-scope); Plasma Focus Update 2021 has
+    PF-1000 local hot-spot Te method context (text-only). The broad
+    "no DPF in any literature" phrasing overstates the field-wide claim.
+    """
+    text = FREE_ACQ_MEMO.read_text(encoding="utf-8")
+    assert "no DPF in any literature" not in text, (
+        "Sprint 5 free-acquisition memo contains the broad "
+        "'no DPF in any literature' wording. Replace with the narrow "
+        "Codex-accepted statement: 'no accepted same-scope PF-1000 bulk "
+        "pinch Te/Ti history exists for the selected certificate scope'."
+    )
+    # Affirmative check: the narrow statement is present.
+    narrow_present = (
+        "no accepted same-scope PF-1000 bulk pinch" in text
+        or "no accepted same-scope PF-1000 bulk\npinch" in text
+    )
+    assert narrow_present, (
+        "Sprint 5 free-acquisition memo missing the Codex-accepted narrow "
+        "Te/Ti statement"
+    )
+
+
+def test_sprint5_audit_a3_free_acquisitions_memo_softens_closes_language() -> None:
+    """Codex Sprint 5 WS2 audit A3: the memo must not promise that a
+    download by itself 'closes' a blocker.
+
+    Acceptable closure language is "may close source availability after
+    acquisition, KR ingestion, target extraction, and review." This test
+    normalizes whitespace (markdown line wrapping) before checking that
+    the explicit qualifier appears in the memo.
+    """
+    raw = FREE_ACQ_MEMO.read_text(encoding="utf-8")
+    # Normalize whitespace so markdown line breaks don't fool the substring check.
+    normalized = " ".join(raw.split())
+    qualifier_hyphen = (
+        "may close source-availability after acquisition, "
+        "KR ingestion, target extraction, and review"
+    )
+    qualifier_space = (
+        "may close source availability after acquisition, "
+        "KR ingestion, target extraction, and review"
+    )
+    found = qualifier_hyphen in normalized or qualifier_space in normalized
+    assert found, (
+        "Sprint 5 free-acquisition memo is missing the narrow closure "
+        "qualifier; add language stating that a download may close "
+        "source availability only after acquisition, KR ingestion, "
+        "target extraction, and review."
+    )
+
+
+def test_sprint5_audit_a1_bennett_corroborative_fill_pressure() -> None:
+    """Bennett's fill_pressure_baseline target is explicitly corroborative
+    for STARTUP-BVP-CH01 and must NOT claim to resolve any blocker.
+    """
+    target = BENNETT_2017_STARTUP_EXTRACTION["targets"]["fill_pressure_baseline"]
+    assert target.get("corroborative_only") is True
+    assert target.get("resolves") == ()
+    assert "STARTUP-BVP-CH01" in target.get("corroborative_for", ())
+    # And top-level resolves_blockers must NOT include CH01.
+    assert "STARTUP-BVP-CH01" not in BENNETT_2017_STARTUP_EXTRACTION["resolves_blockers"]

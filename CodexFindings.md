@@ -6387,3 +6387,25 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   the proposed Te/Ti `caveat_accepted` shortcut is rejected. The only allowed
   path is `observable_excluded_not_validated` for claim-limited certificates;
   excluded observables cannot count as accepted comparator evidence.
+
+### 2026-05-20: Sprint 5 WS2 Team Audit Completed
+
+- Work completed:
+  audited the team's Sprint 5 WS2 target-extraction, x-ray, and free-acquisition
+  work at HEAD `558de6f`. The durable audit record is
+  `docs/CODEX_SPRINT5_WS2_AUDIT_2026_05_20.md`.
+- Audit result:
+  accepted as a fail-closed source-availability pass. The seven extraction
+  packets and 17 packet tests are present; focused audit tests pass
+  (`52 passed`); the latest periodic audit log at
+  `/private/tmp/dpf-unified-audit-logs/20260520T161836Z/summary.md` reports
+  10/10 PASS at `558de6f`.
+- Required follow-up:
+  fix the Bennett CH01 per-target mapping ambiguity, narrow the Sprint 5 Te/Ti
+  wording to the same-scope PF-1000 bulk-pinch gap, and soften free-acquisition
+  "closes blocker" wording to source-availability language before using the
+  memo as WS3 instructions.
+- Boundary:
+  no runtime physics or acceptance state changed. Braginskii Table 2 was
+  independently render-checked from the local PDF, but it is still not a KR
+  target-extracted runtime authority record.
