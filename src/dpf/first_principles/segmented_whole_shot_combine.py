@@ -30,6 +30,14 @@ _COMBINED_STATUS = (
 # across restarts ordered by resume_started_at_step.  The A-6 sidecar ensures
 # each restart's cumulative_ledgers already covers all steps executed before
 # that restart, so a later restart's counters must be >= any earlier restart's.
+# Only the ORIGINAL four cumulative counters are included: the S3R.7 extended
+# fields (cumulative_field_energy_delta_J, cumulative_pml_removed_energy_J,
+# cumulative_power_port_work_J, cumulative_ionization_step_count) are all
+# absent from manifests produced before S3R.7.  A missing field defaults to 0,
+# which can be LESS than a non-zero value in an earlier restart, producing a
+# false-positive monotone violation.  Ambiguous absence is excluded from this
+# check; S3R.7 fields are preserved through the merge via the terminal-sidecar
+# approach regardless.
 _MONOTONE_COUNTER_FIELDS: tuple[str, ...] = (
     "cumulative_j_dot_e_step_count",
     "cumulative_active_port_step_count",
@@ -73,10 +81,11 @@ def merge_cumulative_ledgers(
     violation raises :class:`LedgerMergeError` before any merge is attempted
     (fail-closed).
 
-    Additive counters (``cumulative_j_dot_e_work_J``, etc.) are summed across
-    all restarts in step order.  Final-state scalars (``final_circuit_current_A``,
-    etc.) are taken from the highest-``total_steps_completed`` restart, which
-    is the terminal state of the combined run.
+    Additive counters (``cumulative_j_dot_e_work_J``, etc.) are taken from the
+    highest-``total_steps_completed`` restart after the A-6 sidecar continuity
+    check proves each restart ledger was rehydrated from step 0.  Final-state
+    scalars (``final_circuit_current_A``, etc.) are also taken from that
+    terminal restart, which is the terminal state of the combined run.
 
     Returns a merged-ledger dict in the same shape as the per-restart
     ``cumulative_ledgers`` block, extended with ``covers_executed_horizon``
@@ -207,9 +216,15 @@ def merge_cumulative_ledgers(
     # cases the terminal restart's ledger is the accumulation of all restarts,
     # so we take it directly rather than summing per-restart blocks (which would
     # double-count the prefix carried by the sidecar).
+    # Build terminal_state from only the PRESENT keys in terminal_ledger_raw.
+    # Absent keys are intentionally excluded so that from_state_dict falls back
+    # to the dataclass default (0.0 for float accumulators, 0 for int counters,
+    # None for final-state snapshots).  This preserves graceful degradation for
+    # manifests produced before S3R.7 that lack the extended ledger channels.
     terminal_state = {
-        field: terminal_ledger_raw.get(field)
+        field: terminal_ledger_raw[field]
         for field in _CumulativeLedgers._STATE_FIELDS
+        if field in terminal_ledger_raw
     }
     whole_run = _CumulativeLedgers.from_state_dict(terminal_state)
 
@@ -238,6 +253,20 @@ def merge_cumulative_ledgers(
 
     covers = total_steps_combined >= planned_total_steps
 
+    # S3R.7 aggregation rules for extended ledger channels (A9).
+    # All four fields are taken from the terminal manifest via `whole_run`,
+    # because the A-6 sidecar rehydration ensures the terminal restart's
+    # cumulative_ledgers already covers the full executed horizon.
+    # Rationale per field:
+    #   cumulative_field_energy_delta_J  — NET signed EM field energy change
+    #     (magnetic + electric) across all segments; taken from terminal sidecar
+    #     which accumulated per-segment deltas additively in _CumulativeLedgers.
+    #   cumulative_pml_removed_energy_J  — total energy removed by the PML
+    #     absorber; monotonically additive; terminal sidecar holds the full sum.
+    #   cumulative_power_port_work_J     — cumulative circuit→plasma port work
+    #     (Poynting-flux term I); additively summed per segment in the sidecar.
+    #   cumulative_ionization_step_count — steps where ionization source was
+    #     non-zero; integer count; terminal sidecar holds the full sum.
     merged: dict[str, Any] = {
         "ledger_status": "candidate_merged_whole_run_ledger_not_validation",
         "cumulative_j_dot_e_work_J": whole_run.cumulative_j_dot_e_work_J,
@@ -246,6 +275,11 @@ def merge_cumulative_ledgers(
         "cumulative_active_port_step_count": whole_run.cumulative_active_port_step_count,
         "limiter_steps_observed": whole_run.limiter_steps_observed,
         "limiter_total_activations": whole_run.limiter_total_activations,
+        # S3R.7 extended ledger channels (A9): all 4 fields preserved through merge.
+        "cumulative_field_energy_delta_J": whole_run.cumulative_field_energy_delta_J,
+        "cumulative_pml_removed_energy_J": whole_run.cumulative_pml_removed_energy_J,
+        "cumulative_power_port_work_J": whole_run.cumulative_power_port_work_J,
+        "cumulative_ionization_step_count": whole_run.cumulative_ionization_step_count,
         "final_cumulative_neutrons": whole_run.final_cumulative_neutrons,
         "final_circuit_current_A": whole_run.final_circuit_current_A,
         "final_circuit_charge_C": whole_run.final_circuit_charge_C,

@@ -160,6 +160,18 @@ blocked returns. `power_port.py` reconstructs dict-form Sigma_p packets via
 negative controls. Terms II/IV/V/VI remain blocked until the Sprint 4 surface
 integrator exists.
 
+`f390cf3` — S3R.6 close closure-matrix completeness (closes A8): the top-level
+`effects` dict now contains `electron_inertia` and `stopping_collisions`
+(closure_packet.py:1276 / :1287) mirroring the static registry records at
+:822 and :869. The derived `closure_matrix_status_by_effect`,
+`closure_effect_status`, and `missing_or_unaccepted_effects` maps now expose
+all 12 required effects symmetrically. PlasmaPy remains cross-check only —
+toggling `community_formula_audit` does not change any effect's status,
+implemented flag, or acceptance flag. Negative tests:
+`test_required_effects_symmetric_with_top_level_effects`,
+`test_electron_inertia_and_stopping_collisions_blocked`,
+`test_plasmapy_cannot_promote_or_reject_local_closure`.
+
 ## Changed paths
 
 ### Sprint 1

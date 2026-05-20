@@ -599,3 +599,57 @@ def test_n7_s38_certificate_scaffold_wiring_with_synthetic_fixture() -> None:
     assert packet["can_release_first_principles_claim"] is False
     # status and release_decision are hard-coded in the gate.
     assert packet["release_decision"] == "do_not_release_first_principles_claim"
+
+
+# ---------------------------------------------------------------------------
+# S3R.7-N3: certificate fixture cannot promote validation status (A12 code-side)
+# ---------------------------------------------------------------------------
+
+
+def test_s3r7_certificate_fixture_cannot_promote_validation_status() -> None:
+    """S3R.7-N3 (A12 code-side): whatever fixture content is supplied,
+    build_first_principles_certificate_gate_packet (in certificate_gate.py)
+    must stay fail-closed.
+
+    This test exercises the gate with an adversarially permissive fixture:
+    all required channels declared accepted, all upstream packets accepted,
+    and an explicitly 'accepted' release_label.  The gate must STILL return
+    can_write_accepted_certificate=False, can_release_first_principles_claim=False,
+    and status='blocked_first_principles_certificate_not_available'.
+
+    Verifies that the gate is hardened against fixture-based promotion, per the
+    S3R.7 handoff requirement that 'certificate fixture CANNOT promote validation
+    status (whatever the fixture content, certificate stays fail-closed)'.
+    """
+    all_required = list(build_first_principles_certificate_gate_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+    )["required_channels"])
+
+    # Maximally permissive fixture: every channel accepted, all upstream accepted.
+    packet = build_first_principles_certificate_gate_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        accepted_channels=all_required,
+        upstream_packets=_accepted_upstream(),
+    )
+
+    # Core fail-closed invariants — none may be weakened by fixture content.
+    assert packet["status"] == "blocked_first_principles_certificate_not_available", (
+        "S3R.7-N3: certificate status flipped from blocked by fixture content"
+    )
+    assert packet["can_write_accepted_certificate"] is False, (
+        "S3R.7-N3: can_write_accepted_certificate became True via fixture"
+    )
+    assert packet["can_release_first_principles_claim"] is False, (
+        "S3R.7-N3: can_release_first_principles_claim became True via fixture"
+    )
+    assert packet["can_support_first_principles_acceptance"] is False, (
+        "S3R.7-N3: can_support_first_principles_acceptance became True via fixture"
+    )
+    assert packet["release_decision"] == "do_not_release_first_principles_claim", (
+        "S3R.7-N3: release_decision was overridden by fixture content"
+    )
+    assert packet["release_label"].startswith("engineering_candidate"), (
+        "S3R.7-N3: release_label was promoted beyond engineering_candidate by fixture"
+    )

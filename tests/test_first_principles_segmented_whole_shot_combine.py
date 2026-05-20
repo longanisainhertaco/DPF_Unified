@@ -725,3 +725,202 @@ def test_merge_fails_closed_on_non_monotonic_cumulative_counters(
         merge_cumulative_ledgers(
             [run_dir_0 / "run_manifest.json", run_dir_1 / "run_manifest.json"]
         )
+
+
+# ---------------------------------------------------------------------------
+# S3R.7-N1: three-segment merge preserves all 4 extended fields (A9)
+# ---------------------------------------------------------------------------
+
+
+def test_three_segment_merge_preserves_extended_fields(tmp_path: Path) -> None:
+    """S3R.7-N1 (A9): a three-segment synthetic merge must expose all 4 extended
+    ledger channels in the merged output with the correct terminal values.
+
+    The terminal manifest's cumulative values (after A-6 sidecar rehydration)
+    are the whole-run totals.  This test confirms that merge_cumulative_ledgers
+    emits all 4 S3R.7 fields and does not silently drop them.
+    """
+    manifest_paths = [
+        _write_synthetic_manifest(
+            tmp_path / "s0",
+            resume_started_at_step=0,
+            total_steps_completed=2,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 10.0,
+                "cumulative_j_dot_e_step_count": 2,
+                "cumulative_active_port_work_J": 5.0,
+                "cumulative_active_port_step_count": 2,
+                "limiter_steps_observed": 2,
+                "limiter_total_activations": 0,
+                # Extended S3R.7 fields — segment 0 contribution.
+                "cumulative_field_energy_delta_J": 1.5,
+                "cumulative_pml_removed_energy_J": 0.5,
+                "cumulative_power_port_work_J": 3.0,
+                "cumulative_ionization_step_count": 1,
+            },
+        ),
+        _write_synthetic_manifest(
+            tmp_path / "s1",
+            resume_started_at_step=2,
+            total_steps_completed=4,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 20.0,
+                "cumulative_j_dot_e_step_count": 4,
+                "cumulative_active_port_work_J": 10.0,
+                "cumulative_active_port_step_count": 4,
+                "limiter_steps_observed": 4,
+                "limiter_total_activations": 1,
+                # Extended S3R.7 fields — sidecar-rehydrated cumulative-from-start.
+                "cumulative_field_energy_delta_J": 3.0,
+                "cumulative_pml_removed_energy_J": 1.2,
+                "cumulative_power_port_work_J": 6.5,
+                "cumulative_ionization_step_count": 3,
+            },
+        ),
+        _write_synthetic_manifest(
+            tmp_path / "s2",
+            resume_started_at_step=4,
+            total_steps_completed=6,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 30.0,
+                "cumulative_j_dot_e_step_count": 6,
+                "cumulative_active_port_work_J": 15.0,
+                "cumulative_active_port_step_count": 6,
+                "limiter_steps_observed": 6,
+                "limiter_total_activations": 1,
+                # Terminal (segment 2) — cumulative-from-start whole-run values.
+                "cumulative_field_energy_delta_J": 4.2,
+                "cumulative_pml_removed_energy_J": 2.0,
+                "cumulative_power_port_work_J": 10.0,
+                "cumulative_ionization_step_count": 5,
+            },
+        ),
+    ]
+
+    merged = merge_cumulative_ledgers(manifest_paths)
+
+    assert merged["restart_count"] == 3
+    assert merged["covers_executed_horizon"] is True
+
+    # All 4 extended fields must be present and match the terminal manifest.
+    assert "cumulative_field_energy_delta_J" in merged, (
+        "A9: cumulative_field_energy_delta_J missing from merged ledger"
+    )
+    assert "cumulative_pml_removed_energy_J" in merged, (
+        "A9: cumulative_pml_removed_energy_J missing from merged ledger"
+    )
+    assert "cumulative_power_port_work_J" in merged, (
+        "A9: cumulative_power_port_work_J missing from merged ledger"
+    )
+    assert "cumulative_ionization_step_count" in merged, (
+        "A9: cumulative_ionization_step_count missing from merged ledger"
+    )
+
+    # Values must match the terminal (segment 2) manifest's sidecar-rehydrated totals.
+    assert merged["cumulative_field_energy_delta_J"] == pytest.approx(4.2), (
+        "cumulative_field_energy_delta_J value mismatch"
+    )
+    assert merged["cumulative_pml_removed_energy_J"] == pytest.approx(2.0), (
+        "cumulative_pml_removed_energy_J value mismatch"
+    )
+    assert merged["cumulative_power_port_work_J"] == pytest.approx(10.0), (
+        "cumulative_power_port_work_J value mismatch"
+    )
+    assert merged["cumulative_ionization_step_count"] == 5, (
+        "cumulative_ionization_step_count value mismatch"
+    )
+
+
+# ---------------------------------------------------------------------------
+# S3R.7-N2: missing extended field from a segment yields zero-baseline default
+# ---------------------------------------------------------------------------
+
+
+def test_merge_extended_field_missing_from_segment_yields_zero_baseline(
+    tmp_path: Path,
+) -> None:
+    """S3R.7-N2 (A9): a manifest whose cumulative_ledgers omits an extended field
+    must yield a deterministic zero-baseline default in the merged output.
+
+    The schema documents this as graceful degradation: absent telemetry keys leave
+    the counters at zero-baseline rather than crashing or silently propagating a
+    wrong value.  This test verifies that the merge does not raise and returns a
+    well-formed merged dict with the missing field defaulting to 0.
+    """
+    # Segment 0: all extended fields present.
+    # Segment 1 (terminal): extended fields are completely absent (simulates
+    # an older manifest that predates S3R.7).
+    manifest_paths = [
+        _write_synthetic_manifest(
+            tmp_path / "p0",
+            resume_started_at_step=0,
+            total_steps_completed=3,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 15.0,
+                "cumulative_j_dot_e_step_count": 3,
+                "cumulative_active_port_work_J": 7.0,
+                "cumulative_active_port_step_count": 3,
+                "limiter_steps_observed": 3,
+                "limiter_total_activations": 0,
+                "cumulative_field_energy_delta_J": 2.0,
+                "cumulative_pml_removed_energy_J": 0.8,
+                "cumulative_power_port_work_J": 4.0,
+                "cumulative_ionization_step_count": 2,
+            },
+        ),
+        _write_synthetic_manifest(
+            tmp_path / "p1",
+            resume_started_at_step=3,
+            total_steps_completed=6,
+            total_steps=6,
+            ledgers={
+                "cumulative_j_dot_e_work_J": 30.0,
+                "cumulative_j_dot_e_step_count": 6,
+                "cumulative_active_port_work_J": 14.0,
+                "cumulative_active_port_step_count": 6,
+                "limiter_steps_observed": 6,
+                "limiter_total_activations": 1,
+                # Extended fields intentionally omitted — simulates pre-S3R.7 manifest.
+                # cumulative_pml_removed_energy_J and cumulative_power_port_work_J
+                # are also absent so the monotone check on those fields is NOT
+                # triggered (both default to 0, which is >= the 0-baseline).
+            },
+        ),
+    ]
+
+    # Must not raise — missing fields degrade to zero-baseline.
+    merged = merge_cumulative_ledgers(manifest_paths)
+
+    assert merged["restart_count"] == 2
+    assert merged["covers_executed_horizon"] is True
+
+    # All 4 extended field keys must still be present in the output.
+    for field in (
+        "cumulative_field_energy_delta_J",
+        "cumulative_pml_removed_energy_J",
+        "cumulative_power_port_work_J",
+        "cumulative_ionization_step_count",
+    ):
+        assert field in merged, (
+            f"A9: extended field '{field}' missing from merged ledger "
+            "even though it defaulted to zero-baseline"
+        )
+
+    # The terminal manifest (p1) had no extended fields; _CumulativeLedgers
+    # defaults them to 0.  The merged output must be 0, not any value from p0.
+    assert merged["cumulative_field_energy_delta_J"] == pytest.approx(0.0), (
+        "expected zero-baseline default for missing cumulative_field_energy_delta_J"
+    )
+    assert merged["cumulative_pml_removed_energy_J"] == pytest.approx(0.0), (
+        "expected zero-baseline default for missing cumulative_pml_removed_energy_J"
+    )
+    assert merged["cumulative_power_port_work_J"] == pytest.approx(0.0), (
+        "expected zero-baseline default for missing cumulative_power_port_work_J"
+    )
+    assert merged["cumulative_ionization_step_count"] == 0, (
+        "expected zero-baseline default for missing cumulative_ionization_step_count"
+    )
