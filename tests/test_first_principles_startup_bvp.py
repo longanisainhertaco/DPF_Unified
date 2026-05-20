@@ -787,3 +787,359 @@ def test_cli_reports_typed_startup_packet_blocker() -> None:
     # Certificate gate must propagate the block.
     gate = result.telemetry["certificate_gate"]
     assert gate["can_support_first_principles_acceptance"] is False
+
+
+# ---------------------------------------------------------------------------
+# Group 9: Sprint 4 — per-channel source-supported/blocked verdicts
+#
+# Source authority: KnowledgeReference/ + tracked verified extracts only.
+# WP-N2 and the source-availability recon established that D2 Townsend α(E/p)
+# tables, D2-specific Paschen A/B constants, DPF-material secondary emission
+# yields, and start-of-shot species/Te/Ti fields are ABSENT from the local
+# corpus.  Every channel must carry a definite status: candidate (corpus has
+# qualitative basis; no DPF-specific closure) or blocked (fully source-empty).
+# No channel is source_supported/computed.  can_support_first_principles_
+# acceptance must remain False (0/13 source_supported channels).
+# ---------------------------------------------------------------------------
+
+
+# Expected (channel_id, blocker_id, missing_parameter_ids, status) for all 13
+# S3.4 channels.
+_SPRINT4_CHANNEL_VERDICTS = [
+    (
+        "gas_and_fill_conditions",
+        "STARTUP-BVP-CH01-FILL-NO-DPF-CLOSURE",
+        ("M7",),
+        "candidate",
+    ),
+    (
+        "breakdown_paschen_or_alternative",
+        "STARTUP-BVP-CH02-BREAKDOWN-PASCHEN-CONTRADICTED-FOR-DPF",
+        # M2 = "alpha, gamma, sigma_i0, eta, beta_ep, R_ph numerical values for
+        #        D2/H2/Ne/Ar at DPF voltages" — D2 Townsend α(E/p) absent from KR
+        # M1 = DPF surface-flashover BVP closure absent
+        ("M1", "M2"),
+        "candidate",
+    ),
+    (
+        "preionization",
+        "STARTUP-BVP-CH03-PREIONIZATION-NO-QUANTITATIVE-MODEL",
+        ("M4",),
+        "candidate",
+    ),
+    (
+        "flashover",
+        "STARTUP-BVP-CH04-FLASHOVER-NO-CLOSED-DELAY-MODEL",
+        ("M1", "M5"),
+        "candidate",
+    ),
+    (
+        "secondary_emission",
+        "STARTUP-BVP-CH05-SECONDARY-EMISSION-NO-DPF-MATERIAL-GAMMA",
+        # M3 = "secondary-emission coefficients for DPF materials (Cu anode,
+        #        pyrex/alumina insulator)" — absent from KR
+        # M2 = alpha/gamma numerical values absent for D2 at DPF voltages
+        ("M2", "M3"),
+        "candidate",
+    ),
+    (
+        "photoemission",
+        "STARTUP-BVP-CH06-PHOTOEMISSION-NO-LOCAL-SOURCE",
+        (),
+        "blocked",
+    ),
+    (
+        "surface_plasma",
+        "STARTUP-BVP-CH07-SURFACE-PLASMA-NO-CLOSED-FIELD-SET",
+        ("M1",),
+        "candidate",
+    ),
+    (
+        "initial_e_b_j",
+        "STARTUP-BVP-CH08-INITIAL-FIELDS-NO-BREAKDOWN-PHASE-SET",
+        ("M6",),
+        "candidate",
+    ),
+    (
+        "species_and_charge_state",
+        "STARTUP-BVP-CH09-SPECIES-NO-START-OF-SHOT-FIELDS",
+        # M7 = "start-of-shot density/species and Te/Ti fields" — absent from KR
+        ("M7",),
+        "candidate",
+    ),
+    (
+        "ionization_recombination_status",
+        "STARTUP-BVP-CH10-IONIZATION-NO-DPF-COEFFICIENTS",
+        # M2 = D2/H2 alpha(E/p), beta_ep, R_ph absent from KR
+        ("M2",),
+        "candidate",
+    ),
+    (
+        "electron_and_ion_temperature",
+        "STARTUP-BVP-CH11-TEMPERATURE-NO-DPF-VALID-RELATION",
+        # M7 = start-of-shot Te/Ti fields absent; M9 = homogeneous-field
+        # relation invalid for DPF coaxial gap
+        ("M7", "M9"),
+        "candidate",
+    ),
+    (
+        "sheath_surface_liftoff",
+        "STARTUP-BVP-CH12-SHEATH-NO-BREAKDOWN-BVP-STATE",
+        # M1 = DPF surface-flashover BVP closure absent
+        # M7 = start-of-shot density fields absent
+        # Note: UCSD/Beg (KR:160-205,458-500,616-670) provides
+        # METHOD CONTEXT for sheath liftoff sequence and pressure regimes —
+        # candidate_method_context_not_acceptance (UCSD 4.6 kJ DPF,
+        # not PF-1000/Akel; no closed BVP initial/boundary data).
+        ("M1", "M7"),
+        "candidate",
+    ),
+    (
+        "handoff_interval_into_3d_solver",
+        "STARTUP-BVP-CH13-HANDOFF-NO-NUMERICAL-DEFINITION",
+        ("M8",),
+        "candidate",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "channel_id,expected_blocker_id,expected_missing_ids,expected_status",
+    _SPRINT4_CHANNEL_VERDICTS,
+    ids=[v[0] for v in _SPRINT4_CHANNEL_VERDICTS],
+)
+def test_sprint4_channel_has_correct_blocker_id_and_missing_params(
+    channel_id: str,
+    expected_blocker_id: str,
+    expected_missing_ids: tuple[str, ...],
+    expected_status: str,
+) -> None:
+    """Sprint 4: every channel carries its named blocker_id and missing-param IDs.
+
+    Source basis: KnowledgeReference/ absence verified in Sprint 4 KR recon.
+    D2 Townsend α(E/p) and Paschen A/B → M2 (absent).
+    DPF-material secondary emission yields → M3 (absent).
+    Start-of-shot species/Te/Ti fields → M7 (absent).
+    """
+    packet = build_startup_packet()
+    channel = packet.channels_by_id[channel_id]
+    assert channel.blocker_id == expected_blocker_id, (
+        f"channel '{channel_id}' has blocker_id '{channel.blocker_id}'; "
+        f"expected '{expected_blocker_id}'"
+    )
+    assert channel.status == expected_status, (
+        f"channel '{channel_id}' has status '{channel.status}'; "
+        f"expected '{expected_status}'"
+    )
+    assert set(channel.missing_parameter_ids) == set(expected_missing_ids), (
+        f"channel '{channel_id}' missing_parameter_ids "
+        f"{channel.missing_parameter_ids} != expected {expected_missing_ids}"
+    )
+    assert channel.supports_first_principles is False
+
+
+def test_sprint4_d2_townsend_absent_from_kr_corpus() -> None:
+    """Sprint 4: D2 Townsend α(E/p) absent — breakdown channel carries M2 blocker.
+
+    The KR recon confirmed no file in KnowledgeReference/ supplies a numerical
+    D2-specific Townsend ionization coefficient table (α vs E/p) or Paschen
+    A/B constants for deuterium.  The breakdown_paschen_or_alternative channel
+    explicitly notes the corpus contradicts canonical Paschen for DPFs and
+    supplies no D2 closure.
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["breakdown_paschen_or_alternative"]
+    assert "M2" in ch.missing_parameter_ids, (
+        "D2 Townsend α(E/p) absent: breakdown channel must list M2 "
+        "(alpha/gamma numerical values for D2/H2)"
+    )
+    assert ch.status == "candidate"
+    assert "PASCHEN" in ch.blocker_id.upper() or "BREAKDOWN" in ch.blocker_id.upper()
+
+
+def test_sprint4_d2_paschen_ab_constants_absent_from_kr_corpus() -> None:
+    """Sprint 4: D2 Paschen A/B constants absent — ionization channel carries M2.
+
+    No KnowledgeReference file supplies D2-specific Paschen A and B constants.
+    The ionization_recombination_status channel is blocked by M2 (alpha/gamma/
+    beta_ep numerical values absent for D2).
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["ionization_recombination_status"]
+    assert "M2" in ch.missing_parameter_ids, (
+        "D2 Paschen A/B absent: ionization channel must list M2"
+    )
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH10-IONIZATION-NO-DPF-COEFFICIENTS"
+
+
+def test_sprint4_see_gamma_absent_for_dpf_materials() -> None:
+    """Sprint 4: secondary emission yield γ absent for Cu/pyrex/alumina DPF materials.
+
+    The KR recon found no file supplying ion-induced secondary electron emission
+    yields for DPF electrode materials (copper anode, pyrex/alumina insulator).
+    The secondary_emission channel is blocked by M3 (material-specific gamma
+    absent) and M2 (generic gas-discharge values only, not DPF-specific).
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["secondary_emission"]
+    assert "M3" in ch.missing_parameter_ids, (
+        "SEE γ for Cu/pyrex/alumina absent: secondary_emission channel must "
+        "list M3"
+    )
+    assert "M2" in ch.missing_parameter_ids, (
+        "generic alpha/gamma values absent for D2 at DPF voltages: must list M2"
+    )
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH05-SECONDARY-EMISSION-NO-DPF-MATERIAL-GAMMA"
+
+
+def test_sprint4_ucsd_beg_liftoff_is_method_context_not_acceptance() -> None:
+    """Sprint 4: UCSD/Beg KR provides method context for sheath liftoff — not acceptance.
+
+    Source: KnowledgeReference/effect-of-current-sheath-initiation-on-the-
+    radial-collapse-and-energetic-particle-accelera-b2e95b88.md:160-205,
+    458-500,616-670 (UCSD 4.6 kJ / 20 kV / 230-260 kA DPF, not PF-1000/Akel).
+
+    This source gives method/phenomenology targets (pressure regime boundaries,
+    Liz/Li=2.4 scaling, startup sequence) and is labeled
+    candidate_method_context_not_acceptance in source_targets.py.  It does NOT
+    supply a closed BVP initial/boundary data set for sheath_surface_liftoff,
+    so that channel remains candidate (not source_supported).
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["sheath_surface_liftoff"]
+    assert ch.status == "candidate"
+    assert ch.supports_first_principles is False
+    assert ch.blocker_id == "STARTUP-BVP-CH12-SHEATH-NO-BREAKDOWN-BVP-STATE"
+    assert "M7" in ch.missing_parameter_ids
+    assert len(ch.source_refs) > 0
+
+
+def test_sprint4_preionization_seed_state_absent() -> None:
+    """Sprint 4: quantitative preionization seed-density model absent from KR.
+
+    No KR file supplies a preionization seed-density / ionization-fraction
+    model for the DPF start-of-discharge state (M4).  The preionization
+    channel documents experimental yield deltas but has no numerical closure.
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["preionization"]
+    assert "M4" in ch.missing_parameter_ids
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH03-PREIONIZATION-NO-QUANTITATIVE-MODEL"
+
+
+def test_sprint4_initial_density_charge_state_absent() -> None:
+    """Sprint 4: start-of-shot density/species/charge-state fields absent from KR.
+
+    The species_and_charge_state channel cites only end-of-rundown prefill
+    densities (hybrid-PIC KR Table 1); no start-of-discharge density/species/
+    charge-state initial conditions are present (M7 absent).
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["species_and_charge_state"]
+    assert "M7" in ch.missing_parameter_ids
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH09-SPECIES-NO-START-OF-SHOT-FIELDS"
+
+
+def test_sprint4_initial_te_ti_relation_invalid_for_dpf() -> None:
+    """Sprint 4: initial Te/Ti relation invalid for DPF coaxial gap (M7, M9).
+
+    The electron_and_ion_temperature channel cites Eq. (4) Te = xi*lambda*e*U/d
+    (noble gas breakdown KR) — valid only for homogeneous fields.  The DPF
+    coaxial gap is inhomogeneous; the relation is not a valid DPF closure.
+    Te ~ 4 eV is an analysis assumption from the UCSD/Beg source, not a
+    computed DPF-specific result.
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["electron_and_ion_temperature"]
+    assert "M7" in ch.missing_parameter_ids
+    assert "M9" in ch.missing_parameter_ids
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH11-TEMPERATURE-NO-DPF-VALID-RELATION"
+
+
+def test_sprint4_initial_ebj_no_breakdown_phase_set() -> None:
+    """Sprint 4: no breakdown-phase initial E/J field distributions in KR (M6).
+
+    The initial_e_b_j channel cites implosion-phase circuit relations (Eq. 34/35
+    in hybrid-PIC KR) and a qualitative radial E-field description.  No closed
+    source-derived initial E/J distribution for the breakdown phase exists.
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["initial_e_b_j"]
+    assert "M6" in ch.missing_parameter_ids
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH08-INITIAL-FIELDS-NO-BREAKDOWN-PHASE-SET"
+
+
+def test_sprint4_handoff_interval_no_numerical_definition() -> None:
+    """Sprint 4: no numerical handoff-interval definition or PIC import payload (M8).
+
+    The handoff_interval_into_3d_solver channel cites ALEGRA's arbitrary
+    '1 eV thin layer' seed (called arbitrary by the source itself) and ALEGRA's
+    PIC import capability.  No numerical handoff definition or same-device
+    reviewed PIC import payload exists locally.
+    """
+    packet = build_startup_packet()
+    ch = packet.channels_by_id["handoff_interval_into_3d_solver"]
+    assert "M8" in ch.missing_parameter_ids
+    assert ch.status == "candidate"
+    assert ch.blocker_id == "STARTUP-BVP-CH13-HANDOFF-NO-NUMERICAL-DEFINITION"
+
+
+def test_sprint4_all_channels_have_definite_status() -> None:
+    """Sprint 4: every channel has a definite status (candidate or blocked).
+
+    No channel may be in an ambiguous state.  The source-availability recon
+    confirmed all 13 channels are either 'candidate' (corpus has qualitative
+    basis; no DPF-specific closure) or 'blocked' (fully source-empty).
+    """
+    packet = build_startup_packet()
+    for channel in packet.channels:
+        assert channel.status in {"candidate", "blocked"}, (
+            f"channel '{channel.channel_id}' has ambiguous status "
+            f"'{channel.status}'"
+        )
+        assert channel.blocker_id, (
+            f"channel '{channel.channel_id}' has no blocker_id"
+        )
+
+
+def test_sprint4_zero_source_supported_channels() -> None:
+    """Sprint 4: acceptance status = 0/13 source_supported channels.
+
+    The source-availability recon confirmed D2 Townsend α(E/p), D2 Paschen A/B,
+    DPF-material SEE γ, preionization seed density, start-of-shot density/
+    species/Te/Ti, breakdown-phase E/J fields, and numerical handoff-interval
+    are all ABSENT from the local KnowledgeReference corpus.  No channel reaches
+    computed/source_supported status; can_support_first_principles_acceptance
+    must be False.
+    """
+    packet = build_startup_packet()
+    source_supported = [c for c in packet.channels if c.supports_first_principles]
+    assert source_supported == [], (
+        f"channels unexpectedly promoted to source_supported: "
+        f"{[c.channel_id for c in source_supported]}"
+    )
+    assert packet.can_support_first_principles_acceptance is False
+    counts = packet.status_counts()
+    assert counts["computed"] == 0
+    assert len(packet.channels) == 13
+
+
+def test_sprint4_can_support_first_principles_acceptance_is_false() -> None:
+    """Sprint 4: non-negotiable — can_support_first_principles_acceptance is False.
+
+    Rule 7 from the controlling /goal: can_support_first_principles_acceptance=
+    false everywhere.  Typed packet and BVP packet must both report False.
+    """
+    typed = build_startup_packet()
+    assert typed.can_support_first_principles_acceptance is False
+    bvp = build_startup_bvp_packet({"mode": "surface_breakdown_bvp"})
+    assert bvp["can_support_first_principles_acceptance"] is False
+    assert bvp["startup_channel_packet"][
+        "can_support_first_principles_acceptance"
+    ] is False

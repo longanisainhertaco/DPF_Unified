@@ -242,6 +242,18 @@ material converted to typed target records; chamber-wall promoted to
 source_supported via Krasa 2008; Stepniewski 0.015 m extracted but not
 promoted into `PF1000GeometryPacket`.
 
+`a6fc1d6` — S4-Priority 1 (Geometry Authority closures): (1a) Stepniewski
+0.015 m hollow-bore **blocked** — KR text is a simulation-parameter section,
+not hardware metrology, so it cannot promote
+(`PF1000-BLK-009-anode-bore-radius-target_extracted_modeling_context_requires_review`).
+(1b) Cathode-cage radius conflict **unresolvable** — Krauz 200 mm is geometric
+metrology; Akel 160 mm is a Lee-model fit parameter (category mismatch);
+field stays `status=conflict`. (1c/1d) Insulator outer-radius / wall-thickness
+and backplate radial-extent / axial-thickness **blocked** with named missing
+data (`PF1000-BLK-015`, `-016`, `-017`, `-018`). 8 new tests cover all four
+verdicts across krauz_2012, akel_shot_12581, scholz_gribkov_revision
+constructors.
+
 ## Changed paths
 
 ### Sprint 1
