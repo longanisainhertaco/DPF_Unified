@@ -292,6 +292,18 @@ beam-target yield (depends on 001+002), `NEUTRON-BLK-004` Brysk Doppler,
 all three scope-mismatched method contexts combined still cannot promote
 `accepted_neutron_authority`.
 
+`7bd6dcb` — S4-Priority 5 (Same-scope comparator decision memo): delivers
+the scope decision input as a comparator MATRIX, not prose. `docs/
+FIRST_PRINCIPLES_SCOPE_DECISION_MEMO_2026_05_20.md` (9 devices × 9 channels =
+81 cells; SUPPORTED 26 / TEXT-ONLY 14 / ABSENT 41). Strongest alternate:
+PF-1000 full-energy 27-40 kV (Gribkov/Scholz/Krauz/Malir era), 7/9 channels
+SUPPORTED; Te and Ti remain TEXT-ONLY across the entire DPF corpus.
+Recommendation: Option B (scope change to PF-1000 full-energy) over Option A
+(acquire Akel 16 kV channels, 3-6 month IPPLM campaign that would still
+leave Te/Ti as model-only). Supporting doc:
+`docs/FIRST_PRINCIPLES_PDF_CORPUS_RESCAN_2026_05_20.md`. `CodexFindings.md`
+and `CortexFindings.md` updated.
+
 ## Changed paths
 
 ### Sprint 1

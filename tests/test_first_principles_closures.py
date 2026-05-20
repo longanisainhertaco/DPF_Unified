@@ -838,10 +838,10 @@ def test_plasmapy_outside_tolerance_sets_review_required():
 
 def _sprint4_blocker_ids():
     from dpf.first_principles.closure_packet import (
+        CLOSURE_BLK_ANOM_001,
         CLOSURE_BLK_BRAG_001,
         CLOSURE_BLK_D2_EN_001,
         CLOSURE_BLK_ION_001,
-        CLOSURE_BLK_ANOM_001,
         CLOSURE_BLK_REST_001,
     )
     return (

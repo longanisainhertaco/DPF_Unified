@@ -120,3 +120,6 @@ KnowledgeReference/
 # Local operational notes — point-in-time, go stale, not for tracking
 /MERGE_PLAN.md
 /WORKTREE_INDEX.md
+
+# Sprint 4 PDF corpus rescan scratch (per Sprint 4 P5 scope-decision memo work)
+tmp/pdfs/

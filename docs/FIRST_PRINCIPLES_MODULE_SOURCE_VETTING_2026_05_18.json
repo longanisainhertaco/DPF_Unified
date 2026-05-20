@@ -4029,6 +4029,7 @@
       ],
       "knowledge_reference_paths": [
         "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md",
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
         "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
         "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
@@ -4042,7 +4043,7 @@
       "module": "dpf.fields.source_geometry",
       "path": "src/dpf/fields/source_geometry.py",
       "physics_facing": true,
-      "source_reference_count": 9,
+      "source_reference_count": 10,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -4140,6 +4141,7 @@
         "dpf.first_principles.source_targets.gv_verified_shot_targets",
         "dpf.first_principles.source_targets.may15_user_validated_source_targets",
         "dpf.first_principles.source_targets.may16_validated_thesis_source_targets",
+        "dpf.first_principles.source_targets.sprint4_source_available_target_extractions",
         "dpf.first_principles.spatial_field_temperature",
         "dpf.first_principles.spatial_field_temperature.build_spatial_field_temperature_packet",
         "dpf.first_principles.startup_breakdown",
@@ -4278,7 +4280,8 @@
       "classification": "active_physics_source_referenced",
       "docs_reference_paths": [],
       "first_principles_verdicts": [
-        "directly_needed"
+        "directly_needed",
+        "supporting_method"
       ],
       "imports": [
         "__future__",
@@ -4294,13 +4297,14 @@
         "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
         "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.json",
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
+        "KnowledgeReference/the-hall-term-and-anomalous-resistivity-effects-in-neon-gas-puff-z-pinches.md",
         "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.first_principles.closure_packet",
       "path": "src/dpf/first_principles/closure_packet.py",
       "physics_facing": true,
-      "source_reference_count": 6,
+      "source_reference_count": 7,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5017,8 +5021,11 @@
       ],
       "knowledge_reference_paths": [
         "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
+        "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
+        "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.md",
         "KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md",
         "KnowledgeReference/fully-kinetic-simulations-of-dense-plasma-focus-z-pinch.md",
+        "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.md",
         "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
         "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch-5.md",
         "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.md",
@@ -5031,7 +5038,7 @@
       "module": "dpf.first_principles.neutron_authority",
       "path": "src/dpf/first_principles/neutron_authority.py",
       "physics_facing": true,
-      "source_reference_count": 11,
+      "source_reference_count": 14,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5500,6 +5507,7 @@
         "neutron_beam_target",
         "neutron_thermonuclear",
         "numerical_method",
+        "poynting_power",
         "radiation",
         "startup_breakdown",
         "three_d_geometry",
@@ -5524,11 +5532,16 @@
         "pathlib.Path"
       ],
       "knowledge_reference_paths": [
+        "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
         "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.json",
         "KnowledgeReference/anode-geometry-and-focus-characteristics-5a19c05d.md",
         "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.json",
         "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
         "KnowledgeReference/characteristics-of-closed-currents-and-magnetic-fields-outside-the-dense-pinch-column-in-a-40d59f2d.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0101-0125.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0151-0175.md",
+        "KnowledgeReference/chunks/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f/pages-0201-0225.md",
         "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.json",
         "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-in-the-plasma-focus-device-9b79429f.md",
         "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.json",
@@ -5538,9 +5551,12 @@
         "KnowledgeReference/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba.json",
         "KnowledgeReference/construction-and-optimization-of-low-energy-240j-miniature-repetitive-plasma-focus-neutron-78b15cba.md",
         "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
+        "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md",
+        "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
         "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.json",
         "KnowledgeReference/experimental-studies-of-a-current-stepped-z-pinch-ad6e93b2.md",
         "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+        "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-measurements-in-z-pinch-and-plasma-focus-214fbdae.md",
         "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
         "KnowledgeReference/open-access-proceedings-journal-of-physics-conference-series-ed196711.md",
         "KnowledgeReference/original-research-f7894f85.md",
@@ -5549,13 +5565,14 @@
         "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
         "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
         "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+        "KnowledgeReference/the-hall-term-and-anomalous-resistivity-effects-in-neon-gas-puff-z-pinches.md",
         "KnowledgeReference/the-physics-of-fluids-and-plasmas-eef02f49.md"
       ],
       "missing_source_paths": [],
       "module": "dpf.first_principles.source_targets",
       "path": "src/dpf/first_principles/source_targets.py",
       "physics_facing": true,
-      "source_reference_count": 27,
+      "source_reference_count": 36,
       "status": "baseline_only_nonpromoting"
     },
     {
@@ -9195,6 +9212,7 @@
         "dpf.validation.kr_targets.pf1000_full_energy_phase_context_targets",
         "dpf.validation.kr_targets.pf1000_interferometry_density_evidence_from_profile",
         "dpf.validation.kr_targets.pf1000_interferometry_density_targets",
+        "dpf.validation.kr_targets.pf1000_krasa_vessel_scatter_anisotropy_targets",
         "dpf.validation.kr_targets.pf1000_spatial_pinch_evidence_from_geometry",
         "dpf.validation.kr_targets.pf1000_spatial_pinch_targets",
         "dpf.validation.kr_targets.pf1000_szydlowski_fast_ion_neutron_targets",
@@ -10464,6 +10482,7 @@
         "KnowledgeReference/2025-theoretical-and-numerical-studies-on-motion-process-of-dense-plasma-focus.md",
         "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md",
         "KnowledgeReference/a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the.md",
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md",
         "KnowledgeReference/application-of-a-plasma-accelerator-of-the-dense-plasma-focus-type-in-simulation-of-radiation.md",
         "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
         "KnowledgeReference/beresnyak_2018_dpf_hawk_simulations.md",
@@ -10510,7 +10529,7 @@
       "module": "dpf.validation.kr_targets",
       "path": "src/dpf/validation/kr_targets.py",
       "physics_facing": false,
-      "source_reference_count": 45,
+      "source_reference_count": 46,
       "status": "out_of_active_first_principles_path"
     },
     {
