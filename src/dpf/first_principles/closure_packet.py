@@ -1272,6 +1272,32 @@ def build_physics_closure_packet(
             ),
             claim_impact="total_neutron_yield_authority_blocked",
         ),
+        # A8 fix: REQUIRED_EFFECTS added electron_inertia and stopping_collisions
+        # (WP-N5 finding F-EI). Both are not_simulated_and_claim_blocking per the
+        # static registry. They must appear in effects so that
+        # closure_matrix_status_by_effect, closure_effect_status, and
+        # missing_or_unaccepted_effects are symmetric with REQUIRED_EFFECTS.
+        "electron_inertia": _effect(
+            "blocked",
+            implemented=False,
+            missing=(
+                "generalized_ohm_electron_inertia_closure_equation",
+                "skin_depth_resolution_gate",
+            ),
+            claim_impact=(
+                "generalized_ohm_electron_inertia_and_skin_depth_claims_blocked"
+            ),
+        ),
+        "stopping_collisions": _effect(
+            "blocked",
+            implemented=False,
+            missing=(
+                "kr_cited_bethe_or_plasma_stopping_power_closure",
+            ),
+            claim_impact=(
+                "fast_ion_stopping_and_beam_target_neutron_authority_blocked"
+            ),
+        ),
     }
     if not collisions_enabled:
         effects["electrical_thermal_transport"]["missing_channels"].append(

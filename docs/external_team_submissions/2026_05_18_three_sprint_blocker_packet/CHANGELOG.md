@@ -141,6 +141,25 @@ absent. Negative tests cover scalar-only authority denial, accepted target
 metadata without mechanism histories, missing stopping/detector keeping
 total-yield blocked, and `_trapezoid_integral` working under NumPy 2.
 
+`224a7ea` — S3R.4+S3R.5 geometry mask statuses + Sigma_p packet schema +
+dict-form power-port consumption (closes A4, A5, A6, A7). PF-1000 material masks
+are no longer heuristic projections without status: `PF1000MaskManifest` gains
+`mask_class_status` ∈ {`source_supported`, `candidate_projection_not_source_mask`,
+`blocked`} per class; per-mask SHA-256 is preserved only with the status that
+generated the mask. The insulator and cathode-cage masks become
+`candidate_projection_not_source_mask` until insulator outer-radius / cage
+radius become source-backed. The under-resolution gate is extended to
+`insulator_exposed_length_m` when source-supported. `SigmaPSurfacePacket` gains
+five digest fields (`sigma_p_face_set_sha256`, `moving_classification_sha256`,
+`omega_partition_sha256`, `material_mask_sha256_by_class`,
+`moving_classification_status`) plus the source geometry hash preserved on
+blocked returns. `power_port.py` reconstructs dict-form Sigma_p packets via
+`_sigma_p_packet_from_dict()` or emits the named
+`_SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED` blocker — no silent discard.
+`_sigma_p_surface_term()` adds sign-convention and moving-classification
+negative controls. Terms II/IV/V/VI remain blocked until the Sprint 4 surface
+integrator exists.
+
 ## Changed paths
 
 ### Sprint 1

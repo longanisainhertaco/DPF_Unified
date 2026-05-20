@@ -687,6 +687,108 @@ def test_plasmapy_coupling_regime_gate():
     assert strong_gate["can_support_first_principles_acceptance"] is False
 
 
+# ---------------------------------------------------------------------------
+# A8 S3R.6: Closure matrix completeness negative tests
+# ---------------------------------------------------------------------------
+
+def test_required_effects_symmetric_with_top_level_effects():
+    """Every entry in REQUIRED_EFFECTS must appear in packet['effects'].
+
+    Finding A8: electron_inertia and stopping_collisions were in
+    REQUIRED_EFFECTS but absent from the top-level effects dict, causing them
+    to be silently omitted from closure_matrix_status_by_effect,
+    closure_effect_status, and missing_or_unaccepted_effects.
+    """
+    from dpf.first_principles.closure_packet import REQUIRED_EFFECTS
+    pkt = _packet()
+    missing = set(REQUIRED_EFFECTS) - set(pkt["effects"].keys())
+    assert missing == set(), (
+        f"REQUIRED_EFFECTS entries missing from top-level effects: {missing}"
+    )
+
+
+def test_electron_inertia_and_stopping_collisions_blocked():
+    """electron_inertia and stopping_collisions must appear in
+    missing_or_unaccepted_effects, closure_matrix_status_by_effect, and
+    closure_effect_status — confirming they are registered blockers, not
+    silently omitted (A8 / WP-N5 finding F-EI)."""
+    pkt = _packet()
+    # Both must be present in the top-level effects dict.
+    assert "electron_inertia" in pkt["effects"], (
+        "electron_inertia absent from top-level effects"
+    )
+    assert "stopping_collisions" in pkt["effects"], (
+        "stopping_collisions absent from top-level effects"
+    )
+    # Both must surface as blockers.
+    assert "electron_inertia" in pkt["missing_or_unaccepted_effects"], (
+        "electron_inertia not in missing_or_unaccepted_effects"
+    )
+    assert "stopping_collisions" in pkt["missing_or_unaccepted_effects"], (
+        "stopping_collisions not in missing_or_unaccepted_effects"
+    )
+    # Both must appear in the derived status maps.
+    assert "electron_inertia" in pkt["closure_matrix_status_by_effect"], (
+        "electron_inertia absent from closure_matrix_status_by_effect"
+    )
+    assert "stopping_collisions" in pkt["closure_matrix_status_by_effect"], (
+        "stopping_collisions absent from closure_matrix_status_by_effect"
+    )
+    assert "electron_inertia" in pkt["closure_effect_status"], (
+        "electron_inertia absent from closure_effect_status"
+    )
+    assert "stopping_collisions" in pkt["closure_effect_status"], (
+        "stopping_collisions absent from closure_effect_status"
+    )
+    # Both must remain permanently blocked / non-accepting.
+    assert pkt["effects"]["electron_inertia"]["can_support_first_principles_acceptance"] is False
+    assert pkt["effects"]["stopping_collisions"]["can_support_first_principles_acceptance"] is False
+
+
+def test_plasmapy_cannot_promote_or_reject_local_closure():
+    """PlasmaPy presence or absence must not change the accepted/blocked status
+    of any local-source closure (A8 / S3R.6 PlasmaPy cross-check only rule).
+
+    Construct a packet with and without a community_formula_audit and confirm
+    that every effect's status, implemented, and can_support_first_principles_acceptance
+    are identical — PlasmaPy is purely cross-check telemetry.
+    """
+    synthetic_audit = {
+        "status": "community_formula_audit_partial_not_authority",
+        "quantities": {
+            "coulomb_log": {
+                "status": "community_formula_cross_check_present_not_authority",
+                "local_value": 8.0,
+                "plasmapy_value": 8.1,
+            },
+        },
+        "strong_coupling_regime": {
+            "coupling_warning_raised": False,
+            "strong_coupling_out_of_validity": False,
+        },
+    }
+    pkt_no_plasmapy = _packet(community_formula_audit=None)
+    pkt_with_plasmapy = _packet(community_formula_audit=synthetic_audit)
+
+    for effect_id in pkt_no_plasmapy["effects"]:
+        rec_without = pkt_no_plasmapy["effects"][effect_id]
+        rec_with = pkt_with_plasmapy["effects"][effect_id]
+        assert rec_without["status"] == rec_with["status"], (
+            f"{effect_id}: status changed with PlasmaPy "
+            f"({rec_without['status']!r} -> {rec_with['status']!r})"
+        )
+        assert rec_without["implemented"] == rec_with["implemented"], (
+            f"{effect_id}: implemented changed with PlasmaPy"
+        )
+        assert (
+            rec_without["can_support_first_principles_acceptance"]
+            == rec_with["can_support_first_principles_acceptance"]
+        ), (
+            f"{effect_id}: can_support_first_principles_acceptance changed "
+            "with PlasmaPy"
+        )
+
+
 def test_plasmapy_outside_tolerance_sets_review_required():
     """A PlasmaPy disagreement outside tolerance sets review-required
     telemetry but does NOT block an engineering run (S3.5 PlasmaPy rule)."""
