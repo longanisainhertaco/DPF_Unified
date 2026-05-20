@@ -355,13 +355,40 @@ matrix recommendation Option B (PF-1000 full-energy 27-40 kV) is reaffirmed;
 no cell flips after the new KR ingests. Handoff document:
 `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_2026_05_20.md`.
 
-`8f6a0ae` — Audit handoff document (above section) committed.
+`8f6a0ae` — Audit handoff V1 document (above section) committed.
 
-`(this commit)` — Housekeeping: regenerate
+`7999265` — Housekeeping: regenerate
 `docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}` and
 `docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_18.{json,md}` after
 the Sprint 4 corpus-rescan additions; add `.gitignore` pattern for the
-2026-05-20 rescan intake directory.
+2026-05-20 rescan intake directory. Periodic audit 10/10 PASS at this HEAD
+per `/private/tmp/dpf-unified-audit-logs/20260520T051600Z/summary.md`.
+
+### Sprint 4 audit-handoff V2 (closes the Codex audit corrections)
+
+`docs/CODEX_FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_2026_05_20.md`
+(Codex audit of V1 at HEAD `7999265`): verdict *conditional accept as a
+research triage artifact*; **ten blocking corrections required** before
+Sprint 5 consumes the handoff. The audit confirms Bennett 2017 startup
+relevance, the PF-1000 cathode-cage 200 mm hardware evidence, qualitative
+DPF lower-hybrid anomalous resistivity from the LLNL kinetic-sim KR, and
+the unchanged comparator-scope problem.
+
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_V2_2026_05_20.md`
+incorporates all ten corrections and adopts the required V2 structure:
+HEAD reconciliation, per-blocker table (31 rows), separate source-acquisition
+table (19 sources), full `KnowledgeReference/...` paths, explicit scope tags,
+`accepted_runtime_claim = false` field on every row, reclassification
+appendix V1→V2. **V2 supersedes V1.** Key reclassifications: Talebitaher
+PhD → `already_target_extracted_in_kr_targets`; Bernard 1977 → `existing_kr_
+target_extraction_pending` (not external); Gribkov 2007 J. Phys. D 40:3592
+→ `existing_kr_target_extraction_pending` (KR file:
+`KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md`, not external);
+UCSD/Beg `massf` line range corrected from `:615-670` to `:597-601` +
+`:631-660` + `:642-660`; Bennett 71 % current-fraction timing corrected
+from 500 ns to 1 µs; Braginskii 1965 downgraded to `pdf_present_needs_
+rendered_page_or_ocr_verification` because `pdftotext` did not expose
+Table 2 / Eqs. 4.30-4.45.
 
 ## Changed paths
 

@@ -150,6 +150,18 @@ records promotes Akel 16 kV same-scope validation, a startup BVP, accepted
 transport closure, neutron authority, or a whole-shot first-principles
 certificate.
 
+2026-05-20 external handoff audit update: the other team's blocker-resolution
+handoff has been audited in
+`docs/CODEX_FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_2026_05_20.md`. The
+handoff is usable as research triage but must be corrected before it becomes a
+Sprint execution packet. The plan impact is: use the Codex audit errata as the
+controlling source for Sprint 5 instructions until a V2 handoff exists. The
+critical corrections are stale Talebitaher/Bernard/Gribkov status rows,
+incorrect current-sheath `massf` line coverage, Bennett current-fraction timing,
+unverified Braginskii table/equation extraction details, shorthand KR citations,
+and unreconciled blocker/source counts. This does not promote any runtime or
+validation acceptance gate.
+
 2026-05-14 3D finish-line gate update: the new source has been converted into a
 concrete architecture gate rather than a loose literature note.
 `docs/FIRST_PRINCIPLES_3D_HYBRID_PIC_REVIEW_2026_05_14.md` now records the

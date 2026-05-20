@@ -37,6 +37,32 @@ Ratchet update 2026-05-20, Sprint 4 source-available target extractions:
   transport closure, neutron authority, or first-principles certificate was
   promoted by this extraction pass.
 
+Audit update 2026-05-20, external blocker-resolution handoff:
+
+- Audited
+  `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_2026_05_20.md`
+  against the current repo state, `KnowledgeReference/`, and the latest
+  source-truth extraction artifacts. The audit result is recorded in
+  `docs/CODEX_FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_2026_05_20.md`.
+- Verdict: conditionally accepted as research triage only. It is not accepted
+  as an authoritative Sprint 5 execution packet until a corrected V2 reconciles
+  stale status rows, exact citations, counts, and scope tags.
+- Confirmed useful findings: Bennett 2017 is the misnamed on-disk DPF
+  breakdown/flashover PIC source; PF-1000 cathode-cage 200 mm hardware context
+  is supported by multiple KR sources; current-sheath pressure-regime and
+  `Liz/Li` startup context are useful wrong-scope method evidence; Bernard 1977
+  is useful historical Ti/neutron-spectrum context; qualitative DPF
+  anomalous-resistivity evidence remains supported.
+- Required corrections: Talebitaher is already promoted and target-extracted,
+  Bernard 1977 is already in KR, Gribkov Part II is already in KR, the
+  current-sheath `massf` formula needs lines `597-601` in addition to
+  `616-670`, Bennett's 71 percent current-fraction timing is at 1 us rather
+  than 500 ns, and Braginskii 1965 table/equation claims need rendered-page or
+  OCR verification before target extraction.
+- Boundary: no first-principles runtime acceptance, whole-shot readiness,
+  startup BVP closure, neutron authority, transport closure, same-scope
+  comparator, or validation certificate was promoted by this audit.
+
 Plan update 2026-05-13, first-principles execution specification:
 
 - Rewrote `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` from a finish-line roadmap into a complete execution specification for a true first-principles DPF simulator.
