@@ -191,6 +191,13 @@ normalization on `WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md` and
 `WP_N5_CLOSURE_REGISTRY_SOURCE_AUDIT.md`; ruff hoisted imports in
 `tests/test_first_principles_neutron_authority.py`. No semantic change.
 
+`46b705f` — S3R.8 prep: 12 A1-A12 closure rows appended to `BLOCKER_MATRIX.csv`
+(status `closed`, Sprint 3R owner, evidence cites the S3R.X commit and tests);
+7 S3R.1..S3R.7 rows appended to `CLAIMS_LEDGER.csv` (one per remediation
+package, `can_support_first_principles_acceptance=false` on every row);
+12 A1-A12 rows appended to `TEST_MAP.csv` with exact pytest commands;
+ruff I001 import-sort fix on `tests/test_first_principles_power_port.py`.
+
 ## Changed paths
 
 ### Sprint 1
