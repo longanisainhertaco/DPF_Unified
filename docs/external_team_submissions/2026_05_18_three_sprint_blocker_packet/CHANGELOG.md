@@ -119,6 +119,15 @@ broader shorthand citation forms, and the wrong module paths.
 `CodexFindings.md` and `CortexFindings.md` gain a `## Sprint 3R Status
 (2026-05-19)` section listing A1-A12.
 
+`c9c7160` — S3R.2 bind startup acceptance to typed packet (closes A1):
+`build_startup_bvp_packet()` now derives `can_support` from the embedded typed
+`StartupPacket`'s `can_support_first_principles_acceptance` as the leading
+AND-term; caller-declared `accepted_channels` can no longer override the typed
+packet's fail-closed posture. Since WP-N2 guarantees 0 computed channels of 13,
+`status='accepted_startup_bvp_packet'` is structurally unreachable. Negative
+tests added for accepted-mode spoof payload, reviewed-without-hashes payload,
+seeded-layer mode, and the CLI blocker propagation.
+
 ## Changed paths
 
 ### Sprint 1

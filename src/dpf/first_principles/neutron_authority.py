@@ -966,6 +966,10 @@ def _accepted_channels_from_targets(
         "neutron_scalar_yield": "same_scope_scalar_yield",
         "yield_uncertainty": "yield_uncertainty_budget",
     }
+    # Scalar yield is a comparator-only channel; accepted scalar targets are
+    # NEVER added to the mechanism-authority accepted set (A2 fix: prevents
+    # same_scope_scalar_yield from being stamped accepted_neutron_authority).
+    _COMPARATOR_ONLY_OBSERVABLES = frozenset({"neutron_scalar_yield"})
     for target in validation_targets:
         status = str(target.get("status", ""))
         observable = str(target.get("observable", "")).strip()
@@ -990,7 +994,16 @@ def _accepted_channels_from_targets(
                 "decision": "rejected_missing_or_mismatched_scope_metadata",
             })
             continue
-        if observable in aliases:
+        if observable in _COMPARATOR_ONLY_OBSERVABLES:
+            # Scalar yield evidence is recorded only as candidate_comparator_only;
+            # it must never enter the mechanism-authority accepted set (WP-N6 §7.1).
+            decisions.append({
+                "target": name,
+                "observable": observable,
+                "status": status,
+                "decision": "candidate_comparator_only_scalar_not_mechanism_authority",
+            })
+        elif observable in aliases:
             accepted.add(aliases[observable])
             decisions.append({
                 "target": name,
@@ -1017,7 +1030,12 @@ def _channel_statuses(
 ) -> dict[str, str]:
     statuses: dict[str, str] = {}
     for channel in required_channels:
-        if channel in accepted:
+        # same_scope_scalar_yield is always candidate_comparator_only regardless
+        # of the accepted set — scalar total yield is never mechanism authority
+        # (A2 fix: belt-and-suspenders guard; WP-N6 §7.1).
+        if channel == "same_scope_scalar_yield":
+            statuses[channel] = "candidate_comparator_only"
+        elif channel in accepted:
             statuses[channel] = "accepted_neutron_authority"
         elif channel in text_supported:
             statuses[channel] = "text_supported_reference_only_not_acceptance"

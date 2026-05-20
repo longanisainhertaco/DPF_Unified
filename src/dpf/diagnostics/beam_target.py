@@ -89,7 +89,9 @@ BEAM_TARGET_ANISOTROPY_LAW_STATUS = {
 
 
 def _trapezoid_integral(values: np.ndarray, times: np.ndarray) -> float:
-    integrator = getattr(np, "trapezoid", np.trapz)
+    # Lazy fallback: np.trapz was removed in NumPy 2.0; np.trapezoid added in 1.25.
+    # Evaluate only the name that exists to avoid AttributeError on NumPy 2.
+    integrator = np.trapezoid if hasattr(np, "trapezoid") else np.trapz  # type: ignore[attr-defined]
     return float(integrator(values, times))
 
 

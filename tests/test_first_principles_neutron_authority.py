@@ -87,8 +87,20 @@ def test_scalar_total_yield_only_cannot_accept_neutron_authority() -> None:
     )
     assert packet["can_support_total_yield_acceptance"] is False
     assert packet["can_support_first_principles_acceptance"] is False
-    # Scalar channel may be the ONLY accepted channel, and it is comparator-only.
-    assert packet["accepted_channels"] == ["same_scope_scalar_yield"]
+    # A2 fix: scalar yield must NOT enter the accepted set — it is comparator-only.
+    assert "same_scope_scalar_yield" not in packet["accepted_channels"]
+    # The scalar channel's status in neutron_authority_channel_status must be
+    # candidate_comparator_only, never accepted_neutron_authority (A2).
+    assert (
+        packet["neutron_authority_channel_status"]["same_scope_scalar_yield"]
+        == "candidate_comparator_only"
+    )
+    # The target decision must label the scalar as comparator-only, not authority.
+    decisions = packet["validation_target_scope_decisions"]
+    assert any(
+        d["decision"] == "candidate_comparator_only_scalar_not_mechanism_authority"
+        for d in decisions
+    )
     assert packet["mechanism_separation_policy"][
         "scalar_yield_agreement_usable_for"
     ] == "baseline_comparison_only"
@@ -812,3 +824,160 @@ def test_diagnostic_modules_flag_uncited_coefficients() -> None:
     assert BEAM_TARGET_ANISOTROPY_LAW_STATUS["kr_source"] == (
         "none_coefficient_0p3_uncited_empirical"
     )
+
+
+# ---------------------------------------------------------------------------
+# S3R.3 negative tests — A2: scalar/target evidence cannot produce authority
+# ---------------------------------------------------------------------------
+
+
+def test_same_scope_scalar_yield_status_is_candidate_comparator_only() -> None:
+    """same_scope_scalar_yield must always be candidate_comparator_only in channel
+    status, even when supplied as an accepted same-scope validation target (A2).
+
+    WP-N6 §7.1: a scalar total-yield match can occur with both mechanism channels
+    wrong in compensating directions; it is never mechanism authority.
+    """
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        device_name="PF-1000/Akel",
+        validation_targets=[
+            {
+                "name": "pf1000_akel_total_yield",
+                "observable": "neutron_scalar_yield",
+                "status": "accepted_same_scope_source",
+                "declared_scope": _AKEL,
+            }
+        ],
+    )
+    # Channel status must be candidate_comparator_only, never accepted_neutron_authority.
+    ch_status = packet["neutron_authority_channel_status"]["same_scope_scalar_yield"]
+    assert ch_status == "candidate_comparator_only", (
+        f"same_scope_scalar_yield must be candidate_comparator_only, got {ch_status!r}"
+    )
+    # Scalar target must not enter the accepted set.
+    assert "same_scope_scalar_yield" not in packet["accepted_channels"]
+    # Decision label must mark it as comparator-only, not authority.
+    decisions = packet["validation_target_scope_decisions"]
+    assert any(
+        d["decision"] == "candidate_comparator_only_scalar_not_mechanism_authority"
+        for d in decisions
+    )
+    assert packet["can_support_first_principles_acceptance"] is False
+
+
+def test_accepted_target_metadata_without_mechanism_histories_cannot_create_authority() -> None:
+    """Accepted target metadata (detector layout, activation, TOF) without runtime
+    mechanism histories cannot create accepted_neutron_authority (A2).
+
+    Text-supported PF1000/Akel channels are reference-only; their presence must not
+    flip the packet to accepted, and the mechanism channels must remain blocked.
+    """
+    # Supply all text-reference targets as accepted same-scope, but no runtime record.
+    targets = [
+        {
+            "name": t,
+            "observable": t,
+            "status": "accepted_same_scope_source",
+            "declared_scope": _AKEL,
+        }
+        for t in (
+            "silver_activation_total_yield_measurement",
+            "scintillator_detector_layout_0_90_180_degrees",
+            "time_of_flight_mean_neutron_deuteron_energy_method",
+        )
+    ]
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        device_name="PF-1000/Akel",
+        validation_targets=targets,
+    )
+    assert packet["status"] == (
+        "blocked_mechanism_separated_neutron_authority_not_available"
+    )
+    assert packet["can_support_first_principles_acceptance"] is False
+    # Mechanism channels with no KR source must still be blocked.
+    ch_status = packet["mechanism_channel_status"]
+    for ch in NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE:
+        assert ch_status[ch] == "blocked_by_missing_local_source", (
+            f"{ch} must be blocked_by_missing_local_source, got {ch_status[ch]!r}"
+        )
+    # Thermonuclear and beam-target histories are absent.
+    assert ch_status["thermonuclear_history"] == "missing_or_blocked"
+    assert ch_status["beam_target_history"] == "missing_or_blocked"
+
+
+def test_missing_stopping_and_detector_response_keeps_total_yield_authority_blocked() -> None:
+    """Absent stopping model and detector response keep total-yield authority blocked (A2).
+
+    WP-N6 §1.4, §1.6, §1.9: beam-target authority requires a stopping/transport
+    model and a detector-response model, both of which are blocked_by_missing_local_source
+    for the Akel scope. No combination of other evidence can override this.
+    """
+    tn = MechanismYieldHistory(
+        **_time_series(),
+        mechanism_basis="kinetic_ion_distribution",
+        source_ref=_KR_REACTIVITY,
+        prefactor_citation=_KR_REACTIVITY,
+    )
+    bt = MechanismYieldHistory(
+        **_time_series(),
+        mechanism_basis="kinetic_ion_distribution",
+        source_ref=_KR_REACTIVITY,
+    )
+    runtime = NeutronAuthorityRuntime(
+        declared_scope=_AKEL,
+        thermonuclear_yield_history=tn,
+        beam_target_yield_history=bt,
+        mechanism_separation_status="mechanism_separated",
+        neutron_spectrum_ref=_KR_REACTIVITY,
+        doppler_width_law_ref=_KR_REACTIVITY,
+        neutron_anisotropy_ref=_KR_REACTIVITY,
+        intrinsic_anisotropy_law_ref=_KR_REACTIVITY,
+        vessel_scatter_anisotropy_ref=_KR_REACTIVITY,
+        yield_uncertainty_budget_ref=_KR_REACTIVITY,
+        electron_temperature_yield_sensitivity_ref=_KR_REACTIVITY,
+        # stopping and detector response intentionally absent
+        source_review_status="passed_same_scope_review",
+    )
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        runtime=runtime,
+    )
+    assert packet["can_support_first_principles_acceptance"] is False
+    ch_status = packet["mechanism_channel_status"]
+    assert ch_status["stopping_transport"] == "blocked_by_missing_local_source"
+    assert ch_status["detector_response"] == "blocked_by_missing_local_source"
+    assert ch_status["activation_response"] == "blocked_by_missing_local_source"
+    assert ch_status["scatter_background"] == "blocked_by_missing_local_source"
+    # Total authority is still blocked.
+    assert packet["status"] == (
+        "blocked_mechanism_separated_neutron_authority_not_available"
+    )
+    # same_scope_scalar_yield must still be candidate_comparator_only (not authority).
+    assert (
+        packet["neutron_authority_channel_status"]["same_scope_scalar_yield"]
+        == "candidate_comparator_only"
+    )
+
+
+# ---------------------------------------------------------------------------
+# S3R.3 regression test — A3: _trapezoid_integral works on NumPy 2
+# ---------------------------------------------------------------------------
+
+
+def test_trapezoid_integral_works_on_active_numpy_lane() -> None:
+    """_trapezoid_integral returns a numeric result on a simple integrand (A3).
+
+    NumPy 2.0 removed np.trapz; the helper must use the lazy fallback
+    (np.trapezoid if available, else np.trapz) to avoid AttributeError.
+    Integral of y=x from 0 to 2 == 2.0 exactly with trapezoidal rule.
+    """
+    import numpy as np
+    from dpf.diagnostics.beam_target import _trapezoid_integral
+
+    times = np.array([0.0, 1.0, 2.0])
+    values = np.array([0.0, 1.0, 2.0])
+    result = _trapezoid_integral(values, times)
+    assert isinstance(result, float), f"Expected float, got {type(result)}"
+    assert abs(result - 2.0) < 1e-12, f"Expected 2.0, got {result}"
