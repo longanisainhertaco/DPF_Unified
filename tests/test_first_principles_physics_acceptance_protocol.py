@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS = REPO_ROOT / "docs"
 
@@ -49,7 +48,7 @@ def _read_csv(path: Path) -> tuple[list[str], list[dict[str, str]]]:
         f"{path}: rows with wrong field counts for {len(header)}-column header: "
         f"{bad_rows}"
     )
-    return header, [dict(zip(header, row)) for row in rows[1:]]
+    return header, [dict(zip(header, row, strict=True)) for row in rows[1:]]
 
 
 def test_physics_acceptance_gate_ledger_requires_triple_verification() -> None:

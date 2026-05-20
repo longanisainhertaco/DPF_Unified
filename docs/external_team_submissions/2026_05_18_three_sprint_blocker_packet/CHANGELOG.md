@@ -644,7 +644,18 @@ and transport-closure claims fail-closed.
 `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`,
 `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`, and
 `tests/test_first_principles_v2_handoff_ledgers.py`; updated `CodexFindings.md`
-and `CortexFindings.md`.
+and `CortexFindings.md`. Codex audit verdict: **V2 accepted as controlling
+errata for source triage**; findings A1-A5 closed by this normalization patch.
+
+`4cb260c` — docs(first-principles): add physics acceptance promotion protocol.
+Adds `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md`
+and `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv` (the
+machine-readable gate ledger that requires triple verification: other-team
+pass + Codex pass + executable gate pass at the same commit before any row
+can become `accepted_physics_module`). Adds
+`tests/test_first_principles_physics_acceptance_protocol.py` enforcing the
+triple-verification invariant. No physics is accepted by adding these
+artifacts — they define the only future promotion path.
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check

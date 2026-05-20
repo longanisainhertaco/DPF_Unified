@@ -4,7 +4,6 @@ import csv
 from collections import Counter
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS = REPO_ROOT / "docs"
 
@@ -73,7 +72,7 @@ def _read_csv(path: Path) -> tuple[list[str], list[list[str]], list[dict[str, st
         f"{path}: rows with wrong field counts for {len(header)}-column header: "
         f"{bad_rows}"
     )
-    records = [dict(zip(header, row)) for row in rows]
+    records = [dict(zip(header, row, strict=True)) for row in rows]
     return header, rows, records
 
 
