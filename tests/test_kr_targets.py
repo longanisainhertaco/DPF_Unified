@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from dpf.validation import (
     akel_fig1_draft_digitization_packet,
@@ -67,6 +68,7 @@ from dpf.validation import (
     pf1000_full_energy_phase_context_targets,
     pf1000_interferometry_density_evidence_from_profile,
     pf1000_interferometry_density_targets,
+    pf1000_krasa_vessel_scatter_anisotropy_targets,
     pf1000_spatial_pinch_evidence_from_geometry,
     pf1000_spatial_pinch_targets,
     pf1000_szydlowski_fast_ion_neutron_targets,
@@ -1562,6 +1564,26 @@ def test_pf1000_szydlowski_fast_ion_neutron_target_metadata():
         1.0e5,
     ]
     assert "pdf_review_of_ocr_suspect_units" in target["missing_for_full_tier5"]
+
+
+def test_pf1000_krasa_vessel_scatter_anisotropy_target_metadata():
+    target = pf1000_krasa_vessel_scatter_anisotropy_targets()
+
+    assert target["target_id"] == "pf1000_vessel_scatter_anisotropy_2008_krasa"
+    assert target["validation_scope"] == (
+        "pf1000_full_energy_vessel_scatter_2008_krasa"
+    )
+    assert target["source_lines"]["vessel_geometry"] == "113-118"
+    assert target["vessel_geometry"]["material"] == "stainless_steel"
+    assert target["vessel_geometry"]["average_wall_thickness_m"] == pytest.approx(0.010)
+    assert target["vessel_geometry"]["vacuum_chamber_diameter_m"] == pytest.approx(1.4)
+    assert target["shot_context"]["bank_energy_kJ_range"] == [450.0, 500.0]
+    assert target["shot_context"]["fill_pressure_torr"] == pytest.approx(3.5)
+    assert target["scatter_transport_targets"][
+        "direct_scattered_tof_separation_required"
+    ] is True
+    assert "neutron_detector_response" in target["partial_target_groups"]
+    assert "same_scope_transfer_rule_for_akel_16kv" in target["missing_for_full_tier5"]
 
 
 def test_klir_tof_detector_response_target_metadata():

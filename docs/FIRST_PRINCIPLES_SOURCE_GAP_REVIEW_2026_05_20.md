@@ -47,11 +47,12 @@ missing step.
 
 ### Chamber Wall Material And Thickness
 
-Finding:
+Historical finding, superseded by the target-extraction execution below:
 The other team is correct that the current blocker wording in
-`src/dpf/fields/source_geometry.py` is inaccurate.
+`src/dpf/fields/source_geometry.py` was inaccurate before the 2026-05-20
+target-extraction pass.
 
-Current code:
+Pre-extraction code:
 
 - `source_geometry.py:953-959` blocks `chamber_wall_material` and
   `chamber_wall_thickness_m` with reasons
@@ -67,13 +68,22 @@ Local KR evidence:
   `text_parity_extracted_review_needed`:
   `docs/RESEARCH_PAPERS_KR_PROMOTION_2026_05_11.md:22`.
 
-Correct status:
+Correct status before this pass:
 
 - Keep the fields blocked for accepted/source-supported runtime geometry until
   target extraction is complete.
 - Replace the blocker reason from `no-kr-source` to
   `source_available_not_target_extracted`.
 - Add a target-extraction task for chamber wall material and wall thickness.
+
+2026-05-20 execution:
+
+- Target extraction is complete for the Krasa 2008 chamber wall material and
+  wall thickness values.
+- `PF1000GeometryPacket` now marks `chamber_wall_material` and
+  `chamber_wall_thickness_m` as source-supported geometry-context fields.
+- The chamber-wall mask still remains a candidate in the default Krauz packet
+  because the cathode-cage radial split remains a conflict.
 
 ### Beam-Target Coupling
 
@@ -193,15 +203,36 @@ Priority target packets:
 
 | Priority | Target | Current reviewed status |
 | --- | --- | --- |
-| P0 | PF-1000 chamber wall material and wall thickness | KR text exists; target extraction missing. |
-| P0 | PF-1000 hollow-anode bore radius from Stepniewski 2004 | KR text exists; modeling-scope target extraction and conflict review missing. |
-| P0 | Klir 2011 detector response | KR text exists; target extraction/review missing. |
-| P0 | Krasa 2008 direct/scattered neutron transport and vessel geometry | KR text exists; target extraction/review missing. |
-| P1 | Current-sheath initiation source packet | KR text likely exists; target extraction must identify exact channel support. |
-| P1 | Hall/Ohm/transport sources | Some local sources exist; target extraction must separate Braginskii/PlasmaPy/formulary cross-checks from DPF-closure authority. |
-| P1 | Talebitaher ion distribution / anisotropy material | Thesis exists and is chunked in KR; target extraction must separate NX2/NX3 scope from PF-1000/Akel claims. |
+| P0 | PF-1000 chamber wall material and wall thickness | Extracted 2026-05-20; geometry-context source-supported, not Akel validation. |
+| P0 | PF-1000 hollow-anode bore radius from Stepniewski 2004 | Extracted 2026-05-20 as modeling context; runtime authority still blocked pending hardware-scope review. |
+| P0 | Klir 2011 detector response | Already target-extracted in `kr_targets.py`; now referenced in the S4 extraction packet. |
+| P0 | Krasa 2008 direct/scattered neutron transport and vessel geometry | Extracted 2026-05-20; new KR target added. |
+| P1 | Current-sheath initiation source packet | Extracted 2026-05-20 as wrong-scope startup method context. |
+| P1 | Hall/Ohm/transport sources | Neon gas-puff Hall/LHDI formula extracted 2026-05-20 as non-DPF closure candidate; NRL 2019 transport core extracted as formulary cross-check. Direct Braginskii 1965 coefficient extraction remains separate. |
+| P1 | Talebitaher ion distribution / anisotropy material | Extracted 2026-05-20 as NX2 detector/anisotropy context, not PF-1000/Akel authority. |
 | P1 | EOS/radiation/opacity sources | On-disk sources likely exist; authority depends on extracting exact equations, units, regimes, and validity limits. |
 | P2 | Restrike and D2 Townsend/Paschen constants | Still likely genuine external acquisition unless local search finds exact equations/data. |
+
+2026-05-20 target-extraction execution:
+
+- Added `docs/FIRST_PRINCIPLES_TARGET_EXTRACTIONS_2026_05_20.md` as the
+  durable extraction report.
+- Added `sprint4_source_available_target_extractions()` with seven typed,
+  line-referenced records for Krasa 2008 PF-1000 vessel geometry/scatter,
+  Stepniewski 2004 PF-1000 hollow-bore simulation context, UCSD/Beg startup
+  method context, the neon gas-puff Hall/LHDI anomalous-resistivity formula,
+  the NRL 2019 transport formulary cross-check, Talebitaher 2012 NX2
+  detector/anisotropy context, and the already-coded Klir 2011 ToF
+  detector-response target.
+- Added `pf1000_krasa_vessel_scatter_anisotropy_targets()` to the KR target
+  manifest.
+- Promoted only the Krasa chamber-wall material/thickness fields in
+  `PF1000GeometryPacket` to source-supported geometry context. Stepniewski's
+  hollow bore remains blocked as
+  `target_extracted_modeling_context_requires_review`.
+- Validation state did not change: Akel 16 kV same-scope field, temperature,
+  X-ray, spectrum, anisotropy, and whole-shot certificate channels remain
+  blocked.
 
 ## Required Output From The Other Team
 

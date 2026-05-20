@@ -210,6 +210,30 @@ The Sprint 3R final-submission wrapper commit adds
 `sprint_3/SPRINT_3R_FINAL_SUBMISSION.md` and updates this `CHANGELOG.md`; it is
 HEAD-exempt from `test_changelog_covers_all_commits_since_base`.
 
+`8d41cad` — Sprint 3R final-submission wrapper (amended for shorthand-citation
+regex compliance in the A11 table cell). Adds
+`sprint_3/SPRINT_3R_FINAL_SUBMISSION.md` and the corresponding CHANGELOG
+sections.
+
+### Sprint 4 prep — target extractions (closes
+`source_available_not_target_extracted` material into typed targets)
+
+Pre-Sprint-4 prep that converts already-local `KnowledgeReference/` material
+into typed target records without promoting validation or whole-shot
+first-principles acceptance. Documented in
+`docs/FIRST_PRINCIPLES_TARGET_EXTRACTIONS_2026_05_20.md`. Adds the
+`sprint4_source_available_target_extractions()` packet
+(`src/dpf/first_principles/source_targets.py`) and
+`pf1000_krasa_vessel_scatter_anisotropy_targets()`
+(`src/dpf/validation/kr_targets.py`); promotes `chamber_wall_material` and
+`chamber_wall_thickness_m` to `source_supported` in `PF1000GeometryPacket` via
+Krasa 2008. The chamber-wall mask remains
+`candidate_projection_not_source_mask` until the cathode-cage radial split
+becomes source-supported; a focused test enforces this. Stepniewski 2004's
+0.015 m hollow-bore value is extracted but intentionally not promoted into
+`PF1000GeometryPacket` because it is a simulation-parameter context, not
+reviewed hardware-scope geometry. Tests: 165 passed.
+
 ## Changed paths
 
 ### Sprint 1

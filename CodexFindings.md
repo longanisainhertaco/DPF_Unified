@@ -8,6 +8,35 @@ Plan note 2026-05-05:
 
 - The detailed forward plan requested as `CortexFindings.md` has been created in the repository. `CodexFindings.md` remains the running findings and ratchet log, while `CortexFindings.md` records the reviewed plan sequence from target authority through end-to-end high-fidelity demonstration.
 
+Ratchet update 2026-05-20, Sprint 4 source-available target extractions:
+
+- Conducted the first target-extraction pass over already-local KR material
+  that had been classified as `source_available_not_target_extracted`.
+- Added `docs/FIRST_PRINCIPLES_TARGET_EXTRACTIONS_2026_05_20.md` and
+  `sprint4_source_available_target_extractions()` with seven typed,
+  line-referenced records: Krasa 2008 PF-1000 vessel geometry/scatter,
+  Stepniewski 2004 PF-1000 hollow-bore simulation context, UCSD/Beg startup
+  context, neon gas-puff Hall/LHDI anomalous resistivity, NRL 2019 transport
+  formulary cross-check, Talebitaher 2012 NX2 detector/anisotropy context, and
+  the already-coded Klir 2011 ToF detector response target.
+- Added `pf1000_krasa_vessel_scatter_anisotropy_targets()` to the KR
+  validation-target manifest. The source-audit and semantic-audit tests now
+  include this PF-1000 vessel-scatter target.
+- Promoted only PF-1000 chamber wall material/thickness in
+  `PF1000GeometryPacket` to source-supported geometry context from Krasa 2008
+  (`stainless_steel_material_flag`, `0.010 m`). The default chamber-wall mask
+  still remains a candidate because the cathode-cage radial split is not yet
+  source-supported.
+- Stepniewski's `0.015 m` hollow-anode bore radius is target-extracted but
+  remains blocked in runtime geometry as
+  `target_extracted_modeling_context_requires_review`; it is not accepted as a
+  reviewed hardware-scope PF-1000 mask dimension.
+- Verification: ruff passed for touched files; focused tests passed
+  (`165 passed` for source-target, source-geometry, and KR-target suites).
+- Boundary: no Akel 16 kV validation channel, whole-shot startup BVP,
+  transport closure, neutron authority, or first-principles certificate was
+  promoted by this extraction pass.
+
 Plan update 2026-05-13, first-principles execution specification:
 
 - Rewrote `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` from a finish-line roadmap into a complete execution specification for a true first-principles DPF simulator.

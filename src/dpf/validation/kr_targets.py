@@ -1998,6 +1998,77 @@ def pf1000_szydlowski_fast_ion_neutron_targets() -> dict[str, object]:
     }
 
 
+def pf1000_krasa_vessel_scatter_anisotropy_targets() -> dict[str, object]:
+    """Return PF-1000 vessel-scatter and wall-geometry targets from Krasa 2008."""
+    source = (
+        "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-"
+        "caused-by-the-plasma-focus-vessel-527cc533.md"
+    )
+    return {
+        "target_id": "pf1000_vessel_scatter_anisotropy_2008_krasa",
+        "validation_scope": "pf1000_full_energy_vessel_scatter_2008_krasa",
+        "device": "PF-1000",
+        "model_role": "kr_vessel_scatter_detector_response_geometry_target",
+        "validation_tier": 5,
+        "source": source,
+        "source_lines": {
+            "vessel_geometry": "113-118",
+            "measurement_scope_and_scatter_role": "121-130",
+            "operating_point_and_electrodes": "132-140",
+            "anisotropy_operating_conditions": "269-275",
+            "tof_scatter_transform": "276-301",
+        },
+        "vessel_geometry": {
+            "material": "stainless_steel",
+            "vessel_length_m": 3.2,
+            "vacuum_chamber_length_m": 2.5,
+            "vacuum_chamber_diameter_m": 1.4,
+            "average_wall_thickness_m": 0.010,
+            "collector_ring_diameter_m": 2.5,
+            "cables_not_sketch_count": 288,
+        },
+        "shot_context": {
+            "bank_energy_kJ_range": [450.0, 500.0],
+            "fill_pressure_torr": 3.5,
+            "anode_diameter_m": 0.231,
+            "anode_length_m": 0.600,
+            "outer_electrode_count": 12,
+            "outer_electrode_material": "stainless_steel",
+            "outer_electrode_diameter_m": 0.080,
+            "outer_electrode_radius_m": 0.200,
+            "max_neutron_yield_per_shot_approx": 3.5e11,
+        },
+        "scatter_transport_targets": {
+            "uses_mcnp4c_vessel_scatter_model": True,
+            "measures_tld600h_tld700h_bonner_sphere_anisotropy": True,
+            "direct_and_scattered_neutron_groups_determined": True,
+            "direct_scattered_tof_separation_required": True,
+            "tof_signal_kernel": "S(L,t) proportional to L^2/t^5 * f(L/t)",
+            "velocity_distribution_kernel": "f(v) proportional to v^-5 * S(L/v)",
+        },
+        "partial_target_groups": [
+            "neutron_anisotropy",
+            "neutron_spectrum",
+            "neutron_detector_response",
+            "spatial_geometry",
+            "uncertainty",
+        ],
+        "missing_for_full_tier5": [
+            "digitized_figure_4_group_energy_spectra",
+            "digitized_figure_5_vessel_scatter_anisotropy_curve",
+            "mcnp_geometry_deck_or_equivalent_transport_mesh",
+            "detector_position_table_and_uncertainty_budget",
+            "same_scope_transfer_rule_for_akel_16kv",
+        ],
+        "validation_note": (
+            "Krasa 2008 target-extracts PF-1000 vessel material/thickness "
+            "and the direct/scattered neutron separation requirement.  It is "
+            "full-energy PF-1000 vessel-scatter evidence and does not validate "
+            "the Akel 16 kV shot without a reviewed transfer rule."
+        ),
+    }
+
+
 def klir_2011_tof_detector_response_targets() -> dict[str, object]:
     """Return ToF detector response targets from Klir et al. 2011."""
     source = (
@@ -8684,6 +8755,7 @@ _KR_TARGET_FACTORIES = (
     pf1000_full_energy_neutron_spatial_targets,
     pf1000_cikhardtova_linear_density_motion_targets,
     pf1000_szydlowski_fast_ion_neutron_targets,
+    pf1000_krasa_vessel_scatter_anisotropy_targets,
     klir_2011_tof_detector_response_targets,
     nx3_springham_zrbe_activation_targets,
     nnss_dpf_neutron_time_energy_tomography_targets,
@@ -8795,6 +8867,12 @@ _TARGET_SEMANTIC_MARKERS = {
         "2.2",
         "cr-39",
         "anisotropy",
+    ),
+    "pf1000_vessel_scatter_anisotropy_2008_krasa": (
+        "stainless steel",
+        "10 mm",
+        "scattered",
+        "tof",
     ),
     "tof_detector_response_2011_klir": (
         "bc-408",

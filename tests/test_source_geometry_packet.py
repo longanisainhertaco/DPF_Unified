@@ -186,11 +186,12 @@ def test_conflict_record_rejects_single_candidate() -> None:
 # ---------------------------------------------------------------------------
 
 def test_missing_bore_insulator_backplate_fields_stay_blocked() -> None:
-    """The WP-N3 section-4 missing dimensions are typed `blocked`, never invented.
+    """Unresolved WP-N3 section-4 dimensions are typed `blocked`, never invented.
 
     [WP_N3_GEOMETRY_SOURCE_PACKET.md section 4] anode bore radius/length,
     anode end-cap, cathode rod length, insulator outer radius / wall, backplate
-    radial extent / axial thickness, chamber wall material / thickness.
+    radial extent / axial thickness. Chamber wall material/thickness are now
+    target-extracted from Krasa 2008 and tested separately.
     """
     packet = sg.PF1000GeometryPacket.krauz_2012()
     expected_blocked = {
@@ -202,8 +203,6 @@ def test_missing_bore_insulator_backplate_fields_stay_blocked() -> None:
         "insulator_wall_thickness_m",
         "backplate_radial_extent_m",
         "backplate_axial_thickness_m",
-        "chamber_wall_material",
-        "chamber_wall_thickness_m",
     }
     assert set(packet.blocked_field_names()) == expected_blocked
     for name in expected_blocked:
@@ -723,9 +722,9 @@ def test_s3r4_backplate_mask_is_source_supported() -> None:
     )
 
 
-def test_s3r4_chamber_wall_mask_is_candidate_until_target_extracted() -> None:
-    """S3R.4: chamber_wall_faces must not be promoted to source_supported while
-    chamber wall material/thickness are only KR text-parity and not target-extracted.
+def test_s4_chamber_wall_mask_is_candidate_until_radial_split_reviewed() -> None:
+    """S4: chamber wall material/thickness are now target-extracted, but the
+    wall mask remains candidate while the cathode-cage split is unresolved.
     """
     partition = _partition(sg.PF1000GeometryPacket.krauz_2012())
     manifest = partition["manifest"]
@@ -735,9 +734,9 @@ def test_s3r4_chamber_wall_mask_is_candidate_until_target_extracted() -> None:
     )
 
 
-def test_s3r4_chamber_wall_candidate_even_if_cage_radius_is_sourced() -> None:
-    """S3R.4: sourcing the cathode cage split is not enough to promote the
-    chamber-wall mask while wall material/thickness remain blocked.
+def test_s4_chamber_wall_mask_promotes_when_radial_split_is_sourced() -> None:
+    """S4: once material, thickness, and cathode-cage radius are all sourced,
+    chamber_wall_faces can be marked source_supported.
     """
     from dataclasses import replace as _dc_replace
 
@@ -758,27 +757,35 @@ def test_s3r4_chamber_wall_candidate_even_if_cage_radius_is_sourced() -> None:
     partition = _partition(patched_packet)
     assert (
         partition["manifest"]["mask_class_status"]["chamber_wall_faces"]
-        == "candidate_projection_not_source_mask"
+        == "source_supported"
     )
 
 
 def test_s3r4_source_available_blockers_use_honest_taxonomy() -> None:
-    """S3R.4: source-available values stay blocked until target extraction, but
-    their blocker IDs must not claim there is no KR source.
+    """S3R.4/S4: source-available values stay blocked until they have hardware
+    scope authority, but blocker IDs must not claim there is no KR source.
     """
     packet = sg.PF1000GeometryPacket.krauz_2012()
     assert (
         packet.fields["anode_hollow_bore_radius_m"].blocker_id
-        == "PF1000-BLK-009-anode-bore-radius-source_available_not_target_extracted"
+        == "PF1000-BLK-009-anode-bore-radius-target_extracted_modeling_context_requires_review"
     )
-    assert (
-        packet.fields["chamber_wall_material"].blocker_id
-        == "PF1000-BLK-021-chamber-wall-material-source_available_not_target_extracted"
-    )
-    assert (
-        packet.fields["chamber_wall_thickness_m"].blocker_id
-        == "PF1000-BLK-022-chamber-wall-thickness-source_available_not_target_extracted"
-    )
+
+
+def test_s4_chamber_wall_fields_are_target_extracted_source_supported() -> None:
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+
+    material = packet.fields["chamber_wall_material"]
+    thickness = packet.fields["chamber_wall_thickness_m"]
+
+    assert material.status == "source_supported"
+    assert material.value == 1
+    assert material.units == "stainless_steel_material_flag"
+    assert "527cc533" in material.source_ref
+    assert thickness.status == "source_supported"
+    assert thickness.value == pytest.approx(0.010)
+    assert thickness.units == "m"
+    assert "527cc533" in thickness.source_ref
 
 
 def test_s3r4_mask_class_status_survives_to_dict_serialization() -> None:

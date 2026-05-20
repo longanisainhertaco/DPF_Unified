@@ -133,6 +133,23 @@ review. Do not promote its LLNL-like geometry, sheath-front comparison,
 cross-section fit, or total neutron-yield number into simulator acceptance until
 Step 2 creates typed KR target packets with same-scope traceability and review.
 
+2026-05-20 source-target extraction update: the Sprint 4 extraction pass has
+converted six already-local KR/source-available items into typed, line-referenced
+target records in
+`sprint4_source_available_target_extractions()` and
+`docs/FIRST_PRINCIPLES_TARGET_EXTRACTIONS_2026_05_20.md`. Krasa 2008 now
+supports PF-1000 chamber wall material/thickness as geometry context and has a
+new KR validation target for vessel scatter/direct-vs-scattered neutron
+requirements. Stepniewski 2004 now has a target-extracted `0.015 m` hollow-bore
+candidate, but runtime geometry still blocks it as simulation-context evidence
+pending hardware-scope review. UCSD/Beg startup, neon gas-puff Hall/LHDI
+anomalous resistivity, NRL 2019 transport formulary, Talebitaher NX2
+detector/anisotropy, and Klir ToF detector-response records are now explicit
+extraction packets. None of these
+records promotes Akel 16 kV same-scope validation, a startup BVP, accepted
+transport closure, neutron authority, or a whole-shot first-principles
+certificate.
+
 2026-05-14 3D finish-line gate update: the new source has been converted into a
 concrete architecture gate rather than a loose literature note.
 `docs/FIRST_PRINCIPLES_3D_HYBRID_PIC_REVIEW_2026_05_14.md` now records the

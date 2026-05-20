@@ -306,8 +306,8 @@ def source_geometry_candidate_evidence(
 # Replaces the projection-only candidate geometry with a source-tagged runtime
 # packet. Conflicting source dimensions (12 vs 24 rods, 460/480/600/450 mm
 # anode length) are kept as explicit `PF1000GeometryConflict` records and are
-# NEVER averaged. Missing dimensions (anode bore, insulator outer radius,
-# backplate, chamber wall material -- the WP-N3 packet's 9 blocked rows) are
+# NEVER averaged. Missing or wrong-scope dimensions (anode bore, insulator
+# outer radius, backplate, and other unresolved WP-N3 rows) are
 # typed `blocked` fields with blocker IDs and are NEVER invented.
 #
 # Authority: docs/external_team_submissions/2026_05_18_three_sprint_blocker_
@@ -331,6 +331,8 @@ PF1000_GEOMETRY_SOURCE_REFS = (
     "KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-"
     "and-s-h-saw-part-1-basic-course.md:2199-2210",
     "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-223,426-431",
+    "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-"
+    "caused-by-the-plasma-focus-vessel-527cc533.md:113-118",
 )
 
 # The 10 source-tagged material/partition mask classes the runtime must emit.
@@ -834,10 +836,10 @@ class PF1000GeometryPacket:
 
         Source-supported fields carry a single KR ref. Conflict fields carry
         value `None` and a conflict group (the chosen revision's value is held
-        in the conflict record's candidate list). The 9 WP-N3 blocked rows
-        (anode bore radius/length, insulator outer radius / wall thickness,
-        backplate radial extent / axial thickness, chamber wall material /
-        thickness, cathode rod length) become typed `blocked` fields.
+        in the conflict record's candidate list). The still-unresolved WP-N3
+        rows (anode bore runtime authority, bore length, insulator outer radius
+        / wall thickness, backplate radial extent / axial thickness, cathode rod
+        length, and end-cap geometry) become typed `blocked` fields.
         """
         def conflict(name: str, units: str, group: str) -> PF1000GeometryField:
             return PF1000GeometryField(
@@ -859,6 +861,10 @@ class PF1000GeometryPacket:
                 scope_tag=scope_tag, source_ref=ref,
             )
 
+        krasa = (
+            "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-"
+            "neutrons-caused-by-the-plasma-focus-vessel-527cc533.md"
+        )
         fields: dict[str, PF1000GeometryField] = {}
         # anode radius is source-supported (WP-N3 row 6).
         fields["anode_radius_m"] = supported(
@@ -879,14 +885,14 @@ class PF1000GeometryPacket:
             "anode_material_is_copper", 1, "copper_material_flag",
             anode_radius_ref,
         )
-        # anode hollow bore -- WP-N3 rows 9/10.  Stepniewski 2004 exists in KR
-        # text parity and gives a modeling-context hollow radius, but it has not
-        # been target-extracted or scope-reviewed for this PF-1000 geometry
+        # anode hollow bore -- WP-N3 rows 9/10.  Stepniewski 2004 is now
+        # target-extracted as a simulation-parameter source (0.015 m), but it
+        # is not yet a hardware-scope dimension accepted for this geometry
         # packet.  The radius therefore stays blocked with the honest taxonomy.
         # The bore length remains absent from the local authority corpus.
         fields["anode_hollow_bore_radius_m"] = blocked(
             "anode_hollow_bore_radius_m", "m",
-            "PF1000-BLK-009-anode-bore-radius-source_available_not_target_extracted",
+            "PF1000-BLK-009-anode-bore-radius-target_extracted_modeling_context_requires_review",
         )
         fields["anode_hollow_bore_length_m"] = blocked(
             "anode_hollow_bore_length_m", "m",
@@ -964,16 +970,14 @@ class PF1000GeometryPacket:
         fields["chamber_length_m"] = supported(
             "chamber_length_m", chamber_length_m, "m", chamber_length_ref
         )
-        # chamber wall material / thickness -- WP-N3 rows 21/22: blocked.
-        # A KR text-parity source gives stainless steel and 10 mm vessel wall,
-        # but the values are not target-extracted into the geometry packet.
-        fields["chamber_wall_material"] = blocked(
-            "chamber_wall_material", "material_name",
-            "PF1000-BLK-021-chamber-wall-material-source_available_not_target_extracted",
+        # chamber wall material / thickness -- WP-N3 rows 21/22. Krasa 2008
+        # is now target-extracted for PF-1000 vessel hardware geometry.
+        fields["chamber_wall_material"] = supported(
+            "chamber_wall_material", 1, "stainless_steel_material_flag",
+            f"{krasa}:113-115",
         )
-        fields["chamber_wall_thickness_m"] = blocked(
-            "chamber_wall_thickness_m", "m",
-            "PF1000-BLK-022-chamber-wall-thickness-source_available_not_target_extracted",
+        fields["chamber_wall_thickness_m"] = supported(
+            "chamber_wall_thickness_m", 0.010, "m", f"{krasa}:113-115"
         )
         return fields
 

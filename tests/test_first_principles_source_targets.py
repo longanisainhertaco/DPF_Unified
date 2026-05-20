@@ -12,6 +12,7 @@ from dpf.first_principles import (
     may15_user_validated_source_targets,
     may16_validated_thesis_source_targets,
     run_first_principles_3d_deck,
+    sprint4_source_available_target_extractions,
 )
 from dpf.first_principles.source_targets import pf1000_akel_source_packet_hashes
 
@@ -129,6 +130,80 @@ def test_may16_targets_map_to_first_principles_blockers_without_authority() -> N
     assert "avaria_2022_bayesian_sheath_diagnostics" in coverage["FP-5_startup_bvp"]
     assert "talebitaher_2012_nx2_coded_aperture_imaging" in coverage["FP-13_comparator_uq"]
     assert "arwinder_2015_comparative_pf_machines" in coverage["FP-15_generalization"]
+
+
+def test_sprint4_source_available_target_extractions_are_typed_fail_closed() -> None:
+    packet = sprint4_source_available_target_extractions()
+
+    assert packet["status"] == "target_extracted_fail_closed_nonvalidating"
+    assert packet["accepted_for_whole_shot_first_principles"] is False
+    assert packet["target_record_count"] == 7
+
+    records = packet["target_records"]
+    assert set(records) == {
+        "pf1000_krasa_2008_vessel_geometry_and_scatter",
+        "pf1000_stepniewski_2004_hollow_anode_bore",
+        "ucsd_beg_2026_current_sheath_startup",
+        "neon_gaspuff_hall_lhdi_resistivity",
+        "nrl_2019_transport_core_formulary",
+        "talebitaher_2012_nx2_detector_anisotropy",
+        "klir_2011_tof_detector_response_existing_target",
+    }
+
+    krasa = records["pf1000_krasa_2008_vessel_geometry_and_scatter"]
+    assert krasa["source_lines"]["vessel_geometry"] == "113-118"
+    assert krasa["extracted_values"]["vessel_material"] == "stainless_steel"
+    assert krasa["extracted_values"]["average_wall_thickness_m"] == pytest.approx(0.010)
+    assert krasa["runtime_claim_impact"]["can_support_chamber_wall_thickness_target"] is True
+    assert krasa["runtime_claim_impact"]["can_validate_akel_16kv_shot"] is False
+
+    stepniewski = records["pf1000_stepniewski_2004_hollow_anode_bore"]
+    assert stepniewski["source_lines"]["simulation_geometry_parameters"] == "310-314"
+    assert stepniewski["extracted_values"]["hollow_radius_centre_of_electrode_m"] == pytest.approx(
+        0.015
+    )
+    assert stepniewski["runtime_claim_impact"]["can_promote_runtime_pf1000_geometry_field"] is False
+
+
+def test_sprint4_extractions_cover_startup_transport_and_detector_contexts() -> None:
+    records = sprint4_source_available_target_extractions()["target_records"]
+
+    startup = records["ucsd_beg_2026_current_sheath_startup"]
+    assert startup["extracted_values"]["startup_sequence"] == [
+        "surface_breakdown_at_insulator_sleeve",
+        "lorentz_force_peeloff_from_insulator",
+        "axial_rundown_sweeps_background_gas",
+        "turnover_and_radial_compression_on_axis",
+    ]
+    assert startup["extracted_values"]["te_assumed_for_path_length_eV"] == pytest.approx(4.0)
+    assert startup["runtime_claim_impact"]["can_validate_pf1000_startup"] is False
+
+    hall = records["neon_gaspuff_hall_lhdi_resistivity"]
+    assert "hall" in hall["extracted_values"]["generalized_ohm_terms"]
+    assert hall["extracted_values"]["eta_total"] == "eta_s + eta_star"
+    assert hall["runtime_claim_impact"]["can_accept_dpf_transport_closure"] is False
+
+    nrl = records["nrl_2019_transport_core_formulary"]
+    assert nrl["source_lines"]["collisional_validity_limits"] == "3371-3383"
+    assert nrl["extracted_values"]["coulomb_log_typical_range"] == [10.0, 20.0]
+    assert nrl["extracted_values"][
+        "weakly_ionized_neutral_cross_section_cm2_typical"
+    ] == pytest.approx(5.0e-15)
+    assert nrl["runtime_claim_impact"]["can_support_regime_fail_closed_checks"] is True
+    assert nrl["runtime_claim_impact"]["can_accept_dpf_transport_closure"] is False
+
+    talebitaher = records["talebitaher_2012_nx2_detector_anisotropy"]
+    assert talebitaher["extracted_values"]["material_scatter_thermonuclear_anisotropy"] == pytest.approx(
+        1.140
+    )
+    assert talebitaher["extracted_values"]["deuteron_direction_model"] == (
+        "isotropic_within_forward_30deg_cone"
+    )
+    assert talebitaher["runtime_claim_impact"]["can_validate_pf1000_neutron_authority"] is False
+
+    klir = records["klir_2011_tof_detector_response_existing_target"]
+    assert klir["new_status"] == "already_target_extracted_in_kr_targets"
+    assert klir["extracted_values"]["single_neutron_signal_fwhm_s"] == pytest.approx(5.7e-9)
 
 
 def test_ir_mpf_100_source_deck_values_are_typed_and_source_scoped() -> None:

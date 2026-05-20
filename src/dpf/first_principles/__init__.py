@@ -83,6 +83,7 @@ from dpf.first_principles.source_targets import (
     gv_verified_shot_targets,
     may15_user_validated_source_targets,
     may16_validated_thesis_source_targets,
+    sprint4_source_available_target_extractions,
 )
 from dpf.first_principles.spatial_field_temperature import (
     build_spatial_field_temperature_packet,
@@ -177,6 +178,7 @@ __all__ = [
     "gv_verified_shot_targets",
     "may15_user_validated_source_targets",
     "may16_validated_thesis_source_targets",
+    "sprint4_source_available_target_extractions",
     "build_startup_bvp_packet",
     "build_waveform_phase_packet",
     "stable_vacuum_cfl_dt_s",

@@ -1489,3 +1489,414 @@ def pf1000_akel_source_packet_hashes(
             },
         ],
     }
+
+
+def sprint4_source_available_target_extractions() -> dict[str, object]:
+    """Return the Sprint 4 target-extraction packet for already-local KR sources.
+
+    This packet converts several ``source_available_not_target_extracted`` items
+    into line-referenced, typed extraction records.  It is deliberately
+    non-promoting: a target-extracted value may support a geometry or closure
+    review, but it does not by itself validate a PF-1000/Akel shot or close the
+    whole-shot first-principles certificate.
+    """
+
+    records: dict[str, dict[str, object]] = {
+        "pf1000_krasa_2008_vessel_geometry_and_scatter": {
+            "blocker_ids": [
+                "PF1000-BLK-021-chamber-wall-material-source_available_not_target_extracted",
+                "PF1000-BLK-022-chamber-wall-thickness-source_available_not_target_extracted",
+                "neutron_detector_response_scattered_direct_separation",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": (
+                "target_extracted_source_supported_geometry_context_"
+                "wrong_scope_for_akel_validation"
+            ),
+            "source": (
+                "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-"
+                "neutrons-caused-by-the-plasma-focus-vessel-527cc533.md"
+            ),
+            "source_lines": {
+                "vessel_geometry": "113-118",
+                "measurement_scope_and_scatter_role": "121-130",
+                "operating_point_and_electrodes": "132-140",
+                "anisotropy_scope": "269-275",
+                "tof_scatter_transform": "276-301",
+            },
+            "scope_tag": "pf1000_full_energy_450_500kj_3p5torr_vessel_scatter",
+            "extracted_values": {
+                "vessel_material": "stainless_steel",
+                "vessel_total_length_m": 3.2,
+                "vacuum_chamber_length_m": 2.5,
+                "vacuum_chamber_diameter_m": 1.4,
+                "average_wall_thickness_m": 0.010,
+                "collector_ring_diameter_m": 2.5,
+                "cable_count_not_in_simplified_model": 288,
+                "bank_energy_kJ_range": [450.0, 500.0],
+                "fill_pressure_torr": 3.5,
+                "copper_anode_diameter_m": 0.231,
+                "copper_anode_length_m": 0.600,
+                "outer_stainless_electrode_count": 12,
+                "outer_stainless_electrode_diameter_m": 0.080,
+                "outer_stainless_electrode_radius_m": 0.200,
+                "max_neutron_yield_per_shot_approx": 3.5e11,
+            },
+            "equation_targets": {
+                "tof_signal_kernel": "S(L,t) proportional to L^2/t^5 * f(L/t)",
+                "velocity_distribution_kernel": "f(v) proportional to v^-5 * S(L/v)",
+                "requires_direct_scattered_separation": True,
+            },
+            "uncertainty": "wall-thickness uncertainty not supplied",
+            "runtime_claim_impact": {
+                "can_support_chamber_wall_material_target": True,
+                "can_support_chamber_wall_thickness_target": True,
+                "can_support_detector_scatter_requirement": True,
+                "can_validate_akel_16kv_shot": False,
+                "transfer_rule_required_for_akel": True,
+            },
+        },
+        "pf1000_stepniewski_2004_hollow_anode_bore": {
+            "blocker_ids": [
+                "PF1000-BLK-009-anode-bore-radius-source_available_not_target_extracted",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "target_extracted_modeling_context_requires_review",
+            "source": "KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md",
+            "source_lines": {
+                "current_sheet_start_assumption": "306-309",
+                "simulation_geometry_parameters": "310-314",
+            },
+            "scope_tag": "pf1000_stepniewski_2004_simulation_geometry",
+            "extracted_values": {
+                "inner_electrode_radius_m": 0.12,
+                "outer_electrode_radius_m": 0.18,
+                "hollow_radius_centre_of_electrode_m": 0.015,
+                "electrode_length_m": 0.60,
+            },
+            "uncertainty": "not supplied",
+            "runtime_claim_impact": {
+                "can_support_anode_bore_candidate_review": True,
+                "can_promote_runtime_pf1000_geometry_field": False,
+                "reason_runtime_blocked": (
+                    "value is in a simulation-parameter section and still needs "
+                    "hardware-scope conflict review before source_geometry can "
+                    "use it as a PF-1000 mask dimension"
+                ),
+            },
+        },
+        "ucsd_beg_2026_current_sheath_startup": {
+            "blocker_ids": [
+                "whole_shot_startup_breakdown_flashover_liftoff",
+                "current_sheath_initiation_source_available_not_target_extracted",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "target_extracted_wrong_scope_startup_method_context",
+            "source": (
+                "KnowledgeReference/effect-of-current-sheath-initiation-on-the-"
+                "radial-collapse-and-energetic-particle-accelera-b2e95b88.md"
+            ),
+            "source_lines": {
+                "startup_sequence": "160-205",
+                "ucsd_device_and_diagnostics": "458-500",
+                "pressure_regimes_and_liftoff_scaling": "616-670",
+            },
+            "scope_tag": "ucsd_4p6kj_20kv_230_260ka_dpf_startup_context",
+            "extracted_values": {
+                "startup_sequence": [
+                    "surface_breakdown_at_insulator_sleeve",
+                    "lorentz_force_peeloff_from_insulator",
+                    "axial_rundown_sweeps_background_gas",
+                    "turnover_and_radial_compression_on_axis",
+                ],
+                "stored_energy_J": 4.6e3,
+                "voltage_V": 22.0e3,
+                "capacitance_F": 19.2e-6,
+                "inductance_H": 113.0e-9,
+                "resistance_ohm": 6.0e-3,
+                "quarter_period_s": 2.460e-6,
+                "peak_current_A": 260.0e3,
+                "peak_current_uncertainty_A": 13.0e3,
+                "anode_radius_m": 1.55e-2,
+                "anode_cathode_gap_m": 1.31e-2,
+                "insulator_outer_radius_m": 2.22e-2,
+                "insulator_inner_radius_m": 1.86e-2,
+                "insulator_length_m_range": [2.93e-2, 4.20e-2],
+                "deuterium_fill_pressure_torr_range": [1.0, 10.0],
+                "current_start_jitter_s": 100.0e-9,
+                "te_assumed_for_path_length_eV": 4.0,
+                "optimal_liz_over_li": 2.4,
+                "pressure_regimes_torr": {
+                    "low_diffuse_uniform_volume": [0.0, 0.75],
+                    "medium_surface_glide_avalanche": [0.75, 3.75],
+                    "high_radial_filament_bridge": [3.75, None],
+                },
+            },
+            "uncertainty": {
+                "peak_current_uncertainty_A": 13.0e3,
+                "current_start_jitter_s": 100.0e-9,
+                "te_path_length_assumption_eV": 4.0,
+            },
+            "runtime_claim_impact": {
+                "can_support_startup_bvp_requirement_terms": True,
+                "can_validate_pf1000_startup": False,
+                "reason_runtime_blocked": (
+                    "source is UCSD 4.6 kJ DPF, not PF-1000/Akel, and gives "
+                    "method/phenomenology targets rather than same-scope BVP "
+                    "initial/boundary data"
+                ),
+            },
+        },
+        "neon_gaspuff_hall_lhdi_resistivity": {
+            "blocker_ids": [
+                "electrical_transport_closure_hall_anomalous_resistivity",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "target_extracted_non_dpf_zpinch_closure_candidate",
+            "source": (
+                "KnowledgeReference/the-hall-term-and-anomalous-resistivity-"
+                "effects-in-neon-gas-puff-z-pinches.md"
+            ),
+            "source_lines": {
+                "generalized_ohm_and_closure_scope": "185-193",
+                "lhdi_resistivity_equation": "194-240",
+                "model_limitations": "241-266",
+            },
+            "scope_tag": "neon_gaspuff_cobra_perseus_xmhd_closure_context",
+            "extracted_values": {
+                "generalized_ohm_terms": [
+                    "hall",
+                    "resistive",
+                    "anomalous_resistivity",
+                ],
+                "eta_total": "eta_s + eta_star",
+                "eta_star_si": (
+                    "m_e * nu_eff / (n_e * e^2), approximated by a "
+                    "lower-hybrid-drift-instability term capped by B/(n_e*e)"
+                ),
+                "electron_drift_speed": "|u - J/(n_e*e)|",
+                "alpha_order": "order_unity_phenomenological_parameter",
+                "lhdi_requires_magnetized_electrons": "nu_eff < Omega_e",
+            },
+            "uncertainty": {
+                "phenomenological_alpha": "order unity, not source-calibrated for DPF",
+                "same_scope_dpf_evidence": False,
+            },
+            "runtime_claim_impact": {
+                "can_support_candidate_formula_review": True,
+                "can_accept_dpf_transport_closure": False,
+                "reason_runtime_blocked": (
+                    "source is neon gas-puff Z-pinch closure benchmarking, not "
+                    "a DPF same-scope transport closure"
+                ),
+            },
+        },
+        "nrl_2019_transport_core_formulary": {
+            "blocker_ids": [
+                "electrical_transport_closure_spitzer_braginskii_crosscheck",
+                "two_temperature_electron_ion_equilibration_source",
+                "weakly_ionized_conductivity_tensor_source",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "target_extracted_formulary_crosscheck_not_dpf_authority",
+            "source": "KnowledgeReference/2019nrlplasma-formulary-037290d4.md",
+            "source_lines": {
+                "bohm_spitzer_and_anomalous_collision_rate": "2698-2710",
+                "thermal_equilibration_and_coulomb_log": "2996-3038",
+                "multispecies_transport_equations": "3186-3222",
+                "large_field_transport_coefficients": "3229-3308",
+                "collisional_validity_limits": "3371-3383",
+                "weakly_ionized_transport": "3384-3428",
+            },
+            "scope_tag": "nrl_2019_formulary_transport_reference",
+            "extracted_values": {
+                "bohm_diffusion_cm2_per_s": "6.25e6 * T * B^-1",
+                "transverse_spitzer_resistivity_ohm_cm": (
+                    "1.03e-2 * Z * lnLambda * T^-3/2"
+                ),
+                "ion_sound_anomalous_collision_rate_s_inv": (
+                    "5.64e4 * ne^1/2 * W_tilde/(k*T)"
+                ),
+                "electron_ion_equilibration_rate_cm3_s_inv": (
+                    "3.2e-9 * Z^2 * lambda / (mu * T^3/2)"
+                ),
+                "coulomb_log_typical_range": [10.0, 20.0],
+                "transport_accuracy_order": "about_10_percent_when_lambda_large",
+                "electron_collision_time_s": (
+                    "3.44e5 * Te^3/2 / (n * lambda)"
+                ),
+                "ion_collision_time_s": (
+                    "2.09e7 * Ti^3/2 * mu^1/2 / (n * lambda)"
+                ),
+                "weakly_ionized_neutral_cross_section_cm2_typical": 5.0e-15,
+                "weakly_ionized_parallel_conductivity": (
+                    "n_alpha * e_alpha^2 / (m_alpha * nu_alpha)"
+                ),
+            },
+            "validity_limits": {
+                "macroscopic_rates_slow_vs_collision_time": True,
+                "macroscopic_lengths_large_vs_mean_free_path": True,
+                "coulomb_log_must_be_large": True,
+                "relative_drifts_small_vs_thermal_velocities": True,
+                "anomalous_microinstability_transport_negligible": True,
+            },
+            "uncertainty": {
+                "formulary_accuracy": "order_10_percent_when_lambda_large",
+                "direct_braginskii_table_coefficients_extracted": False,
+                "same_scope_dpf_evidence": False,
+            },
+            "runtime_claim_impact": {
+                "can_support_transport_formula_unit_tests": True,
+                "can_support_regime_fail_closed_checks": True,
+                "can_accept_dpf_transport_closure": False,
+                "reason_runtime_blocked": (
+                    "formulary equations are cross-check authority only; "
+                    "DPF closure acceptance still requires local DPF-regime "
+                    "source binding and Braginskii coefficient extraction"
+                ),
+            },
+        },
+        "talebitaher_2012_nx2_detector_anisotropy": {
+            "blocker_ids": [
+                "beam_target_ion_distribution_candidate",
+                "neutron_detector_response_and_anisotropy_candidate",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "target_extracted_nx2_detector_anisotropy_context",
+            "source": (
+                "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-"
+                "in-the-plasma-focus-device-9b79429f.md"
+            ),
+            "source_chunks": [
+                {
+                    "path": (
+                        "KnowledgeReference/chunks/"
+                        "coded-aperture-imaging-of-nuclear-fusion-in-the-"
+                        "plasma-focus-device-9b79429f/pages-0101-0125.md"
+                    ),
+                    "line_ranges": ["167-198", "1188-1268"],
+                },
+                {
+                    "path": (
+                        "KnowledgeReference/chunks/"
+                        "coded-aperture-imaging-of-nuclear-fusion-in-the-"
+                        "plasma-focus-device-9b79429f/pages-0151-0175.md"
+                    ),
+                    "line_ranges": ["170-245"],
+                },
+                {
+                    "path": (
+                        "KnowledgeReference/chunks/"
+                        "coded-aperture-imaging-of-nuclear-fusion-in-the-"
+                        "plasma-focus-device-9b79429f/pages-0201-0225.md"
+                    ),
+                    "line_ranges": ["390-486"],
+                },
+            ],
+            "scope_tag": "nx2_coded_aperture_and_be_activation_neutron_context",
+            "extracted_values": {
+                "be_sheet_dimensions_mm": [210.0, 106.0, 5.0],
+                "be_sheet_mass_g": 205.9,
+                "effective_cross_section_cm2": 0.57,
+                "be_detector_distance_from_anode_tip_m": 0.25,
+                "modeled_source_cylinder_diameter_m": 2.0e-3,
+                "modeled_source_cylinder_length_m": 10.0e-3,
+                "deuteron_direction_model": "isotropic_within_forward_30deg_cone",
+                "thermonuclear_neutron_energy_MeV": 2.45,
+                "material_scatter_thermonuclear_anisotropy": 1.140,
+                "vacuum_thermonuclear_anisotropy": 1.00,
+                "cai_camera_count": 5,
+                "cai_camera_angles_deg": [0.0, 45.0],
+                "camera0_source_to_mask_m": 0.103,
+                "camera0_mask_to_detector_m": 0.065,
+                "camera45_source_to_mask_m": 0.049,
+                "camera45_mask_to_detector_m": 0.034,
+                "mask_square_side_m": 8.0e-3,
+                "mask_pixel_side_m": 4.0e-4,
+                "mask_open_hole_count": 57,
+                "expected_fusion_source_diameter_m": 3.0e-3,
+                "expected_fusion_source_length_m": 11.0e-3,
+            },
+            "uncertainty": {
+                "figure_table_digitization_required": True,
+                "real_deuteron_distribution_known": False,
+                "scope_is_nx2_not_pf1000": True,
+            },
+            "runtime_claim_impact": {
+                "can_support_detector_forward_model_design": True,
+                "can_support_beam_target_distribution_candidate": True,
+                "can_validate_pf1000_neutron_authority": False,
+            },
+        },
+        "klir_2011_tof_detector_response_existing_target": {
+            "blocker_ids": [
+                "klir_2011_detector_response_source_available_not_target_extracted",
+            ],
+            "old_status": "source_available_not_target_extracted",
+            "new_status": "already_target_extracted_in_kr_targets",
+            "source": (
+                "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-"
+                "measurements-in-z-pinch-and-plasma-focus-214fbdae.md"
+            ),
+            "source_lines": {
+                "use_scope_and_sensitivity": "78-102",
+                "scintillator_and_pmt_design": "118-138",
+                "shielding_and_pf1000_stand": "154-170",
+                "temporal_resolution": "171-198",
+                "pmt_delay_calibration": "199-207",
+            },
+            "existing_target_function": (
+                "dpf.validation.kr_targets."
+                "klir_2011_tof_detector_response_targets"
+            ),
+            "scope_tag": "tof_detector_response_2011_klir",
+            "extracted_values": {
+                "detector_material": "Saint Gobain BC-408",
+                "front_diameter_m": 45.0e-3,
+                "thickness_m": 50.0e-3,
+                "single_neutron_signal_fwhm_s": 5.7e-9,
+                "single_neutron_signal_fwhm_uncertainty_s_2sigma": 0.6e-9,
+                "pmt_delay_uncertainty_s_less_than": 1.0e-9,
+                "absolute_yield_calibration_energy_MeV": 2.45,
+            },
+            "uncertainty": {
+                "digitized_voltage_response_curve_missing": True,
+                "absolute_sensitivity_curve_extraction_missing": True,
+            },
+            "runtime_claim_impact": {
+                "can_support_detector_response_requirement": True,
+                "can_validate_neutron_history_without_same_detector_mapping": False,
+            },
+        },
+    }
+
+    return {
+        "packet_id": "sprint4_source_available_target_extractions_2026_05_20",
+        "status": "target_extracted_fail_closed_nonvalidating",
+        "accepted_for_whole_shot_first_principles": False,
+        "target_record_count": len(records),
+        "target_records": records,
+        "claim_impacts": {
+            "pf1000_chamber_wall_material_and_thickness": (
+                "target_extracted_for_geometry_context"
+            ),
+            "pf1000_hollow_anode_bore": (
+                "target_extracted_but_runtime_authority_still_blocked"
+            ),
+            "neutron_detector_response": (
+                "klir_existing_target_plus_krasa_scatter_requirement"
+            ),
+            "startup_bvp": "method_context_extracted_wrong_scope",
+            "electrical_transport": "candidate_formula_extracted_wrong_scope",
+            "beam_target_anisotropy": "nx2_context_extracted_wrong_scope",
+            "transport_formulary": "nrl_crosscheck_extracted_not_dpf_authority",
+            "akel_16kv_validation_certificate": "still_blocked_same_scope_gap",
+        },
+        "remaining_blockers_after_extraction": [
+            "PF-1000 insulator wall thickness remains no-KR-source",
+            "PF-1000 backplate dimensions remain no-KR-source",
+            "D2 Townsend/Paschen constants remain genuine acquisition targets",
+            "restrike equation remains genuine acquisition/review target",
+            "PF-1000/Akel 16 kV V(t), Te/Ti, X-ray, spectrum/aniso remain absent",
+        ],
+    }
