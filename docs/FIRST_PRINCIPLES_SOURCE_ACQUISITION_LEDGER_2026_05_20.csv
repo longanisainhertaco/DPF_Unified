@@ -1,0 +1,24 @@
+source_id,priority,source,resolves_blockers,already_in_kr,on_disk_path,external_required,notes,last_verified_commit
+bennett_2017_startup,P1,Bennett et al. 2017 Phys Plasmas 24:062705 DOI 10.1063/1.4985313,STARTUP-BVP-CH03;STARTUP-BVP-CH04;STARTUP-BVP-CH07;STARTUP-BVP-CH08,false,archive_reference_OLD/references/papers/core-dpf/schmidt-2017-kinetic-dpf-breakdown.pdf,false,mislabelled on disk as schmidt 2017; promote and target extract without accepting startup BVP,8e6b5e9
+braginskii_1965_transport,P1,Braginskii 1965 Reviews of Plasma Physics Vol 1,CLOSURE-BLK-BRAG-001,false,archive_reference_OLD/references/papers/mhd-numerics/braginskii_1965.pdf,false,render or OCR p251 and pp249-253 before target extraction,8e6b5e9
+raizer_1991_gas_discharge,P1,Raizer 1991 Gas Discharge Physics second edition section 4,STARTUP-BVP-CH02,false,none,true,external acquisition for D2 Townsend and Paschen data or substitute LXCat,8e6b5e9
+lxcat_d2_datasets,P1,NIST LXCat database Phelps Morgan Biagi datasets,STARTUP-BVP-CH02;CLOSURE-BLK-D2-EN-001,false,online,true,external dataset acquisition for D2 transport and breakdown data,8e6b5e9
+brysk_1973_doppler,P1,Brysk 1973 Plasma Phys 15:1282,NEUTRON-BLK-004,false,none,true,foundational Doppler broadening derivation,8e6b5e9
+icru_49_stopping,P1,ICRU Report 49 1993 stopping powers,NEUTRON-BLK-002,false,none,true,deuteron stopping table source or equivalent required,8e6b5e9
+davidson_gladd_1975_lhdi,P1,Davidson and Gladd 1975 Phys Fluids 18:1327 DOI 10.1063/1.861021,CLOSURE-BLK-ANOM-001,false,none,true,quantitative LHDI anomalous transport derivation,8e6b5e9
+bruzzone_2001_lhi_pair,P1,Bruzzone and Bernal 2001 Nukleonika 46:59-61 plus Bruzzone 2001 Nukleonika 46:S3-S7,CLOSURE-BLK-ANOM-001,false,none,true,direct DPF LHI anomalous resistivity treatment,8e6b5e9
+scholz_gribkov_2007_part2,P2,Scholz Gribkov 2007 J Phys D 40:3592 DOI 10.1088/0022-3727/40/12/008,NEUTRON-BLK-001;NEUTRON-BLK-005,true,KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md,false,already in KR and needs PF1000 full energy target extraction only,8e6b5e9
+voronov_1997_ionization,P2,Voronov 1997 At Data Nucl Data Tables 65:1 DOI 10.1006/adnd.1997.0732,STARTUP-BVP-CH10;CLOSURE-BLK-ION-001,false,none,true,hydrogen ionization rate fit candidate,8e6b5e9
+janev_smith_1993_tecdoc,P2,Janev and Smith 1993 IAEA TECDOC 697,STARTUP-BVP-CH10;CLOSURE-BLK-ION-001,false,none,true,cross sections and rates for hydrogen,8e6b5e9
+itikawa_mason_2005_h2,P2,Itikawa and Mason 2005 J Phys Chem Ref Data 34:1 DOI 10.1063/1.1799251,CLOSURE-BLK-D2-EN-001,false,none,true,H2 cross sections with D2 isotope substitution caveat,8e6b5e9
+schmidt_2012_prl_pic,P2,Schmidt et al. 2012 Phys Rev Lett 109:205003,NEUTRON-BLK-001,false,none,true,fully kinetic PIC reference for fast ion distribution benchmarking,8e6b5e9
+hagstrum_1956_secondary_emission,P2,Hagstrum 1956 Phys Rev 104:317,STARTUP-BVP-CH05,false,none,true,Cu secondary emission plus Vaughan and CRC for ceramics,8e6b5e9
+miklaszewski_schmidt_pf1000_hardware,P2,Miklaszewski 2001 Nukleonika 46:S61-S64 or Schmidt 2002 Physica Scripta 66:168-172,PF1000-BLK-009,false,none,true,PF1000 commissioning or overview hardware source alternatives,8e6b5e9
+bernard_1977_dpf_review,P2,Bernard 1977 Limeil Julich Mather DPF review,NEUTRON-BLK-001;THERMONUCLEAR-PAIR-PREFACTOR,true,KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md,false,already in KR and needs target extraction with historical wrong scope tag,8e6b5e9
+talebitaher_2012_phd,P2,Talebitaher 2012 PhD thesis NX2 CAI,NEUTRON-BLK-001,true,downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/PhD2012AlirezaTalebitaher.pdf,false,already target extracted only for nx2_wrong_scope child context,8e6b5e9
+barbaglia_2010_multiple_pinch,P3,Barbaglia et al. 2010 Plasma Phys Control Fusion 52:032001,CLOSURE-BLK-REST-001,false,none,true,proxy only and not a direct DPF restrike equation,8e6b5e9
+janev_1987_hydrogen_helium,P3,Janev et al. 1987 Elementary Processes in Hydrogen Helium Plasmas,STARTUP-BVP-CH10,false,none,true,standard hydrogen molecular process reference,8e6b5e9
+yordanov_2003_photoemission,P3,Yordanov et al. 2003 Vacuum 76:365,STARTUP-BVP-CH06,false,none,true,Bennett 2017 photoemission reference,8e6b5e9
+glasstone_lovberg_1960_prefactor,P3,Glasstone and Lovberg 1960 Controlled Thermonuclear Reactions chapter 1,THERMONUCLEAR-PAIR-PREFACTOR,false,none,true,conditional external if Bernard does not yield identical particle pair counting derivation,8e6b5e9
+sagdeev_galeev_1969_nonlinear,P3,Sagdeev and Galeev 1969 Nonlinear Plasma Theory,CLOSURE-BLK-ANOM-001;CLOSURE-BLK-REST-001,false,none,true,optional foundational reference,8e6b5e9
+ipplm_facility_drawings,P4,IPPLM PF1000 facility engineering drawings,PF1000-BLK-015;PF1000-BLK-016;PF1000-BLK-017;PF1000-BLK-018,false,none,true,facility outreach required because these values are not in literature,8e6b5e9

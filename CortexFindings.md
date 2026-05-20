@@ -162,6 +162,19 @@ unverified Braginskii table/equation extraction details, shorthand KR citations,
 and unreconciled blocker/source counts. This does not promote any runtime or
 validation acceptance gate.
 
+2026-05-20 V2 handoff audit update: V2 now exists at
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_V2_2026_05_20.md` and
+is audited in
+`docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md`.
+The plan impact is to proceed into Sprint 5 as a source-to-runtime sprint:
+normalize the V2 rows into a machine-readable blocker/source ledger, execute
+the already-local target extractions, triage true external acquisitions,
+integrate the resulting packets into fail-closed runtime gates, and lock the
+comparator scope before any engineering-firm-facing claim. V2 is accepted as
+source-triage errata, but its count and table-schema defects must be fixed
+before implementation automation consumes it. No runtime or validation
+acceptance gate is promoted.
+
 2026-05-14 3D finish-line gate update: the new source has been converted into a
 concrete architecture gate rather than a loose literature note.
 `docs/FIRST_PRINCIPLES_3D_HYBRID_PIC_REVIEW_2026_05_14.md` now records the
@@ -6866,3 +6879,21 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   promotion did not change validation or runtime acceptance state. The promoted
   records remain `source_available_not_target_extracted` until source-fidelity
   review and typed target extraction are complete.
+
+### 2026-05-20: V2 Blocker-Handoff Ledgers Normalized
+
+- Work completed:
+  normalized the V2 blocker-resolution handoff into machine-checkable ledgers:
+  `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv` for the 31
+  blocker rows and
+  `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv` for the 23
+  source-acquisition rows.
+- Audit state:
+  the prior A1-A5 V2 bookkeeping issues are closed by the normalized ledgers
+  and by `tests/test_first_principles_v2_handoff_ledgers.py`, which prevents
+  count drift, field-count drift, shorthand source drift, and accidental
+  acceptance-flag promotion.
+- Boundary:
+  all rows remain fail-closed. This update does not accept a whole-shot
+  first-principles simulation, neutron mechanism authority, startup BVP,
+  transport closure, or same-scope validation certificate.

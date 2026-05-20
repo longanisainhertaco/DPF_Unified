@@ -63,6 +63,32 @@ Audit update 2026-05-20, external blocker-resolution handoff:
   startup BVP closure, neutron authority, transport closure, same-scope
   comparator, or validation certificate was promoted by this audit.
 
+Audit update 2026-05-20, V2 blocker-resolution handoff:
+
+- Audited
+  `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_V2_2026_05_20.md`
+  at HEAD `8e6b5e9`. The result and next plan are recorded in
+  `docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md`.
+- Verdict: V2 is accepted as the controlling errata for source triage, with
+  bookkeeping corrections required before it is converted into a
+  machine-readable Sprint 5 implementation ledger.
+- V2 correctly fixes the high-risk V1 science-state errors: Talebitaher,
+  Bernard 1977, and Gribkov Part II are treated as already local/current-KR
+  work; UCSD/Beg `massf` line coverage is corrected; Bennett 2017 timing is
+  corrected; Braginskii 1965 is held behind rendered/OCR verification; and
+  runtime acceptance remains false.
+- Remaining V2 defects are process/accounting issues: the domain-count prose
+  double-counts the thermonuclear prefactor, the source-acquisition table says
+  19 rows while showing 23, the per-blocker table schema is not uniform across
+  domains, Klir appears in the status distribution without a corresponding
+  blocker row, and one Bernard status string still drifts.
+- Verification: `.venv312/bin/python -m pytest
+  tests/test_external_team_submission_package.py -q` passed (`29 passed`);
+  `git diff --check HEAD~1 HEAD` passed.
+- Boundary: no first-principles runtime acceptance, whole-shot readiness,
+  startup BVP closure, neutron authority, transport closure, same-scope
+  comparator, or validation certificate was promoted by this audit.
+
 Plan update 2026-05-13, first-principles execution specification:
 
 - Rewrote `docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md` from a finish-line roadmap into a complete execution specification for a true first-principles DPF simulator.
@@ -6311,3 +6337,20 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   promotion is source ingestion only. Figures, tables, numeric targets, runtime
   closures, and first-principles claims remain unavailable until source-fidelity
   review and typed target extraction are complete.
+
+### 2026-05-20: V2 Blocker-Handoff Ledgers Normalized
+
+- Work completed:
+  closed the remaining V2 handoff bookkeeping defects by adding the normative
+  31-row blocker ledger
+  `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv` and the
+  23-row source-acquisition ledger
+  `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`.
+- Guardrail:
+  `tests/test_first_principles_v2_handoff_ledgers.py` now enforces the 31
+  blocker rows, status distribution, 23 source rows, 12 true P1/P2 external
+  acquisition rows, full field counts, and false runtime/acceptance flags.
+- Boundary:
+  this is audit and planning normalization only. No runtime module,
+  first-principles closure, neutron authority, same-scope comparator, validation
+  certificate, or engineering-firm-ready claim is promoted.

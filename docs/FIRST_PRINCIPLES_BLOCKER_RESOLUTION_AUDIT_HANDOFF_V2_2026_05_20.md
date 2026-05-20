@@ -23,7 +23,7 @@ is promoted by V2. Every `accepted_runtime_claim` is `false`.
 | V1 handoff commit | `8f6a0ae` | V1 doc. Superseded by this V2. |
 | Post-V1 housekeeping commit | `7999265` | Vetting + source-truth regen + gitignore. Periodic audit 10/10 PASS at this HEAD per `/private/tmp/dpf-unified-audit-logs/20260520T051600Z/summary.md`. |
 | Codex audit HEAD reviewed | `7999265` | The audit was performed against this HEAD. |
-| V2 commit (to be assigned at commit time) | (this commit) | Documentation-only V2 handoff; HEAD-exempt from `test_changelog_covers_all_commits_since_base`. |
+| V2 handoff commit | `8e6b5e9` | Documentation-only V2 handoff; superseded for automation by the normalized ledger added after Codex V2 audit. |
 
 The Codex audit at `7999265` accepts the qualitative direction of V1 and the
 periodic audit 10/10 PASS, then requires the V2 corrections.
@@ -36,9 +36,9 @@ are applied as follows.
 | # | Audit correction | V2 fix |
 | ---: | --- | --- |
 | 1 | Reconcile HEAD narrative | §1 lists every HEAD reference and which supersedes which. |
-| 2 | Fix category counts | §3 separates `blocker_count = 31 named items` from `source-acquisition_row_count = 19 sources`. |
-| 3 | Reclassify Talebitaher | `NEUTRON-BLK-001` row in §4 uses `corrected_status = already_target_extracted_in_kr_targets`; promotion not needed. |
-| 4 | Reclassify Bernard 1977 | `Thermonuclear 1/4 prefactor` and `NEUTRON-BLK-001` (historical context) rows in §4 use `existing_kr_review_pending`. |
+| 2 | Fix category counts | §3 separates `blocker_count = 31 named items` from `source-acquisition_row_count = 23 visible table rows`; normalized ledgers are now the automation source. |
+| 3 | Reclassify Talebitaher | `NEUTRON-BLK-001` keeps primary `corrected_status = existing_kr_target_extraction_pending`; Talebitaher is recorded only as already-target-extracted child context, not counted as a blocker-row status. |
+| 4 | Reclassify Bernard 1977 | `Thermonuclear 1/4 prefactor` and `NEUTRON-BLK-001` (historical context) rows in §4 use `existing_kr_target_extraction_pending`. |
 | 5 | Reclassify Gribkov Part II | `NEUTRON-BLK-001` (PF-1000 fast-ion) row uses `existing_kr_target_extraction_pending` citing `KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md`. |
 | 6 | Fix current-sheath line ranges | `STARTUP-BVP-CH12` row cites lines `597-601` (`massf`), `631-660` (pressure regimes / `Liz/Li`), `642-660` (Te ≈ 4 eV). Lines `615-670` from V1 are replaced. |
 | 7 | Correct Bennett timing | `STARTUP-BVP-CH08` row states 71 % current fraction observed at **1 µs** (not 500 ns); 100 ns / 500 ns / 1 µs contour targets retained. |
@@ -48,19 +48,20 @@ are applied as follows.
 
 ## 3. Executive Summary — corrected counts
 
-- **Blockers (named-ID items)**: 31. Counted by domain: 6 geometry + 13 startup-BVP channels + 5 transport/closures + 6 neutron + 1 thermonuclear-prefactor + 1 same-scope-comparator-decision. Each appears once as a row in §4.
-- **Source-acquisition rows**: 19. Counted in §5. Each row maps to ≥1 blocker. Multiple blockers may share a source (e.g., Bennett 2017 closes three startup-channel source-availability gaps).
-- **Status distribution across the 31 blockers**:
+- **Blockers (named-ID items)**: 31. Counted by domain: 6 geometry + 13 startup-BVP channels + 5 transport/closures + 6 neutron/mechanism rows including the thermonuclear prefactor + 1 same-scope-comparator decision. Each appears once in the normalized ledger.
+- **Source-acquisition rows**: 23 visible rows. Counted in §5 and normalized in `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`. Each row maps to one or more blockers. Multiple blockers may share a source (e.g., Bennett 2017 closes source-availability for three startup channels).
+- **Normative implementation ledger**: `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`. The Markdown tables below are human-readable summaries; automation and Sprint 5 implementation should consume the CSV ledger.
+- **Primary status distribution across the 31 normalized blocker rows**:
 
   | corrected_status | count |
   | --- | ---: |
-  | `existing_kr_source_supported` | 2 (cathode-cage radius; qualitative DPF anomalous resistivity) |
-  | `already_target_extracted_in_kr_targets` | 2 (Klir 2011 ToF, Talebitaher 2012 NX2 — already in `kr_targets.py`/`source_targets.py`) |
-  | `existing_kr_target_extraction_pending` | 5 (Scholz-Gribkov Part II for fast-ion; Bernard 1977 historical Ti/V(t); Plasma Focus Update Te filter-ratio; UCSD/Beg `massf` + pressure regimes; Stepniewski 2004 hardware-scope review) |
-  | `kr_promotion_recommended_pending_ocr_verification` | 1 (Braginskii 1965 — PDF present, table/equations not yet machine-verified) |
-  | `kr_promotion_recommended` | 1 (Bennett 2017 — closes startup-channel source-availability for CH03/CH04/CH08, partial CH07) |
-  | `external_acquisition_required` | 16 |
-  | `absent_from_literature` | 4 (PF-1000 insulator outer radius, insulator wall thickness, backplate radial extent, backplate axial thickness) |
+  | `existing_kr_source_supported` | 3 |
+  | `existing_kr_target_extraction_pending` | 4 |
+  | `kr_promotion_recommended` | 4 |
+  | `pdf_present_needs_rendered_page_or_ocr_verification` | 1 |
+  | `external_acquisition_required` | 13 |
+  | `dependency_blocked` | 1 |
+  | `absent_from_literature` | 5 |
 
   Sum = 31. `accepted_runtime_claim = false` on every row.
 
@@ -71,7 +72,7 @@ are applied as follows.
 
 ## 4. Per-Blocker Table (one row per blocker)
 
-Columns: `blocker_id` · `current_repo_status` · `corrected_status` · `source_or_acquisition` · `exact_path_or_full_citation` · `line_or_page_range` · `scope_tag` · `runtime_claim_allowed` · `remaining_action`.
+Columns in the normalized ledger: `blocker_id` · `current_repo_status` · `corrected_status` · `source_or_acquisition` · `exact_path_or_full_citation` · `line_or_page_range` · `scope_tag` · `runtime_claim_allowed` · `remaining_action`.
 
 `runtime_claim_allowed` is read as `accepted_runtime_claim`: it is `false`
 everywhere unless code, tests, certificate gate, and same-scope review all
@@ -80,6 +81,13 @@ exist. The audit's narrowing-of-language correction (§2 row 10) is enforced.
 `scope_tag` ∈ {`pf1000_full_energy`, `pf1000_akel_16kv`, `pf1000_generic`,
 `nx2_wrong_scope`, `historical_mather_wrong_scope`, `generic_formulary`,
 `external_candidate`, `absent`}.
+
+The Markdown tables in §4 are compact human-review summaries and are not the
+machine contract. Sprint 5 automation must use
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`, where every
+row has the same schema and explicit `runtime_claim_allowed=false`,
+`accepted_runtime_claim=false`, and
+`can_support_first_principles_acceptance=false`.
 
 ### 4.1 Geometry blockers (6)
 
@@ -170,7 +178,9 @@ Columns: `priority` · `source` · `resolves_blockers` · `already_in_kr` · `on
 | **P3** | Sagdeev & Galeev (1969) *Nonlinear Plasma Theory* Benjamin | `CLOSURE-BLK-ANOM-001`, `CLOSURE-BLK-REST-001` foundational | no | (none) | yes | Optional foundational reference |
 | **P4** | IPPLM facility engineering drawings | `PF1000-BLK-015`, `-016`, `-017`, `-018` | no | (none — not in any literature) | yes (facility) | Acquisition via M. Paduch / R. Miklaszewski; or IAEA CRP 11940/11941; or ICDMP workshop reports |
 
-(Sources counted: 19 distinct ones.)
+(Source-acquisition rows counted: 23 visible table rows. Some rows group closely
+related papers, such as the two Bruzzone 2001 sources and the
+Miklaszewski/Schmidt hardware-source alternatives.)
 
 ## 6. Reclassification Appendix — V1 → V2
 
@@ -184,7 +194,7 @@ Columns: `priority` · `source` · `resolves_blockers` · `already_in_kr` · `on
 | Braginskii 1965 Table 2 + Eqs. 4.30-4.45 | `KR_PROMOTION_RECOMMENDED` (V1) | `pdf_present_needs_rendered_page_or_ocr_verification` (V2) | `pdftotext` failed to expose Table 2 or Eqs. 4.30-4.45 (audit row 8). Page rendering or OCR required before target extraction. |
 | Generic language "promotion resolves blocker" | (used in V1 prose) | replaced by "closes source-availability and target-extraction blockers" or "creates KR text source" | Promotion creates a KR text source; target extraction creates typed source evidence; runtime acceptance requires code + tests + certificate gate (audit row 10). |
 | Shorthand KR citations (`experimental-study-...-705bcc83.md`) | partial shorthand (V1) | full `KnowledgeReference/...` paths on first mention (V2) | Audit row 9. |
-| Category counts (V1: 21 blockers vs 23 in category table vs ~20 acquisition rows) | inconsistent (V1) | 31 blockers, 19 sources, separate tables (V2) | Audit row 2. |
+| Category counts (V1: 21 blockers vs 23 in category table vs ~20 acquisition rows) | inconsistent (V1) | 31 normalized blocker rows and 23 visible source-acquisition rows, with separate CSV ledgers as the automation source | Audit row 2. |
 | HEAD references (V1: `022b774` / `da97ed2` mixed) | inconsistent (V1) | `022b774` → `da97ed2` → `8f6a0ae` → `7999265` → V2 HEAD; supersession explicit (V2) | Audit row 1. |
 
 ## 7. Audit-team Verification Checklist
@@ -205,7 +215,7 @@ For each row in §4 the audit team should:
 Sprint 5 may proceed if and only if:
 
 - The audit team has approved V2 corrections (or replaced specific rows).
-- The 11 P1+P2 external acquisitions have been triaged into MUST / SHOULD / DEFER for Sprint 5.
+- The 12 true external P1+P2 acquisition rows have been triaged into MUST / SHOULD / DEFER for Sprint 5.
 - The 1 KR promotion (Bennett 2017) and 1 KR-promotion-pending-OCR-verification (Braginskii 1965) are scheduled.
 - The 5 existing-KR target extractions (Scholz/Gribkov Part II, Bernard 1977, Plasma Focus Update Te filter-ratio, UCSD/Beg `:597-601`+`:631-660`, Stepniewski hardware-scope review) are scheduled.
 - The 4 `absent_from_literature` items (PF-1000 insulator outer radius, insulator wall thickness, backplate radial extent, backplate axial thickness) have an explicit decision: IPPLM facility outreach OR accept as structural gaps.
