@@ -49,6 +49,7 @@ are all under `docs/external_team_submissions/2026_05_18_three_sprint_blocker_pa
 | `4b080eb` | feat(first-principles): implement WP-N1B six-term Auluck power-port ledger (fail-closed) |
 | `4c8dac1` | feat(first-principles): implement WP-N4B cross-restart ledger merge and artifact combiner |
 | `93620ba` | docs: synchronize Sprint 2 packet hygiene and add consistency tests (F2/F3/F4) |
+| `49ead59` | docs: review sprint 3 source gap taxonomy |
 
 ### S3.1 Packet Hygiene and S3R Runtime Foundations
 
@@ -61,8 +62,8 @@ accepted physics or validation claim.
   `accepted_physics_delivered=false`, `validation_delivered=false`).
 - `sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md`: stale "Sprint 2.2 open",
   "WP-N2 not delivered", "WP-N5 closure registry not delivered" language replaced
-  with `research_packet_delivered`, `runtime_packet_not_delivered`,
-  `accepted_packet_not_delivered` distinctions.
+  with explicit research, runtime-foundation, accepted-physics, and validation
+  delivery distinctions.
 - `sprint_3/WP_N4_PERFORMANCE_AND_RUN_PLAN.md`: "unknown" grid size replaced
   with `blocked_by_missing_local_source`.
 - `sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md`: all `[KR: same file ...]`
@@ -99,6 +100,24 @@ only HEAD because the changelog is committed in the same commit that changes it
 `docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_COMPLETION_2026_05_19.md`,
 `docs/FIRST_PRINCIPLES_SPRINT3R_REMEDIATION_HANDOFF_2026_05_19.md`, and updates
 the active findings docs with the Sprint 3R gate decision.
+
+### Sprint 3R Remediation (closes Sprint 3 completion-audit findings A1-A12)
+
+`81c7481` — S3R.1 packet hygiene (closes A10, A11, A12-docs): 4-boolean
+delivery state (research_packet_delivered / runtime_foundation_delivered /
+accepted_physics_delivered / validation_delivered), BLOCKER_MATRIX rows no
+longer reference deleted `sprint_3/PENDING.md`, S3.1/S3.9 rows added to
+`CLAIMS_LEDGER.csv` and `TEST_MAP.csv`, WP-N5 shorthand `[KR: ...]` citations
+expanded to full `KnowledgeReference/<file>.md:<lines>` form,
+`first_principles/closures.py` → `closure_packet.py` and
+`first_principles/certificate.py` → `certificate_gate.py` corrected in
+`DPF_REQUIREMENTS_BASELINE`, `SRS_TRACEABILITY_MATRIX.{csv,json}`, packet
+CHANGELOG/CLAIMS_LEDGER/BLOCKER_MATRIX/SPRINT_3_STATUS_LEDGER,
+`tests/test_external_team_submission_package.py` strengthened to reject the
+stale `runtime_implementation_delivered` field, live `PENDING.md` references,
+broader shorthand citation forms, and the wrong module paths.
+`CodexFindings.md` and `CortexFindings.md` gain a `## Sprint 3R Status
+(2026-05-19)` section listing A1-A12.
 
 ## Changed paths
 

@@ -587,3 +587,203 @@ def test_startup_packet_is_typed_dataclass() -> None:
         for ref in c.source_refs
     )
     assert packet.channels == STARTUP_BVP_CHANNELS
+
+
+# ---------------------------------------------------------------------------
+# Group 8: A1 negative tests — typed packet is the single acceptance source
+#
+# These tests verify that the A1 finding (legacy acceptance path not bound to
+# the typed StartupPacket) is closed.  The typed packet always reports
+# can_support_first_principles_acceptance=False (WP-N2: all 13 channels are
+# candidate or blocked).  No caller-supplied payload, declared channels, or
+# review metadata may override this.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("mode", sorted(ACCEPTED_STARTUP_MODES))
+def test_accepted_mode_spoof_all_channel_names_stays_blocked(mode: str) -> None:
+    """Spoofing ALL REQUIRED_STARTUP_CHANNELS in an accepted-mode payload must
+    not promote acceptance: the typed StartupPacket remains blocked because no
+    channel has computed status (WP-N2), so status != accepted_startup_bvp_packet.
+    """
+    bvp = build_startup_bvp_packet(
+        {
+            "mode": mode,
+            "evidence_status": "accepted_same_scope_source",
+            "can_support_whole_shot_acceptance": True,
+            "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+            "startup_payload": {
+                "mode": mode,
+                "evidence_status": "accepted_same_scope_source",
+                "source_scope": "fake_full_payload_scope",
+                "can_support_whole_shot_acceptance": True,
+                "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+                # Inject every mode-required payload field as a non-None value
+                # so _startup_payload_review cannot block on missing fields.
+                **{
+                    field: {"spoofed": True}
+                    for field in (
+                        "mesh_mapping",
+                        "particles",
+                        "electron_density",
+                        "ion_density",
+                        "electron_temperature",
+                        "ion_temperature",
+                        "velocity",
+                        "electric_field",
+                        "magnetic_field",
+                        "current_density",
+                        "charge_consistency",
+                        "boundary_labels",
+                        "source_references",
+                        "hashes",
+                        "units",
+                        "conservation_checks",
+                        "surface_flashover_equations",
+                        "secondary_emission_or_material_model",
+                        "avalanche_streamer_closure",
+                        "preionization_model",
+                        "pressure_regime_classifier",
+                        "electrode_insulator_boundary_data",
+                        "verification_tests",
+                    )
+                },
+            },
+        }
+    )
+    # The typed packet blocks acceptance regardless of caller payload.
+    assert bvp["status"] != "accepted_startup_bvp_packet", (
+        f"accepted-mode '{mode}' spoof-all-channels payload promoted acceptance; "
+        "typed StartupPacket must be the single acceptance authority (A1)"
+    )
+    assert bvp["can_support_first_principles_acceptance"] is False
+    assert bvp["whole_shot_startup_blocked"] is True
+    # The embedded typed packet must also report blocked.
+    channel_packet = bvp["startup_channel_packet"]
+    assert channel_packet["can_support_first_principles_acceptance"] is False
+    assert channel_packet["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+
+
+@pytest.mark.parametrize("mode", sorted(ACCEPTED_STARTUP_MODES))
+def test_reviewed_evidence_without_source_hashes_stays_blocked(mode: str) -> None:
+    """A payload that declares reviewed evidence_status but omits source hashes
+    (i.e. no 'hashes' field) must stay blocked: reviewed status without
+    source-hash verification cannot promote acceptance (A1).
+    """
+    bvp = build_startup_bvp_packet(
+        {
+            "mode": mode,
+            "evidence_status": "reviewed",
+            "can_support_whole_shot_acceptance": True,
+            "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+            "startup_payload": {
+                "mode": mode,
+                "evidence_status": "reviewed",
+                "source_scope": "no_hash_scope",
+                "can_support_whole_shot_acceptance": True,
+                "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+                # Deliberately omit 'hashes' so payload_field_status has a gap.
+                "mesh_mapping": {"present": True},
+                "particles": {"present": True},
+                "electron_density": {"present": True},
+                "ion_density": {"present": True},
+                "electron_temperature": {"present": True},
+                "ion_temperature": {"present": True},
+                "velocity": {"present": True},
+                "electric_field": {"present": True},
+                "magnetic_field": {"present": True},
+                "current_density": {"present": True},
+                "charge_consistency": {"present": True},
+                "boundary_labels": {"present": True},
+                "source_references": {"present": True},
+                # hashes: intentionally absent
+                "units": {"present": True},
+                "conservation_checks": {"present": True},
+                "surface_flashover_equations": {"present": True},
+                "secondary_emission_or_material_model": {"present": True},
+                "avalanche_streamer_closure": {"present": True},
+                "preionization_model": {"present": True},
+                "pressure_regime_classifier": {"present": True},
+                "electrode_insulator_boundary_data": {"present": True},
+                "verification_tests": {"present": True},
+            },
+        }
+    )
+    assert bvp["can_support_first_principles_acceptance"] is False, (
+        f"mode '{mode}': reviewed evidence without source hashes promoted acceptance"
+    )
+    assert bvp["status"] != "accepted_startup_bvp_packet"
+    assert bvp["whole_shot_startup_blocked"] is True
+    # Typed packet remains blocked regardless.
+    assert (
+        bvp["startup_channel_packet"]["can_support_first_principles_acceptance"]
+        is False
+    )
+
+
+def test_candidate_seeded_layer_stays_blocked_for_whole_shot_startup() -> None:
+    """A seeded-layer startup with candidate-channel flags must remain blocked
+    for whole-shot startup: rejected mode cannot be rescued by any channel
+    declaration, and the typed packet provides an independent block (A1).
+    """
+    bvp = build_startup_bvp_packet(
+        {
+            "mode": "seeded_layer",
+            "evidence_status": "accepted_same_scope_source",
+            "can_support_whole_shot_acceptance": True,
+            "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+            "missing_channels": (),
+        }
+    )
+    # Mode-level block (rejected class)
+    assert bvp["status"] == "rejected_startup_mode_for_first_principles"
+    assert bvp["startup_mode_class"] == "rejected_for_accepted_claims"
+    assert bvp["whole_shot_startup_blocked"] is True
+    assert bvp["can_support_whole_shot_acceptance"] is False
+    assert bvp["can_support_first_principles_acceptance"] is False
+    # Typed packet independent block
+    assert (
+        bvp["startup_channel_packet"]["can_support_first_principles_acceptance"]
+        is False
+    )
+
+
+def test_cli_reports_typed_startup_packet_blocker() -> None:
+    """The CLI first-principles-3d run must report the typed startup packet
+    blocker in the output, confirming the typed packet's block is surfaced to
+    the user (A1 requirement: typed packet is the visible authority).
+    """
+    from dpf.first_principles.runner import run_first_principles_3d_deck
+
+    result = run_first_principles_3d_deck(
+        {
+            "n_steps": 1,
+            "grid_shape": (4, 4, 4),
+            "dt_s": 1.0e-13,
+            "startup_mode": "surface_breakdown_bvp",
+            "startup_evidence_status": "accepted_same_scope_source",
+            "startup_can_support_whole_shot_acceptance": True,
+            "startup_accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+            "startup_missing_channels": (),
+        }
+    )
+    startup = result.telemetry["startup"]
+    channel_packet = startup["startup_channel_packet"]
+    # Typed packet must be present and blocked.
+    assert channel_packet["packet_type"] == (
+        "first_principles_startup_bvp_channel_packet"
+    )
+    assert channel_packet["can_support_first_principles_acceptance"] is False
+    assert channel_packet["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+    # The blocker IDs must be populated (one per non-computed channel).
+    assert len(channel_packet["blocker_ids"]) > 0
+    # The outer startup packet must be blocked too.
+    assert startup["can_support_first_principles_acceptance"] is False
+    assert startup["whole_shot_startup_blocked"] is True
+    # Certificate gate must propagate the block.
+    gate = result.telemetry["certificate_gate"]
+    assert gate["can_support_first_principles_acceptance"] is False

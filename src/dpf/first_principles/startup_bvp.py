@@ -207,7 +207,16 @@ def build_startup_bvp_packet(
     candidate_breakdown_audit: Mapping[str, Any] | None = None,
     accepted_channels: tuple[str, ...] | list[str] = (),
 ) -> dict[str, Any]:
-    """Return a startup packet that rejects non-source-backed whole-shot starts."""
+    """Return a startup packet that rejects non-source-backed whole-shot starts.
+
+    Acceptance is bound to the typed StartupPacket (build_startup_packet).
+    Per WP-N2 all 13 startup channels are candidate or blocked — none is
+    computed — so the typed packet always reports
+    can_support_first_principles_acceptance=False, which permanently prevents
+    status='accepted_startup_bvp_packet' regardless of caller-declared
+    accepted_channels or payload flags.  Caller-supplied channel payloads are
+    preserved as engineering telemetry only.
+    """
 
     mode = str(startup.get("mode", "not_declared"))
     evidence_status = str(startup.get("evidence_status", "not_reviewed"))
@@ -230,6 +239,13 @@ def build_startup_bvp_packet(
     missing = set(REQUIRED_STARTUP_CHANNELS) - accepted
     missing.update(str(channel) for channel in startup.get("missing_channels", ()))
 
+    # Build the typed packet first: it is the single acceptance authority.
+    # can_support is gated on typed_packet.can_support_first_principles_acceptance
+    # so no caller-declared accepted_channels or payload flag can promote
+    # acceptance while the typed packet remains blocked (A1 fix).
+    typed_packet = build_startup_packet()
+    typed_packet_accepts = typed_packet.can_support_first_principles_acceptance
+
     whole_shot_requested = bool(startup.get("can_support_whole_shot_acceptance"))
     mode_is_accepted = mode in ACCEPTED_STARTUP_MODES
     reviewed = evidence_status in {"reviewed", "accepted", "accepted_same_scope_source"}
@@ -237,7 +253,8 @@ def build_startup_bvp_packet(
         startup_payload_review["channel_acceptance_eligible"]
     )
     can_support = (
-        whole_shot_requested
+        typed_packet_accepts
+        and whole_shot_requested
         and mode_is_accepted
         and reviewed
         and not missing
@@ -272,7 +289,7 @@ def build_startup_bvp_packet(
             candidate_inputs=candidate_inputs,
         ),
         "candidate_input_channels": sorted(candidate_inputs),
-        "startup_channel_packet": build_startup_packet().as_dict(),
+        "startup_channel_packet": typed_packet.as_dict(),
         "startup_payload_review": startup_payload_review,
         "candidate_breakdown_audit": _candidate_breakdown_audit_packet(
             candidate_breakdown_audit
