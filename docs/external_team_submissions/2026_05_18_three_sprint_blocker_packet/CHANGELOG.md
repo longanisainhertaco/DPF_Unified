@@ -657,6 +657,49 @@ can become `accepted_physics_module`). Adds
 triple-verification invariant. No physics is accepted by adding these
 artifacts — they define the only future promotion path.
 
+`b287a66` — style(tests): fix ruff I001 + B905 in V2 handoff and
+acceptance-protocol ledger tests. Two new test files (`test_first_principles_
+v2_handoff_ledgers.py`, `test_first_principles_physics_acceptance_protocol.py`)
+introduced by 85a7f05 and 4cb260c tripped the periodic-audit `ruff_src_tests`
+gate with 4 errors; ruff --fix resolved the I001 import-sort and explicit
+`strict=True` was added to the two `zip(header, row)` sites (each is
+preceded by an `assert not bad_rows` length guard, so `strict=True` is the
+correct semantic).
+
+### Sprint 5 WS2 target extractions + x-ray inconsistency fixes
+
+Adds the seven Sprint 5 Workstream-2 target-extraction packets specified by
+`docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md`:
+Bennett 2017 (kinetic DPF breakdown, mislabeled PDF — actual authors are
+Bennett et al.); Braginskii 1965 (Table 2 at journal p.251 / PDF p.26
+**RENDER-VERIFIED** via the Read-tool PDF page renderer with 13 spot-checked
+Z=1/2/3/4/inf coefficients; closes the Codex V1 row 8 downgrade); Scholz/
+Gribkov 2007 Part II (PF-1000 full-energy fast-deuteron, Y0/Y90 = 1.8 at
+shot 3121 / 35 kV / 0.810 MJ); Bernard 1977 (filament-phase Ti = 700 eV
+historical; thermonuclear 1/4 prefactor **VERIFIED NOT FOUND**); UCSD/Beg
+current-sheath (audit row 6 line-range corrections confirmed: massf at
+`:597-601`, Paschen regimes at `:631-640`, Te ≈ 4 eV at `:642-644`,
+Liz/Li = 2.4 at `:654-660`); Stepniewski 2004 (formal review; stays blocked
+as simulation-parameter context); Plasma Focus Update 2021 (third hardware
+source confirming cathode-cage 200 mm; Te = 7.5 keV filter-ratio text-only
+with strong method caveats; **audit correction**: 320/500 keV deuteron is
+FF-1 / Lerner, NOT PF-1000). All 7 packets carry
+`accepted_runtime_claim = false` and `can_support_first_principles_
+acceptance = false`. 17 new tests pass. X-ray inconsistency fixes:
+`closure_packet.py:402-413` corrected "Table 1" → "Table 2" with render-
+verified evidence cite; `neutron_authority.py:16` stale WP-N6 mechanism-map
+counts replaced by an authoritative pointer to the V2 blocker-resolution
+ledger and the Sprint 4 P4 Bosch-Hale / scope-mismatch label additions;
+`startup_bvp.py:15-21` stale "11 channels" replaced by "13 channels
+(CH01-CH13)" with the Sprint 5 numeric targets cited. New memo
+`docs/SPRINT5_FREE_ACQUISITIONS_2026_05_20.md` lists six free-download or
+free-substitute paths for V2 P1/P2 external-acquisition blockers
+(Bruzzone ×2 + Miklaszewski 2001 ICHTJ open-access; LXCat D₂; SRIM-2013
+deuteron stopping; OSTI/Munro Brysk re-derivation; PlasmaPy Braginskii
+cross-check) — all URLs HTTP-200-verified during the x-ray pass.
+
+## Notes on CHANGELOG conventions
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.

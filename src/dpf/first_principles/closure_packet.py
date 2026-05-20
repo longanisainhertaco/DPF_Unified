@@ -402,9 +402,14 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
             "missing_parameter_absence": _absent(
                 "the in-code Braginskii alpha(Z)/delta_e(Z) Z-dependent "
                 "correction coefficients are not tabulated in the local NRL "
-                "extract; Braginskii (1965) Table 1 is not in the corpus; "
-                "the PDF exists at archive_reference_OLD/references/papers/"
-                "mhd-numerics/braginskii_1965.pdf but has no KR extract -- "
+                "extract; Braginskii (1965) Table 2 (Z=1,2,3,4,inf "
+                "transport-coefficient families) at journal p.251 is "
+                "render-verified on disk per "
+                "src/dpf/first_principles/sprint5_target_extractions.py::"
+                "BRAGINSKII_1965_TRANSPORT_EXTRACTION but is not yet "
+                "promoted into a KR target-extracted file; the PDF exists "
+                "at archive_reference_OLD/references/papers/"
+                "mhd-numerics/braginskii_1965.pdf -- "
                 f"{CLOSURE_BLK_BRAG_001}",
                 (
                     "braginskii_alpha_Z_and_delta_e_Z_table",

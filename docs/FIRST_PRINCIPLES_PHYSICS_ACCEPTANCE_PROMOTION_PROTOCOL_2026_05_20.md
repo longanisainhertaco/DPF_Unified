@@ -166,6 +166,45 @@ Acceptance requires:
 Comparator/certificate work is the only path to
 `validated_scope_certificate`.
 
+### Package-Native 3-D Acceptance Contract
+
+The package-native 3-D runner cannot be promoted by virtue of running
+end-to-end. It must emit the same acceptance contract consumed by the legacy
+`first_principles_mhd` readiness gate and by the certificate gate.
+
+Required fields:
+
+- effective backend and requested backend;
+- requested run mode and execution mode;
+- limiter ledger and backend-scope status;
+- manifest hashes and source-packet hashes;
+- conservation and power-port residual budgets;
+- telemetry-packet hashes for startup, geometry, closure, neutron, comparator,
+  numerical, and certificate packets;
+- explicit candidate/blocked/accepted state for every packet.
+
+The contract fails if package-native evidence is available only through a CLI
+engineering wrapper or if any acceptance gate has to infer field meaning from
+runner-specific names.
+
+### Claim-Limited Certificates And Excluded Observables
+
+Some selected scopes may lack same-scope measurement for a requested observable.
+That does not permit a fake acceptance state. The only allowed exclusion state
+is `observable_excluded_not_validated`.
+
+Rules:
+
+- excluded observables do not count as accepted comparator evidence;
+- excluded observables must appear in the certificate claim text;
+- the simulator must still provide model initialization, source basis,
+  sensitivity/UQ, and negative tests for excluded physics if that physics
+  affects other validated observables;
+- any certificate that claims validation of an excluded observable must fail.
+
+The rejected state name is `caveat_accepted`; it is too easy to confuse with
+actual accepted evidence.
+
 ## Sprint 5/6 Execution Plan
 
 ### Sprint 5A - Source Packets
@@ -195,6 +234,23 @@ Wire source packets into fail-closed registries:
 Exit condition: every registry can report `source_supported`,
 `implemented_candidate`, `external_blocked`, or `absent` without using
 placeholders in accepted mode.
+
+### Sprint 5B-0 - Acceptance Contract Plumbing
+
+Before promoting any package-native 3-D physics, implement the
+`package_native_3d_acceptance_contract` gate:
+
+1. add shared package-native acceptance fields to runner, CLI, server readiness,
+   and certificate packets;
+2. map legacy `first_principles_mhd` backend-scope checks onto the
+   package-native contract without making the package-native path accepted by
+   default;
+3. add negative tests for missing backend labels, missing limiter ledger,
+   missing backend-scope status, mismatched manifest hashes, and hidden
+   engineering-only telemetry.
+
+Exit condition: a package-native run can explain exactly why it is accepted,
+candidate-only, or blocked using the same schema as the legacy readiness gate.
 
 ### Sprint 5C - Triple Verification Pass
 

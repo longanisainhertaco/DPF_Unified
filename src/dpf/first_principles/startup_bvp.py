@@ -12,12 +12,24 @@ This module carries two layers:
   source references, units, symbol map, input dependencies, output fields,
   blocker reason, and effect on the first-principles claim.
 
-The per-channel statuses are fixed by the WP-N2 research packet
-``docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md``,
-which classified all 11 physics channels as ``candidate`` and ``0`` as
-``supported`` for a DPF-specific startup BVP. No channel is promoted to
-``computed`` here: the local corpus does not supply a DPF-specific closure for
-any startup channel, so the typed packet always reports
+The per-channel set originates from the WP-N2 research packet
+``docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N2_STARTUP_BVP_CHANNEL_MATRIX.md``
+and was extended in Sprint 3R / Sprint 4 to the current
+``REQUIRED_STARTUP_CHANNELS`` list of 13 channels (``STARTUP-BVP-CH01`` ..
+``STARTUP-BVP-CH13``). The Sprint 4 Priority 2 audit confirmed 0 of 13
+channels source-supported for a DPF-specific startup BVP; the V2 audit-
+handoff ledger
+``docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`` is the
+authoritative per-channel status source. Sprint 5 WS2 extractions
+(``sprint5_target_extractions.py::BENNETT_2017_STARTUP_EXTRACTION`` and
+``UCSD_BEG_CURRENT_SHEATH_EXTRACTION``) document numeric targets for CH03
+(seed density 1e7 cm^-3), CH04 (Bennett pressure regimes + ~20 ns breakdown
+delay), CH07 (250 / 10 kV/cm explosive-emission thresholds + Te ~ 4 eV),
+CH08 (1e13/1e15 cm^-3 density contours at 100 ns / 1 us; 71 % sheath current
+fraction at 1 us — Codex audit row-7 correction confirmed), and CH12 method
+context (UCSD/Beg ``massf = 0.4 p0^-1/2``, Liz/Li = 2.4, ``:597-601``). None
+of these are yet consumed by this runtime module, so every channel remains
+``candidate`` or ``blocked`` and the typed packet always reports
 ``can_support_first_principles_acceptance = False``.
 """
 

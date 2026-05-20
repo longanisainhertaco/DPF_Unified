@@ -55,8 +55,16 @@ def test_physics_acceptance_gate_ledger_requires_triple_verification() -> None:
     header, records = _read_csv(GATE_LEDGER)
 
     assert header == GATE_HEADER
-    assert len(records) >= 10
+    assert len(records) >= 13
     assert len({row["item_id"] for row in records}) == len(records)
+    records_by_id = {row["item_id"]: row for row in records}
+    assert "package_native_3d_acceptance_contract" in records_by_id
+    assert records_by_id["package_native_3d_acceptance_contract"][
+        "accepted_physics_allowed"
+    ] == "false"
+    assert "FIRST-PRINCIPLES-MHD-GATE-PARITY" in records_by_id[
+        "package_native_3d_acceptance_contract"
+    ]["required_blocker_ids"]
 
     for row in records:
         assert row["other_team_verification_required"] == "true"
@@ -83,6 +91,9 @@ def test_protocol_defines_acceptance_without_promoting_current_physics() -> None
         "validated_scope_certificate",
         "KnowledgeReference/",
         "every physics item remains unaccepted",
+        "Package-Native 3-D Acceptance Contract",
+        "observable_excluded_not_validated",
+        "caveat_accepted",
     ]
     for phrase in required_phrases:
         assert phrase in text
@@ -99,4 +110,7 @@ def test_next_plan_references_physics_acceptance_protocol_and_ledger() -> None:
         "docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv"
         in text
     )
+    assert "package_native_3d_acceptance_contract" in text
+    assert "observable_excluded_not_validated" in text
+    assert "caveat_accepted" in text
     assert "other-team pass, Codex pass, and automated" in text

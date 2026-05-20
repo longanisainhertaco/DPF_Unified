@@ -13,9 +13,24 @@ The neutron-authority interface is mechanism-separated and fail-closed:
   status and source references; an absent or uncited channel stays blocked.
 - Scalar total yield is never mechanism authority. It is recorded only as
   ``same_scope_scalar_yield`` and tagged ``candidate_comparator_only``.
-- WP-N6 §2 mechanism map: ``supported`` 0, ``candidate`` 5, ``blocked`` 4.
-  Mechanism authority stays blocked until every mechanism and detector packet
-  exists with a reviewed same-scope source and a passed review certificate.
+- Channel mechanism map: see ``REQUIRED_NEUTRON_CHANNELS`` and
+  ``NEUTRON_BLOCKER_IDS`` for the authoritative list. The Sprint 4 Priority 4
+  update added three scope-mismatched method-context labels (Talebitaher 2012
+  NX2, Krasa 2008 PF-1000 full-energy, Klir 2011 ToF; each
+  ``can_promote_authority = False``) and attached Bosch-Hale 1992 D-D
+  cross-section to the thermonuclear channel, upgrading it from
+  ``missing_or_blocked`` to ``inferred_candidate`` (still non-accepting; the
+  1/4 volumetric prefactor is uncited per WP-N6 §4 and is verified NOT FOUND
+  in Bernard 1977 per the Sprint 5 extraction packet). The V2 audit-handoff
+  ledger
+  ``docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`` is the
+  authoritative per-blocker source-availability source: NEUTRON-BLK-001 has
+  been reclassified V1→V2 from ``external_acquisition_required`` to
+  ``existing_kr_target_extraction_pending`` (Scholz/Gribkov Part II is
+  already in KR at ``KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md``
+  per the Codex audit). Mechanism authority stays blocked until every
+  mechanism and detector packet exists with a reviewed same-scope source and
+  a passed review certificate.
 - Uncited coefficients found by WP-N6 §4 (the ``1/4`` thermonuclear volumetric
   prefactor, the ``82.5*sqrt(Ti)`` "Brysk 1973" Doppler width in
   ``neutron_tof.py``, the ``1+0.3*sqrt(E/100)`` beam-target anisotropy law in

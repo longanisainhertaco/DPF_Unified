@@ -6370,3 +6370,20 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   every current acceptance-gate row remains `accepted_physics_allowed=false`.
   The protocol defines how to promote physics later; it does not promote any
   module, whole-shot, neutron, startup, transport, or validation claim now.
+
+### 2026-05-20: Team Finding Added To Handoff As P0 Contract Blocker
+
+- Work completed:
+  reviewed the team's claim about package-native 3-D not matching the
+  first-principles MHD acceptance gate and updated the handoff plus acceptance
+  protocol. The issue is now tracked as
+  `package_native_3d_acceptance_contract` in
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`.
+- Finding:
+  the runner/gate mismatch is real. The package-native runner and CLI expose
+  engineering telemetry, but the legacy readiness gate expects a different
+  top-level acceptance contract.
+- Boundary:
+  the proposed Te/Ti `caveat_accepted` shortcut is rejected. The only allowed
+  path is `observable_excluded_not_validated` for claim-limited certificates;
+  excluded observables cannot count as accepted comparator evidence.

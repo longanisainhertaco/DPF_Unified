@@ -6913,3 +6913,19 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   this is the acceptance route, not acceptance itself. All current rows remain
   blocked/not accepted until source packets, implementation, numerical gates,
   and scope-appropriate comparator/certificate checks exist.
+
+### 2026-05-20: Team Finding Added To Handoff As P0 Contract Blocker
+
+- Work completed:
+  updated
+  `docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md`
+  and
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md`
+  to capture the team finding on package-native 3-D acceptance-contract parity.
+- Audit state:
+  the package-native 3-D runner/gate mismatch is now a tracked control-plane
+  blocker rather than an out-of-ledger concern.
+- Boundary:
+  no acceptance state changed. Te/Ti may be proposed as an explicitly excluded
+  non-validated observable for claim-limited certificates, but not as
+  `caveat_accepted` or accepted same-scope evidence.

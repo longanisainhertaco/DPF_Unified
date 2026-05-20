@@ -26,6 +26,19 @@ Resolution update after this audit:
   status distribution, 12 true P1/P2 external acquisition rows, and false
   acceptance flags.
 
+Team-finding review update:
+
+- A later team review correctly found a control-plane blocker that was not
+  represented in the first 31/23/acceptance-ledger pass: the package-native 3-D
+  runner and the legacy `first_principles_mhd` readiness gate do not yet share
+  one acceptance contract.
+- The mismatch is now tracked as
+  `package_native_3d_acceptance_contract` in
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`.
+- The Te/Ti concern is accepted only in its narrow form: same-scope PF-1000 bulk
+  pinch Te/Ti histories are not accepted for the selected certificate scope.
+  It is not true that no DPF Te/Ti evidence exists anywhere in the corpus.
+
 ## Verdict
 
 **V2 is accepted as the controlling errata for source triage, with bookkeeping
@@ -187,6 +200,54 @@ tests must reproduce hashes, units, conservation, numerical checks, and
 certificate rejections. Only rows that pass all three lanes at the same commit
 may move to `accepted_physics_module`.
 
+### Self-Review Of Team Finding - Runner/Gate Contract And Te/Ti
+
+The team's bottom-line warning was useful but mixed a true control-plane
+finding with an unsafe proposed shortcut.
+
+Validated finding:
+
+- `src/dpf/validation/first_principles_mhd.py:416-428` currently treats only a
+  non-fallback `python*` backend as instrumented for first-principles MHD
+  acceptance. Package-native 3-D, hybrid, Metal, MLX, Athena, and AthenaK paths
+  are blocked unless they provide backend-native limiter/parity evidence.
+- `src/dpf/first_principles/runner.py` returns a `HybridEMPicFluidRunResult`
+  whose `to_dict()` has no top-level `backend`, `requested_backend`,
+  `requested_run_mode`, `first_principles_limiter_ledger`, or
+  `first_principles_backend_scope` fields. Its CLI wrapper adds
+  `telemetry_packets`, `manifest`, and an engineering-firm dossier, but that is
+  not the same contract consumed by the legacy `first_principles_mhd` readiness
+  gate.
+- Therefore, fixing the 31 physics/source blockers alone would still not allow
+  the package-native 3-D path to receive credit from the legacy acceptance gate.
+  This is a real P0 control-plane blocker, now tracked in the gate ledger as
+  `package_native_3d_acceptance_contract`.
+
+Rejected overclaim:
+
+- The statement "Te/Ti measurements don't exist for any DPF in pinch phase" is
+  too broad. `KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md:455-461`
+  reports a 700 eV deuteron temperature in a historical DPF filament phase, and
+  `KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0026-0050.md:512-517`
+  reports PF-1000 local hot-spot electron-temperature text. Neither closes
+  accepted same-scope PF-1000 bulk pinch Te/Ti history for the selected
+  certificate scope.
+- A generic `caveat_accepted` state is not allowed. The permitted state is
+  `observable_excluded_not_validated`, and only for a claim-limited certificate
+  that explicitly excludes Te/Ti validation while still requiring model
+  initialization evidence, source basis, sensitivity/UQ, and negative tests
+  proving no Te/Ti validation claim is emitted.
+
+Required response to the team:
+
+1. Treat the runner/gate mismatch as a P0 control-plane workstream.
+2. Do not implement `caveat_accepted` for Te/Ti.
+3. Propose a claim-limited certificate design with
+   `observable_excluded_not_validated` channels, explicit claim text, UQ impact,
+   and certificate rejection tests.
+4. Preserve the fail-closed rule: excluded observables cannot count as accepted
+   comparator evidence.
+
 ### Sprint 5 Workstream 1 - Normalize The Handoff Into A Machine Ledger
 
 Deliverables:
@@ -283,6 +344,41 @@ Acceptance checks:
 - artifact linter rejects any accidental acceptance promotion.
 - focused tests cover all newly source-backed and still-blocked states.
 
+### Sprint 5 Workstream 4A - Package-Native 3-D Acceptance Contract
+
+Objective: make the package-native 3-D runner, CLI payload, server readiness
+surface, legacy `first_principles_mhd` readiness gate, and certificate gate
+consume the same fail-closed acceptance schema.
+
+Required deliverables:
+
+- a schema document or dataclass for package-native 3-D acceptance evidence;
+- top-level runner fields for `backend`, `requested_backend`,
+  `requested_run_mode`, `first_principles_limiter_ledger`,
+  `first_principles_backend_scope`, manifest hashes, and package-native
+  telemetry-packet hashes;
+- legacy readiness-gate support for the package-native contract, still
+  fail-closed until limiter, backend parity, conservation, source-packet, UQ,
+  and certificate evidence pass;
+- CLI and server payloads that preserve the same fields without renaming or
+  hiding them under engineering-only wrappers;
+- negative tests proving a package-native 3-D run cannot become accepted if any
+  required contract field is missing or inconsistent.
+
+Acceptance checks:
+
+- `package_native_3d_acceptance_contract` in
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`
+  remains `accepted_physics_allowed=false` until all three verification lanes
+  pass.
+- The old Python cylindrical path and the package-native 3-D path must both
+  report why they are accepted, candidate-only, or blocked using the same field
+  names.
+- No code may infer first-principles acceptance from
+  `scientific_status=engineering_candidate_not_validation`,
+  `command_status=package_native_first_principles_3d_engineering_run`, or the
+  mere presence of `telemetry_packets`.
+
 ### Sprint 5 Workstream 5 - Scope Decision
 
 The team must lock one of these before claiming comparator progress:
@@ -295,6 +391,40 @@ The team must lock one of these before claiming comparator progress:
 
 No engineering-firm-facing validation packet should be described as complete
 until this scope decision is locked.
+
+### Sprint 5 Workstream 5A - Claim-Limited Te/Ti Handling
+
+The selected certificate scope must decide whether Te/Ti is a validated
+observable or an explicitly excluded observable.
+
+Allowed state:
+
+- `observable_excluded_not_validated`: the simulator may run with source-backed
+  model-initialized Te/Ti and may report sensitivity/UQ, but the certificate
+  must state that Te/Ti was not validated against same-scope measurement.
+
+Forbidden state:
+
+- `caveat_accepted`: this wording is rejected because it blurs absence,
+  model-initialized state, and accepted comparator evidence.
+
+Required deliverables:
+
+- certificate schema update for excluded observables;
+- same-scope packet and comparator/UQ updates that keep excluded observables out
+  of accepted comparator counts;
+- tests proving excluded Te/Ti channels do not satisfy
+  `spatial_field_temperature_packet_accepted`, `same_scope_source_packet_accepted`,
+  or any whole-shot validation claim;
+- claim text template for engineering review packets that says exactly which
+  observables are validated and which are model-initialized only.
+
+Acceptance checks:
+
+- Te/Ti exclusion may unlock a claim-limited certificate only for observables
+  that remain validated after exclusion. It cannot validate Te/Ti itself.
+- Any certificate that claims Te/Ti validation must still require same-scope
+  Te/Ti evidence and must fail closed when that evidence is absent.
 
 ### Sprint 5 Workstream 6 - Physics Acceptance Promotion Gate
 
