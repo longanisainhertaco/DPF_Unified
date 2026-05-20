@@ -172,6 +172,21 @@ name exactly which first-principles modules are now source-supported,
 candidate-only, external-blocked, or absent, without promoting any validation
 claim.
 
+### Sprint 5 Promotion Objective
+
+The next-level handoff must also prepare the route from fail-closed source
+support to accepted physics. The controlling protocol is
+`docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md`;
+the machine-readable gate ledger is
+`docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`.
+
+No physics is accepted by adding these artifacts. They define the only future
+promotion path: the other team must submit evidence and implementation packets,
+Codex must independently re-audit the same sources and code, and executable
+tests must reproduce hashes, units, conservation, numerical checks, and
+certificate rejections. Only rows that pass all three lanes at the same commit
+may move to `accepted_physics_module`.
+
 ### Sprint 5 Workstream 1 - Normalize The Handoff Into A Machine Ledger
 
 Deliverables:
@@ -281,6 +296,28 @@ The team must lock one of these before claiming comparator progress:
 No engineering-firm-facing validation packet should be described as complete
 until this scope decision is locked.
 
+### Sprint 5 Workstream 6 - Physics Acceptance Promotion Gate
+
+Deliverables:
+
+- per-module acceptance packets named
+  `docs/physics_acceptance/<item_id>_packet.md`;
+- source target extracts linked to exact `KnowledgeReference/` files and line
+  or page ranges;
+- code paths and tests listed for every implemented module;
+- manifests proving artifact hashes and executable verification;
+- a reconciliation record showing other-team pass, Codex pass, and automated
+  gate pass at the same commit.
+
+Acceptance checks:
+
+- no row in `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`
+  may set `accepted_physics_allowed=true` without all three verification lanes;
+- accepted physics is module-scoped, not whole-shot validation;
+- same-scope validation remains a separate certificate-gated state;
+- failed or missing verification demotes the row back to `blocked_not_accepted`
+  or `implemented_candidate`.
+
 ## Explanation For Project Direction
 
 The team has moved us from "we have a pile of papers" to "we know which source
@@ -296,3 +333,8 @@ acquire the few external sources that are genuinely required, and make the code
 consume those packets through fail-closed registries. Once that is done, the
 experimental runner can advance with honest labels: "source-supported",
 "candidate", "external-blocked", or "absent", instead of relying on prose.
+
+The acceptance protocol adds the next step after that: a module can become
+accepted physics only when the other team, Codex, and the executable gate all
+verify the same source scope and implementation. That gives the project a way
+to promote real physics without relaxing the fail-closed boundary.

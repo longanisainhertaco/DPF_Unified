@@ -631,6 +631,21 @@ all channels missing — no accepted certificate); added/modified
 `f7bb9f8` — chore: regenerate module-source-vetting after Sprint 3 implementation;
 modified `docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`.
 
+### Sprint 4 audit-handoff V2 and normalized blocker ledgers (`8e6b5e9`, `85a7f05`)
+
+`8e6b5e9` — docs(first-principles): Sprint 4 audit-handoff V2 -- 10 Codex
+corrections applied; V1 superseded. Added
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_V2_2026_05_20.md` and
+kept all first-principles runtime, validation, neutron-authority, startup-BVP,
+and transport-closure claims fail-closed.
+
+`85a7f05` — docs(first-principles): normalize V2 blocker handoff ledger. Added
+`docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md`,
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`,
+`docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`, and
+`tests/test_first_principles_v2_handoff_ledgers.py`; updated `CodexFindings.md`
+and `CortexFindings.md`.
+
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
 HEAD-exempt from the `test_changelog_covers_all_commits_since_base` check
 (`76480b0..HEAD~1`), because a commit cannot list its own hash before it exists.

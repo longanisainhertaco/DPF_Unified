@@ -6897,3 +6897,19 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   all rows remain fail-closed. This update does not accept a whole-shot
   first-principles simulation, neutron mechanism authority, startup BVP,
   transport closure, or same-scope validation certificate.
+
+### 2026-05-20: Physics Acceptance Promotion Protocol Added
+
+- Work completed:
+  added a next-level promotion protocol and gate ledger:
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md`
+  and
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`.
+- Execution model:
+  source-supported modules can move toward accepted physics only after
+  other-team packet review, Codex independent audit, and automated
+  reproducibility/verification all pass at the same commit.
+- Boundary:
+  this is the acceptance route, not acceptance itself. All current rows remain
+  blocked/not accepted until source packets, implementation, numerical gates,
+  and scope-appropriate comparator/certificate checks exist.

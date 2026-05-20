@@ -6354,3 +6354,19 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   this is audit and planning normalization only. No runtime module,
   first-principles closure, neutron authority, same-scope comparator, validation
   certificate, or engineering-firm-ready claim is promoted.
+
+### 2026-05-20: Physics Acceptance Promotion Protocol Added
+
+- Work completed:
+  added
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md`
+  and
+  `docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_GATE_LEDGER_2026_05_20.csv`.
+- Promotion rule:
+  future physics acceptance requires three matching lanes at the same commit:
+  other-team evidence/implementation packet, Codex independent source-and-code
+  audit, and executable reproducibility gates.
+- Boundary:
+  every current acceptance-gate row remains `accepted_physics_allowed=false`.
+  The protocol defines how to promote physics later; it does not promote any
+  module, whole-shot, neutron, startup, transport, or validation claim now.
