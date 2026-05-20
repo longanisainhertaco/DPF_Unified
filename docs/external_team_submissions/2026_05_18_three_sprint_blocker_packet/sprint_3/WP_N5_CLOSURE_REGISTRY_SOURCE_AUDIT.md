@@ -50,7 +50,7 @@ registered. It must be added as a registry row (see sections 2.6, 6).
 
 Each closure below records: governing source equation with KR citation, units,
 symbol map, validity range, and current code status. Local KR citations use the
-form `[KR: <file> Lstart-Lend eq.(N)]`.
+form `[KR: KnowledgeReference/<file>.md:<line-or-ranges>]`.
 
 ### 1.1 EOS / Thermodynamics
 
@@ -65,7 +65,7 @@ c_s = sqrt(gamma * (p_i + p_e) / rho)      [m/s]
 ```
 
 KR support for the *closure-class decision* (not the ideal-gas formula itself):
-`[KR: unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md L188, L215, L333-369]`.
+`[KR: KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md:188,215,333-369]`.
 The ALEGRA HEDP DPF study states the DPF EOS path used LANL **Sesame**
 tabulated EOS for deuterium "down to a lowest meaningful density of .01 kg/m3"
 (L351-352) and the analytic **QEOS** model with gaseous-deuterium parameters
@@ -104,18 +104,18 @@ physics blocker.
 Source equations (NRL Plasma Formulary 2019, verified verbatim):
 
 - Bremsstrahlung (free-free), hydrogen-like plasma:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L4732-4736 eq.(30)]`
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4732-4736]`
   `P_Br = 1.69e-32 * N_e * T_e^(1/2) * sum_Z[Z^2 N(Z)]   [W/cm^3]`,
   `N_e` in cm^-3, `T_e` in eV.
 - Bremsstrahlung optical depth:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L4737-4740 eq.(31)]`
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4737-4740]`
   `tau = 5.0e-38 * N_e * N_i * Z^2 * g * L * T^(-7/2)`, `g ~= 1.2`.
 - Inverse-bremsstrahlung absorption coefficient:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L4741-4748 eq.(32)]`.
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4741-4748]`.
 - Recombination (free-bound) radiation:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L4749-4755 eq.(33)]`.
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4749-4755]`.
 - Cyclotron radiation:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L4756-4758 eq.(34)]`
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4756-4758]`
   `P_c = 6.21e-28 * B^2 * N_e * T_e   [W/cm^3]`.
 
 Symbol map: `N_e`,`N_i` electron/ion number density [cm^-3]; `T_e` electron
@@ -203,7 +203,7 @@ with threshold models: ion-acoustic (`v_d > c_s`), LHDI
 (`v_bulk > v_crit`).
 
 KR support: **partial.** The NRL formulary gives an anomalous ion-sound
-collision rate `[KR: 2019nrlplasma-formulary-037290d4.md L2706-2710]`:
+collision rate `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2706-2710]`:
 `nu* ~= omega_pe * W~/(kT) = 5.64e4 * n_e^(1/2) * W~/(kT) s^-1`, where `W~` is
 the total energy of waves with `omega/K < v_Ti`. This NRL row gives the
 *functional structure* (anomalous rate proportional to `omega_pe`) but the DPF
@@ -227,7 +227,7 @@ Validity range: each microinstability threshold has its own regime. NRL
 transport-validity criterion (6) explicitly states classical transport
 coefficients are valid "only when ... anomalous transport processes owing to
 microinstabilities are negligible"
-`[KR: 2019nrlplasma-formulary-037290d4.md L3382-3383]` — i.e. anomalous
+`[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3382-3383]` — i.e. anomalous
 resistivity is exactly the regime where the *classical* closure fails, so the
 two closures are mutually exclusive by validity and the runtime must record
 which one is active. The `alpha` magnitude band is not KR-bounded.
@@ -295,20 +295,20 @@ classical transport (collision closure), and (b) fast-ion stopping power
 Source equations (NRL Plasma Formulary 2019, verified verbatim):
 
 - Coulomb logarithm definition and electron-ion branch:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L3024-3065]` —
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3024-3065]` —
   `lambda = ln(r_max/r_min)`; electron-ion branch (L3045-3059):
   `lambda_ei = 23 - ln(n_e^(1/2) Z T_e^(-3/2))` for
   `T_i m_e/m_i < T_e < 10 Z^2 eV`, and
   `lambda_ei = 24 - ln(n_e^(1/2) T_e^(-1))` for `10 Z^2 eV < T_e`.
 - Transverse Spitzer resistivity:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L2701-2704]` —
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2701-2704]` —
   `eta_perp = 1.03e-2 * Z * ln(Lambda) * T^(-3/2)  [Ohm cm]`.
 - Weakly-ionized electron-neutral collision frequency:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L3384-3394]` —
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3384-3394]` —
   `nu_alpha = n_0 * sigma * (k T_alpha / m_alpha)^(1/2)`, with
   `sigma ~ 5e-15 cm^2`.
 - Weakly-ionized conductivity `sigma_alpha = n_alpha e_alpha mu_alpha`:
-  `[KR: 2019nrlplasma-formulary-037290d4.md L3410-3411]`.
+  `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3410-3411]`.
 
 Symbol map: `lambda = ln Lambda` Coulomb logarithm [-]; `n_e` electron density
 (cm^-3 in NRL eq.); `Z` charge state [-]; `T_e` electron temperature (eV in
@@ -324,12 +324,12 @@ value, which the docstring states matches NRL `eta ~ 5.2e-5 Z lnL Te_eV^(-3/2)`.
 
 Validity range — **the central PlasmaPy-relevant finding.** NRL explicitly
 bounds classical collisional transport
-`[KR: 2019nrlplasma-formulary-037290d4.md L3379-3383]`: transport coefficients
+`[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3379-3383]`: transport coefficients
 are valid only when "(3) the Coulomb logarithm satisfies `lambda >> 1`", and
 "(5) relative drifts `u = v_alpha - v_beta` ... are small compared with the
 thermal velocities, i.e. `u^2 << kT_alpha/m_alpha`". NRL further states the
 Coulomb-log theory "is good only to ~10% and fails when `lambda ~ 1`"
-`[KR: 2019nrlplasma-formulary-037290d4.md L3036-3038]`. The in-code
+`[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3036-3038]`. The in-code
 `coulomb_log` (`spitzer.py:41-65`) **floors** `ln Lambda` at 2.0
 ("Spitzer theory invalid below this") — this is a code-side acknowledgment of
 exactly the NRL `lambda ~ 1` breakdown, but it is a silent floor, not a gate
@@ -369,11 +369,11 @@ Y_bt = Cn * n_i * I_pinch^2 * z_p^2 * ln(b/r_p) * sigma(E_beam) / V_max^(1/2)
 KR support:
 
 - Lee & Saw beam-target form and `Cn` calibration:
-  `[KR: a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md L5109-5145]`
+  `[KR: KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md:5109-5145]`
   (cited verbatim in `beam_target.py:6-16`; `E_beam = 3*V_max` from KR
   L5133-5139; `Cn` calibration from KR L5141-5144).
 - DD fusion cross-section (Bosch-Hale 1992 parametric fit):
-  `[KR: bosch-hale-1992-fusion-reactivity.md]` — `sigma(E) = S(E)/(E exp(B_G/sqrt(E)))`,
+  `[KR: KnowledgeReference/bosch-hale-1992-fusion-reactivity.md:40-57]` — `sigma(E) = S(E)/(E exp(B_G/sqrt(E)))`,
   Table IV coefficients in `beam_target.py:76-90`.
 
 Symbol map: `Y_bt` beam-target neutron yield [neutrons]; `Cn` calibrated
@@ -415,15 +415,15 @@ a local `KnowledgeReference/` source". By that definition **no closure is
 
 | # | Closure                | Status     | KR source (closes the *form*)                                  | Code location                                  | Why not higher                                                                 |
 | - | ---------------------- | ---------- | -------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| 1 | EOS / thermodynamics   | blocked    | ALEGRA HEDP (EOS *class* only): `[KR: ...alegra-hedp... L188,L351-360]` | `src/dpf/fluid/eos.py` (ideal-gas only)         | No tabular/QEOS closure equation; ideal gas out of validity for cold/dense regimes |
-| 2 | Radiation              | candidate  | NRL eq.(30),(34): `[KR: 2019nrlplasma-formulary-037290d4.md L4732-4758]`  | `src/dpf/radiation/bremsstrahlung.py`, `improved_radiation.py` | Volumetric loss term only; opacity/FLD/line closure unsourced                    |
+| 1 | EOS / thermodynamics   | blocked    | ALEGRA HEDP (EOS *class* only): `[KR: KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md:188,351-360]` | `src/dpf/fluid/eos.py` (ideal-gas only)         | No tabular/QEOS closure equation; ideal gas out of validity for cold/dense regimes |
+| 2 | Radiation              | candidate  | NRL eq.(30),(34): `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:4732-4758]`  | `src/dpf/radiation/bremsstrahlung.py`, `improved_radiation.py` | Volumetric loss term only; opacity/FLD/line closure unsourced                    |
 | 3 | Ablation / impurity    | blocked    | none (efficiency coefficient unsourced)                        | `src/dpf/atomic/ablation.py`                    | `efficiency` is unverified empirical constant; references not in KR              |
-| 4 | Anomalous resistance   | blocked    | NRL anomalous ion-sound rate (form only): `[KR: ...formulary... L2706-2710]` | `src/dpf/turbulence/anomalous.py`               | `alpha` band and threshold-model selection unsourced                            |
+| 4 | Anomalous resistance   | blocked    | NRL anomalous ion-sound rate (form only): `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2704-2710]` | `src/dpf/turbulence/anomalous.py`               | `alpha` band and threshold-model selection unsourced                            |
 | 5 | Restrike               | blocked    | none                                                           | none (config/preset wording only)              | Not simulated; no closure equation in code or KR                                |
 | 6 | Electron inertia       | blocked    | none located                                                   | none (diagnostics reference only)              | Not registered; no closure operator; no KR closure equation                     |
-| 7a| Collision (transport)  | candidate  | NRL Coulomb log + Spitzer: `[KR: ...formulary... L3024-3065,L2701-2704]`  | `src/dpf/collision/spitzer.py`, `fields/conductivity.py` | Missing accepted validity-regime gate + sensitivity/UQ                           |
+| 7a| Collision (transport)  | candidate  | NRL Coulomb log + Spitzer: `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3024-3065]` + `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:2701-2704]`  | `src/dpf/collision/spitzer.py`, `fields/conductivity.py` | Missing accepted validity-regime gate + sensitivity/UQ                           |
 | 7b| Stopping (fast-ion)    | blocked    | none located                                                   | none                                            | No stopping-power closure operator; no KR closure equation                       |
-| 8 | Beam-target coupling   | blocked    | Lee/Saw + Bosch-Hale: `[KR: ...lee-saw-part-1...; bosch-hale-1992...]`    | `src/dpf/diagnostics/beam_target.py`            | Lee/Saw form is empirical comparator only; no mechanism-separated closure        |
+| 8 | Beam-target coupling   | blocked    | Lee/Saw + Bosch-Hale: `[KR: KnowledgeReference/a-course-on-plasma-focus-numerical-experiments-s-lee-and-s-h-saw-part-1-basic-course.md:734,1297-1298]` + `[KR: KnowledgeReference/bosch-hale-1992-fusion-reactivity.md:40-57]`    | `src/dpf/diagnostics/beam_target.py`            | Lee/Saw form is empirical comparator only; no mechanism-separated closure        |
 
 Status counts: `supported` 0, `candidate` 2 (radiation volumetric loss term;
 collision/transport), `blocked` 7 (EOS, ablation, anomalous resistance,
@@ -543,8 +543,8 @@ strong-coupling warnings. PlasmaPy raises `CouplingWarning` when the plasma
 coupling parameter indicates a strongly coupled / non-ideal regime where the
 weak-coupling Coulomb-logarithm expansion is invalid. The local NRL KR
 **confirms** this validity edge: classical transport needs `lambda >> 1`
-`[KR: 2019nrlplasma-formulary-037290d4.md L3379-3380]` and the Coulomb-log
-theory "fails when `lambda ~ 1`" `[KR: ...formulary... L3036-3038]`. The DPF
+`[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3379-3380]` and the Coulomb-log
+theory "fails when `lambda ~ 1`" `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3036-3038]`. The DPF
 dense pinch core can reach the strongly coupled regime, so the warning is
 *physically meaningful*, not noise.
 
@@ -645,7 +645,7 @@ vocabulary (as requested):
 - `bounded_out_with_source` — closure is intentionally excluded from the run
   with a cited validity bound proving it is negligible or out of range. Apply
   per-cell to: **Collision/transport in a strong-coupling cell** — bounded out
-  with NRL `lambda >> 1` citation `[KR: ...formulary... L3379-3380, L3036-3038]`
+  with NRL `lambda >> 1` citation `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3379-3380]` and `[KR: KnowledgeReference/2019nrlplasma-formulary-037290d4.md:3036-3038]`
   (this is the PlasmaPy regime-gate outcome). Also the candidate target for
   **Electron inertia** once a KR skin-depth bound shows `d_e` is sub-grid.
 - `not_simulated_and_claim_blocking` — closure is not implemented at all and

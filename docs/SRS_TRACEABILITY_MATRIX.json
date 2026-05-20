@@ -1137,10 +1137,10 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 3 S3.5: closure registry with 12 closures plus 2 sub-closures exists in `src/dpf/first_principles/closures.py` (commit `7dd1994`); 1 active_source_backed_candidate (partial-ionization conductivity); remaining closures are blocked or not-simulated; no closure may remain silent; `PhysicsClosurePacket` emits the full registry; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: EOS blocked without tabular packet; radiation blocked without opacity decision; ablation blocked without efficiency source; anomalous resistance and restrike claim rejected; electron inertia registered and blocked; stopping blocked; sensitivity/UQ missing for all. See `tests/test_first_principles_closures.py`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.5: closure registry with 12 closures plus 2 sub-closures exists in `src/dpf/first_principles/closure_packet.py` (commit `7dd1994`); 1 active_source_backed_candidate (partial-ionization conductivity); remaining closures are blocked or not-simulated; no closure may remain silent; `PhysicsClosurePacket` emits the full registry; `can_support_first_principles_acceptance=false`. Remaining acceptance blockers: EOS blocked without tabular packet; radiation blocked without opacity decision; ablation blocked without efficiency source; anomalous resistance and restrike claim rejected; electron inertia registered and blocked; stopping blocked; sensitivity/UQ missing for all. See `tests/test_first_principles_closures.py`.",
       "doorstop_import": {
         "evidence_refs": [
-          "src/dpf/first_principles/closures.py",
+          "src/dpf/first_principles/closure_packet.py",
           "7dd1994",
           "PhysicsClosurePacket",
           "can_support_first_principles_acceptance=false",
@@ -1159,7 +1159,7 @@
         ]
       },
       "evidence_refs": [
-        "src/dpf/first_principles/closures.py",
+        "src/dpf/first_principles/closure_packet.py",
         "7dd1994",
         "PhysicsClosurePacket",
         "can_support_first_principles_acceptance=false",

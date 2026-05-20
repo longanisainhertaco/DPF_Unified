@@ -50,13 +50,15 @@ are all under `docs/external_team_submissions/2026_05_18_three_sprint_blocker_pa
 | `4c8dac1` | feat(first-principles): implement WP-N4B cross-restart ledger merge and artifact combiner |
 | `93620ba` | docs: synchronize Sprint 2 packet hygiene and add consistency tests (F2/F3/F4) |
 
-### S3.1 Packet Hygiene — stale-language fixes (documentation-only, in-progress)
+### S3.1 Packet Hygiene and S3R Runtime Foundations
 
-S3.1 scoped changes to the packet documents (no SRS/RTM edits, no src/ edits):
+S3.1/S3R scoped changes to the packet documents, runtime-foundation ledgers,
+SRS/RTM exports, and candidate runtime modules. These changes do not promote any
+accepted physics or validation claim.
 
 - `sprint_3/PENDING.md` deleted; superseded by `sprint_3/SPRINT_3_STATUS_LEDGER.md`
-  (research_packets_delivered=true; runtime_implementation_delivered=false;
-  first_principles_acceptance=false).
+  (`research_packet_delivered=true`, `runtime_foundation_delivered=true`,
+  `accepted_physics_delivered=false`, `validation_delivered=false`).
 - `sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md`: stale "Sprint 2.2 open",
   "WP-N2 not delivered", "WP-N5 closure registry not delivered" language replaced
   with `research_packet_delivered`, `runtime_packet_not_delivered`,
@@ -68,6 +70,11 @@ S3.1 scoped changes to the packet documents (no SRS/RTM edits, no src/ edits):
 - `README.md`, `THREE_SPRINT_FINAL_SUMMARY.md`: `sprint_3/PENDING.md` nav
   references updated to `sprint_3/SPRINT_3_STATUS_LEDGER.md`; Sprint 3 status
   updated to reflect research packets delivered.
+- Runtime-foundation packet rows and traceability ledgers updated for
+  `source_geometry.py`, `startup_bvp.py`, `closure_packet.py`,
+  `neutron_authority.py`, `segmented_whole_shot.py`,
+  `segmented_whole_shot_combine.py`, and `certificate_gate.py`. All rows retain
+  `can_support_first_principles_acceptance=false`.
 - `tests/test_external_team_submission_package.py`: new S3.1 consistency tests
   added (stale-state rejection, shorthand-citation rejection).
 
@@ -303,7 +310,7 @@ modified `tests/test_first_principles_startup_bvp.py`,
 ### S3.5 Implementation — closure registry and PlasmaPy regime gate (`7dd1994`)
 
 `7dd1994` — feat: S3.5 closure registry and PlasmaPy regime gate; added/modified
-`src/dpf/first_principles/closures.py` (12 closures + 2 sub-closures;
+`src/dpf/first_principles/closure_packet.py` (12 closures + 2 sub-closures;
 1 active_source_backed_candidate, rest blocked/not-simulated;
 `PhysicsClosurePacket` embedding); modified `tests/test_first_principles_closures.py`,
 `docs/DPF_REQUIREMENTS_BASELINE.md`,
@@ -322,7 +329,7 @@ modified `tests/test_first_principles_neutron_authority.py`,
 
 `6660eb9` — feat: S3.7/S3.8 numerical acceptance gates and certificate scaffold;
 modified `src/dpf/first_principles/segmented_whole_shot.py` (extended cumulative
-ledgers), `src/dpf/first_principles/certificate.py` (certificate scaffold with
+ledgers), `src/dpf/first_principles/certificate_gate.py` (certificate scaffold with
 all channels missing — no accepted certificate); added/modified
 `tests/test_first_principles_long_run_integrity.py`,
 `tests/test_first_principles_certificate_negative_controls.py`,

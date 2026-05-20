@@ -110,7 +110,7 @@ after application of the breakdown voltage"
 [KR: design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md
 L512-514 and L583-589, prose]. PF-1000 confirms the same: the first stage is a
 surface discharge along the cylindrical insulator
-[KR: gribkov-2007-pf1000-jphysd-part2.md L62-66, prose].
+[KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66].
 
 Energy-density scaling exists in the corpus: Kies estimated an upper limit of
 energy density into the sheath of about 100 J/cm^2 that decreases with
@@ -358,13 +358,13 @@ room-temperature deuterium gas fill, and a thin layer of higher-temperature
 gas in a thin layer along the insulator. MHD DPF simulations require choosing
 this seed ionized gas rather arbitrarily; we chose a thin layer of 1 eV
 temperature"
-[KR: sand2009-6373-b93aec67.md L470-475, prose]. The accepted alternative is
+[KR: KnowledgeReference/sand2009-6373-b93aec67.md:470-475]. The accepted alternative is
 to import ion and electron densities, temperatures, and magnetic field from a
 PIC sheath calculation
-[KR: sand2009-6373-b93aec67.md L682-690, prose]. The first phase to be
+[KR: KnowledgeReference/sand2009-6373-b93aec67.md:682-690]. The first phase to be
 described is breakdown along the insulator, then lift-off (II), then run-down
 (III)
-[KR: sand2009-6373-b93aec67.md L317-323, prose; Figure 1].
+[KR: KnowledgeReference/sand2009-6373-b93aec67.md:317-323] (Figure 1).
 
 This is the source basis for the runtime contract's two accepted modes
 (`imported_pic_sheath_state`, `surface_breakdown_bvp`) and for rejecting the
@@ -393,17 +393,17 @@ Status definitions:
 
 | # | Channel | Status | Basis (KR citation) | Why not higher |
 |---|---------|--------|---------------------|----------------|
-| 1 | breakdown | candidate | Townsend Eq. (6)/(7), `alpha` Eq. (1)/(3) [KR: the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md L130-203] | Corpus says Paschen/Townsend feedback "should no longer apply" to DPFs [KR: effect-of-current-sheath-...-b2e95b88.md L631-639]; no DPF surface-flashover closure |
-| 2 | flashover | candidate | Surface-discharge description; ~100 J/cm^2 energy-density limit [KR: the-dense-plasma-focus-a-versatile-dense-pinch-...md L527-541; gribkov-2007-...md L62-66] | Qualitative + an upper-limit estimate; no closed flashover-delay/voltage model |
-| 3 | preionization | candidate | Measured yield deltas with Ni-63/U-238 preionizers [KR: the-dense-plasma-focus-a-versatile-dense-pinch-...md L1490-1530] | No quantitative seed-density model; experimental intervention, not an IC generator |
-| 4 | secondary emission | candidate | `gamma` definition + flux BC `Gamma_e = gamma c_p u_p` [KR: the-influence-of-the-magnetic-field-...-3.md L113-117; theory-and-finite-element-...gas-discharge-plasmas.md L1187-1196] | `gamma` ranges generic (1e-3..1e-2 / 1e-3..1e-8); no DPF-material (Cu/pyrex/alumina) values |
-| 5 | surface plasma | candidate | Surface-discharge / inverse-pinch `F = i dL x B` [KR: design-and-construction-...-12205ba4.md L583-639; gribkov-2007-...md L62-66] | Qualitative only; no closed surface-plasma field set |
-| 6 | initial E / B / J | candidate | `B_theta = mu I/(2 pi r)` Eq. (34); circuit Eq. (35) [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md L748-757] | Eqs. are implosion-phase circuit/boundary relations, not breakdown-phase initial fields |
-| 7 | density / species | candidate | End-of-rundown `n0=6.7e22`, `ns,0=3.3e23 m^-3`, D2 [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md L661-690, Table 1] | Values are end-of-rundown handoff, not start-of-shot breakdown densities |
-| 8 | ionization | candidate | `alpha` Eqs. (1)/(3); source term `R_e` Eq. (6); `Liz/Li=2.4` [KR: the-influence-...-3.md L130-156; theory-...gas-discharge-plasmas.md L256-292; effect-of-current-sheath-...-b2e95b88.md L656-662] | Generic gas-discharge source term + empirical ratio; no DPF-specific ionization-fraction field |
-| 9 | Te / Ti | candidate | `Te = xi lambda e U/d` Eq. (4); `eps = 0.8 e E lambda/sqrt(delta)` Eq. (5); `Te~4 eV` assumption [KR: the-influence-...-3.md L160-172; effect-of-current-sheath-...-b2e95b88.md L643-655] | Eq. (4) needs a homogeneous field (DPF gap is not); `Te~4 eV` is an analysis assumption |
-| 10 | sheath surface | candidate | End-of-rundown `delta_sheath~0.15-0.20 cm`; Yee grid placement [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md L607-614, L703-708] | End-of-rundown measured value, not a breakdown-BVP sheath state |
-| 11 | handoff interval | candidate | PIC-to-MHD import requirement; reject arbitrary seed [KR: sand2009-6373-b93aec67.md L317-323, L470-475, L682-690; unlimited-release-...alegra-hedp-...md L268-272] | No numerical handoff-interval definition or same-device reviewed PIC payload |
+| 1 | breakdown | candidate | Townsend Eq. (6)/(7), `alpha` Eq. (1)/(3) [KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:130-203] | Corpus says Paschen/Townsend feedback "should no longer apply" to DPFs [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:631-639]; no DPF surface-flashover closure |
+| 2 | flashover | candidate | Surface-discharge description; ~100 J/cm^2 energy-density limit [KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:527-541] [KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66] | Qualitative + an upper-limit estimate; no closed flashover-delay/voltage model |
+| 3 | preionization | candidate | Measured yield deltas with Ni-63/U-238 preionizers [KR: KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md:1490-1530] | No quantitative seed-density model; experimental intervention, not an IC generator |
+| 4 | secondary emission | candidate | `gamma` definition + flux BC `Gamma_e = gamma c_p u_p` [KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:113-117] [KR: KnowledgeReference/theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md:1187-1196] | `gamma` ranges generic (1e-3..1e-2 / 1e-3..1e-8); no DPF-material (Cu/pyrex/alumina) values |
+| 5 | surface plasma | candidate | Surface-discharge / inverse-pinch `F = i dL x B` [KR: KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md:583-639] [KR: KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md:62-66] | Qualitative only; no closed surface-plasma field set |
+| 6 | initial E / B / J | candidate | `B_theta = mu I/(2 pi r)` Eq. (34); circuit Eq. (35) [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:748-757] | Eqs. are implosion-phase circuit/boundary relations, not breakdown-phase initial fields |
+| 7 | density / species | candidate | End-of-rundown `n0=6.7e22`, `ns,0=3.3e23 m^-3`, D2 [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:661-690] | Values are end-of-rundown handoff, not start-of-shot breakdown densities |
+| 8 | ionization | candidate | `alpha` Eqs. (1)/(3); source term `R_e` Eq. (6); `Liz/Li=2.4` [KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:130-156] [KR: KnowledgeReference/theory-and-finite-element-simulation-methodology-of-gas-discharge-plasmas.md:256-292] [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:656-662] | Generic gas-discharge source term + empirical ratio; no DPF-specific ionization-fraction field |
+| 9 | Te / Ti | candidate | `Te = xi lambda e U/d` Eq. (4); `eps = 0.8 e E lambda/sqrt(delta)` Eq. (5); `Te~4 eV` assumption [KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:160-172] [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:643-655] | Eq. (4) needs a homogeneous field (DPF gap is not); `Te~4 eV` is an analysis assumption |
+| 10 | sheath surface | candidate | End-of-rundown `delta_sheath~0.15-0.20 cm`; Yee grid placement [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:607-614,703-708] | End-of-rundown measured value, not a breakdown-BVP sheath state |
+| 11 | handoff interval | candidate | PIC-to-MHD import requirement; reject arbitrary seed [KR: KnowledgeReference/sand2009-6373-b93aec67.md:317-323,470-475,682-690] [KR: KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md:268-272] | No numerical handoff-interval definition or same-device reviewed PIC payload |
 
 Summary counts: `supported` = 0, `candidate` = 11, `blocked` = 0.
 
@@ -481,15 +481,15 @@ before the corresponding channel can move to `supported`.
 
 | # | Missing parameter | Channel(s) blocked | What is needed |
 |---|-------------------|--------------------|----------------|
-| M1 | DPF surface-flashover BVP closure (insulator-surface physics) | breakdown, flashover, surface plasma | A reviewed equation set that produces initial E/B/J/n/Te/Ti along the insulator from applied voltage; corpus explicitly says canonical Paschen does not apply [KR: effect-of-current-sheath-...-b2e95b88.md L631-639] |
+| M1 | DPF surface-flashover BVP closure (insulator-surface physics) | breakdown, flashover, surface plasma | A reviewed equation set that produces initial E/B/J/n/Te/Ti along the insulator from applied voltage; corpus explicitly says canonical Paschen does not apply [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:631-639] |
 | M2 | `alpha`, `gamma`, `sigma_i0`, `eta`, `beta_ep`, `R_ph` numerical values for D2/H2/Ne/Ar at DPF voltages | breakdown, ionization, secondary emission | DPF-specific gas-coefficient packets (the scaffold's `_GAS_DB` values in `civ_breakdown.py` L120-135 are flagged `*_source_packets_missing`) |
 | M3 | Secondary-emission coefficients for DPF materials (Cu anode, pyrex/alumina insulator) | secondary emission | Material-specific ion-induced electron-emission yields for the DPF surface, not generic gas-discharge `gamma` |
 | M4 | Quantitative preionization model | preionization | Seed electron density [m^-3] / ionization fraction vs preionizer source activity, geometry, time |
 | M5 | Closed flashover delay / voltage / striation-to-uniform timescale | flashover | A model giving `flashover_complete_time_s` and flashover voltage as a function of insulator material/length/radius, gas, applied voltage |
 | M6 | Breakdown-phase initial E and J field distributions | initial E/B/J | A source-derived E(r,z) and J(r,z) at the start of the discharge; Eq. (34)/(35) are implosion-phase relations only |
-| M7 | Start-of-shot density/species and Te/Ti fields | density/species, Te/Ti, sheath surface | The corpus only supplies end-of-rundown handoff values [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md L661-690]; start-of-discharge fields are absent |
-| M8 | Numerical handoff-interval definition and a same-device reviewed PIC import payload | handoff interval | `t_start`, `t_handoff`, tolerance, and an imported PIC sheath payload for the SAME device being simulated [KR: sand2009-6373-b93aec67.md L470-475 calls the alternative seed "arbitrary"] |
-| M9 | DPF-specific homogeneous-field validity for `Te` Eq. (4) | Te/Ti | Eq. (4) is valid only for a homogeneous/pseudo-homogeneous field [KR: the-influence-...-3.md L162-167]; the DPF coaxial gap is inhomogeneous, so a DPF-valid `Te` relation is missing |
+| M7 | Start-of-shot density/species and Te/Ti fields | density/species, Te/Ti, sheath surface | The corpus only supplies end-of-rundown handoff values [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:661-690]; start-of-discharge fields are absent |
+| M8 | Numerical handoff-interval definition and a same-device reviewed PIC import payload | handoff interval | `t_start`, `t_handoff`, tolerance, and an imported PIC sheath payload for the SAME device being simulated [KR: KnowledgeReference/sand2009-6373-b93aec67.md:470-475] calls the alternative seed "arbitrary" |
+| M9 | DPF-specific homogeneous-field validity for `Te` Eq. (4) | Te/Ti | Eq. (4) is valid only for a homogeneous/pseudo-homogeneous field [KR: KnowledgeReference/the-influence-of-the-magnetic-field-on-dc-and-the-impulse-breakdown-of-noble-gases-3.md:162-167]; the DPF coaxial gap is inhomogeneous, so a DPF-valid `Te` relation is missing |
 
 ---
 
@@ -555,7 +555,7 @@ For each of the 11 channels, one negative control:
   `test_engineering_only_modes_cannot_support_whole_shot`).
 - N15 `test_arbitrary_1eV_thin_layer_rejected` - a startup declaring the
   SAND2009 "1 eV thin layer along the insulator" arbitrary seed
-  [KR: sand2009-6373-b93aec67.md L470-475] must be classified non-promoting.
+	  [KR: KnowledgeReference/sand2009-6373-b93aec67.md:470-475] must be classified non-promoting.
 - N16 `test_unreviewed_pic_import_rejected` - `imported_pic_sheath_state` with
   `evidence_status != reviewed/accepted` must not promote.
 - N17 `test_civ_paschen_scaffold_cannot_promote` - a
@@ -664,18 +664,18 @@ Handoff-interval rules:
    fails closed.
 2. For `imported_pic_sheath_state`, `imported_state_hash` must be non-null and
    `same_device` must be true (the PIC sheath import must be the SAME device
-   being simulated, per [KR: sand2009-6373-b93aec67.md L682-690], which states
+	   being simulated, per [KR: KnowledgeReference/sand2009-6373-b93aec67.md:682-690], which states
    ALEGRA imports ion/electron densities, temperatures, and magnetic field from
    the PIC calculation).
 3. For `surface_breakdown_bvp`, the handoff source must be a reviewed
    surface-flashover BVP (M1); until M1 exists this mode cannot reach
    `accepted`.
 4. The arbitrary "1 eV thin layer along the insulator" seed
-   [KR: sand2009-6373-b93aec67.md L470-475] must NOT satisfy the contract; it
+	   [KR: KnowledgeReference/sand2009-6373-b93aec67.md:470-475] must NOT satisfy the contract; it
    is the rejected `seeded_layer` mode.
 5. The end-of-rundown handoff state (`n0=6.7e22`, `ns,0=3.3e23 m^-3`,
    `T2~62 eV`, `delta_z~1 mm`, `vd~1.1e5 m/s`
-   [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md L661-690]) is a
+	   [KR: KnowledgeReference/fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield-acb71fa9.md:661-690]) is a
    valid ENGINEERING handoff (`source_backed_end_rundown_sheath`) but
    `can_support_whole_shot_acceptance` must remain false for it, because it
    starts the run at the end of rundown, not at the start of the discharge.
@@ -706,7 +706,7 @@ Handoff-interval rules:
    (`src/dpf/first_principles/startup_bvp.py` L87-91) and must always return
    `status = rejected_startup_mode_for_first_principles`. The corpus itself
    calls the thin-layer seed "arbitrary"
-   [KR: sand2009-6373-b93aec67.md L470-475]; an arbitrary seed cannot support a
+	   [KR: KnowledgeReference/sand2009-6373-b93aec67.md:470-475]; an arbitrary seed cannot support a
    first-principles whole-shot claim.
 
 2. The CIV/Paschen scaffold (`src/dpf/experimental/civ_breakdown.py`) must NOT
@@ -720,7 +720,7 @@ Handoff-interval rules:
    not change that. The Townsend/Paschen equations (section 1.1) are
    `candidate` because the local DPF source states canonical Paschen feedback
    "should no longer apply" to DPFs
-   [KR: effect-of-current-sheath-...-b2e95b88.md L631-639].
+	   [KR: KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md:631-639].
 
 3. The end-of-rundown sheath state is an ENGINEERING handoff only. The hybrid
    PIC-fluid values [KR: fully-electromagnetic-hybrid-pic-fluid-...-acb71fa9.md

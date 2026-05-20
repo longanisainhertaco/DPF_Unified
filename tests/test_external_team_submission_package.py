@@ -429,8 +429,16 @@ _STALE_STATUS_PATTERNS: list[tuple[str, str]] = [
 ]
 
 # Shorthand citation patterns forbidden in actionable content (S3.1 §3).
-# "[KR: same file" or "[KR: same ..." is the canonical shorthand.
-_SHORTHAND_CITATION_RE = re.compile(r"\[KR:\s+same\s+file", re.IGNORECASE)
+# A well-formed citation looks like:
+#   [KR: KnowledgeReference/<file>.md:<line-or-ranges>]
+# Reject any [KR: ...] citation that omits the KnowledgeReference prefix, uses
+# old "L123" line syntax, hides the file behind ellipses, or lacks an exact
+# .md:<line> suffix.
+_SHORTHAND_CITATION_RE = re.compile(
+    r"\[KR:\s+(?!(?:KnowledgeReference/[^\]\s]+\.md:"
+    r"\d+(?:-\d+)?(?:,\d+(?:-\d+)?)*)\])[^]]+\]",
+    re.IGNORECASE,
+)
 
 
 def _sprint3_packet_mds() -> list[Path]:
@@ -459,7 +467,13 @@ def test_sprint3_status_ledger_exists() -> None:
 
 
 def test_sprint3_status_ledger_declares_required_fields() -> None:
-    """S3.1 req 1: the ledger must contain the three required delivery-state fields.
+    """S3.1 req 1: the ledger must contain the four required delivery-state booleans.
+
+    S3R.1 replaces the stale three-boolean scheme with an explicit four-boolean
+    scheme that separates research delivery from runtime foundation, accepted
+    physics, and validation.  The old split-brain field
+    ``runtime_implementation_delivered=false`` is retired; its replacement is the
+    pair (runtime_foundation_delivered, accepted_physics_delivered).
 
     Failure message identifies the exact path and the missing field names.
     """
@@ -469,15 +483,23 @@ def test_sprint3_status_ledger_declares_required_fields() -> None:
 
     text = ledger.read_text(encoding="utf-8")
     required = [
-        "research_packets_delivered=true",
-        "runtime_implementation_delivered=false",
-        "first_principles_acceptance=false",
+        "research_packet_delivered=true",
+        "runtime_foundation_delivered=true",
+        "accepted_physics_delivered=false",
+        "validation_delivered=false",
     ]
     missing = [field for field in required if field not in text]
     assert not missing, (
         f"{ledger}: SPRINT_3_STATUS_LEDGER.md is missing required delivery-state "
-        f"fields:\n"
+        f"fields (S3R.1 4-boolean scheme):\n"
         + "\n".join(f"  {f!r}" for f in missing)
+    )
+
+    # Ensure the stale 3-boolean field does not survive.
+    stale = "runtime_implementation_delivered=false"
+    assert stale not in text, (
+        f"{ledger}: stale field {stale!r} must be removed; "
+        "use the S3R.1 4-boolean scheme instead."
     )
 
 
@@ -507,10 +529,12 @@ def test_sprint3_packets_reject_stale_status_language(
 
 
 def test_sprint3_packets_reject_shorthand_citations() -> None:
-    """S3.1 req 3: no sprint_3 packet markdown may contain [KR: same file ...] shorthand.
+    """S3.1 req 3: no sprint_3 packet markdown may contain shorthand [KR: ...] citations.
 
-    Shorthand citations are not acceptable in actionable content per Non-Negotiable
-    Source Rule 4.  Failure message identifies the exact file path and line number.
+    A well-formed citation must be [KR: KnowledgeReference/<file>.md:<lines>].
+    Shorthand forms using ellipsis (...) or 'same file' are not acceptable in
+    actionable content per Non-Negotiable Source Rule 4.
+    Failure message identifies the exact file path and line number.
     """
     bad: list[tuple[Path, int, str]] = []
     for md_path in _sprint3_packet_mds():
@@ -520,7 +544,77 @@ def test_sprint3_packets_reject_shorthand_citations() -> None:
                 bad.append((md_path, lineno, line.strip()))
 
     assert not bad, (
-        "S3.1 shorthand-citation gate: found '[KR: same file ...]' shorthand "
+        "S3.1 shorthand-citation gate: found shorthand [KR: ...] citation "
         "in sprint_3 packets (expand to exact local path + line range):\n"
+        + "\n".join(f"  {p}:{n}: {l}" for p, n, l in bad)
+    )
+
+
+def test_sprint3_no_live_pending_md_references() -> None:
+    """S3R.1: no sprint_3 packet markdown may contain a live reference to sprint_3/PENDING.md.
+
+    sprint_3/PENDING.md was deleted when SPRINT_3_STATUS_LEDGER.md was created
+    (commit 100d87d).  Historical notes that explicitly say the file was deleted
+    or superseded are exempt.  Live navigation references are not.
+    """
+    bad: list[tuple[Path, int, str]] = []
+    for md_path in _sprint3_packet_mds():
+        text = md_path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            if "PENDING.md" not in line:
+                continue
+            stripped = line.strip().lower()
+            # Historical / migration notes are exempt.
+            is_historical = any(
+                kw in stripped
+                for kw in (
+                    "removed",
+                    "deleted",
+                    "superseded",
+                    "no longer",
+                    "was correct",
+                    "→",          # migration arrow (e.g., "pending.md → status_ledger.md")
+                    "->",         # ASCII migration arrow
+                    "placeholder",
+                    "has been",   # "has been superseded"
+                )
+            )
+            if not is_historical:
+                bad.append((md_path, lineno, line.strip()))
+    assert not bad, (
+        "S3R.1: sprint_3 packet markdown contains live reference to deleted "
+        "sprint_3/PENDING.md:\n"
+        + "\n".join(f"  {p}:{n}: {l}" for p, n, l in bad)
+    )
+
+
+def test_packet_docs_no_bad_module_paths() -> None:
+    """S3R.1 / A12: no packet doc may reference the wrong module paths.
+
+    The real modules are:
+      - src/dpf/first_principles/closure_packet.py  (not closures.py)
+      - src/dpf/first_principles/certificate_gate.py  (not certificate.py)
+
+    Historical changelog entries that note the old name in a correction context
+    are not targeted; the test looks for bare path tokens that would route a
+    reader to non-existent files.
+    """
+    # These paths do not exist — references to them are always wrong.
+    bad_paths = (
+        "src/dpf/first_principles/closures.py",
+        "src/dpf/first_principles/certificate.py",
+    )
+    bad: list[tuple[Path, int, str]] = []
+    for md_path in _collect_packet_markdown():
+        text = md_path.read_text(encoding="utf-8")
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            for bad_path in bad_paths:
+                if bad_path in line:
+                    bad.append((md_path, lineno, line.strip()))
+                    break  # one report per line
+
+    assert not bad, (
+        "S3R.1 bad-module-path gate: packet docs reference non-existent modules "
+        "(use closure_packet.py / certificate_gate.py):\n"
         + "\n".join(f"  {p}:{n}: {l}" for p, n, l in bad)
     )

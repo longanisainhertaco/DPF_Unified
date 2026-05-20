@@ -6174,3 +6174,48 @@ Ratchet update 2026-05-09, local method source candidate review:
   no validation or engineering acceptance claim is available from Sprint 3.
   The next required work is Sprint 3R remediation and completion gating before
   any Sprint 4 claim.
+
+## Sprint 3R Status (2026-05-19)
+
+Sprint 3 completion audit identified findings A1–A12. Sprint 3R is in progress
+to close them. Status as of 2026-05-19:
+
+- A1 (startup BVP fail-closed acceptance): S3R.2 — typed StartupPacket binding
+  must reject caller-declared accepted channels; whole_shot_startup_blocked must
+  be forced true until computed source-backed channels exist.
+- A2 (scalar neutron yield used as authority): S3R.3 — NeutronAuthorityPacket
+  must block accepted_neutron_authority when only scalar/target-only evidence
+  is present.
+- A3 (NumPy 2 beam-target trapezoid integral): S3R.3 — _trapezoid_integral()
+  must use a lazy NumPy 2 fallback.
+- A4 (blocked insulator mask emitted as source-backed): S3R.4 — PF-1000
+  geometry must not emit source-backed insulator/cathode masks when the
+  underlying dimension is blocked.
+- A5 (under-resolution gate not applied to all source-supported features): S3R.4
+  — resolution gate must extend to every source-supported feature.
+- A6 (Sigma_p packet schema incomplete): S3R.5 — SigmaPSurfacePacket must carry
+  face-set SHA-256, moving classification, material mask SHA-256 per class, and
+  explicit operand arrays or blockers.
+- A7 (power-port consumes dict-form Sigma_p silently): S3R.5 — dict-form
+  packets must be reconstructed or fail closed with a named blocker.
+- A8 (closure matrix omits required effects): S3R.6 — REQUIRED_EFFECTS minus
+  effects.keys() must be empty; electron_inertia and stopping_collisions must
+  appear as blockers.
+- A9 (merged restart ledger drops extended S3.7 channels): S3R.7 — three-segment
+  merge must preserve cumulative_field_energy_delta_J, cumulative_pml_removed_energy_J,
+  cumulative_power_port_work_J, cumulative_ionization_step_count.
+- A10 (packet ledgers contradict final submission): S3R.1 — DONE in this pass;
+  4-boolean delivery state established; BLOCKER_MATRIX Sprint 3 rows updated;
+  PENDING.md references removed; S3.1/S3.9 rows added to CLAIMS_LEDGER and
+  TEST_MAP.
+- A11 (shorthand citations remain in WP-N5): S3R.1 — DONE in this pass;
+  all [KR: ...] shorthand citations in WP_N5_CLOSURE_REGISTRY_SOURCE_AUDIT.md
+  expanded to full KnowledgeReference/ paths with line ranges.
+- A12 (traceability points to non-existent modules + findings docs stale):
+  S3R.1 — DONE in this pass; closures.py → closure_packet.py and
+  certificate.py → certificate_gate.py corrected across DPF_REQUIREMENTS_BASELINE.md,
+  SRS_TRACEABILITY_MATRIX.{csv,json}, CHANGELOG.md, CLAIMS_LEDGER.csv,
+  BLOCKER_MATRIX.csv, SPRINT_3_STATUS_LEDGER.md; CodexFindings.md and
+  CortexFindings.md updated with this Sprint 3R entry.
+
+Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.

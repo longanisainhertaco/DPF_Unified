@@ -6763,3 +6763,41 @@ Current Track A closure status after the 2026-05-12 source-intake pass:
   models kept as baselines only. This is an audit/control-plane and runtime
   fail-closed remediation step, not a validation certificate or whole-shot
   acceptance step.
+
+## Sprint 3R Status (2026-05-19)
+
+Sprint 3 completion audit (docs/FIRST_PRINCIPLES_CODEX_AUDIT_SPRINT3_COMPLETION_2026_05_19.md)
+identified findings A1–A12. Sprint 3R remediation is in progress per
+docs/FIRST_PRINCIPLES_SPRINT3R_REMEDIATION_HANDOFF_2026_05_19.md.
+
+Findings summary (A1–A12):
+- A1: startup BVP acceptance can be spoofed by caller-declared payloads.
+- A2: scalar neutron yield can be promoted to mechanism authority.
+- A3: NumPy 2 breaks beam_target._trapezoid_integral().
+- A4: blocked insulator dimensions produce source-backed geometry masks.
+- A5: under-resolution gate does not cover all source-supported features.
+- A6: SigmaPSurfacePacket schema incomplete (missing SHA-256 fields and
+  operand arrays).
+- A7: power-port consumes dict-form Sigma_p packet without reconstruction or
+  named blocker.
+- A8: closure matrix omits electron_inertia and stopping_collisions from
+  REQUIRED_EFFECTS.
+- A9: merged restart ledger drops extended cumulative channels.
+- A10: packet ledgers contradict final submission (split-brain delivery state).
+- A11: shorthand [KR: ...] citations remain in WP-N5 source audit.
+- A12: traceability paths reference closures.py and certificate.py instead of
+  closure_packet.py and certificate_gate.py.
+
+S3R.1 (this pass) closes A10, A11, A12:
+- 4-boolean delivery state (research_packet_delivered, runtime_foundation_delivered,
+  accepted_physics_delivered, validation_delivered) replaces the stale 3-boolean scheme.
+- All Sprint 3 BLOCKER_MATRIX rows updated; sprint_3/PENDING.md references removed.
+- S3.1 and S3.9 rows added to CLAIMS_LEDGER.csv and TEST_MAP.csv.
+- All shorthand [KR: ...] citations in WP_N5_CLOSURE_REGISTRY_SOURCE_AUDIT.md
+  expanded to full KnowledgeReference/ paths with line ranges.
+- closures.py → closure_packet.py and certificate.py → certificate_gate.py
+  corrected in all packet docs and SRS/RTM artifacts.
+- Test suite extended to enforce: 4-boolean delivery state, no PENDING.md
+  references, no shorthand citations, no bad module paths.
+
+S3R.2–S3R.7 are assigned to parallel agents and are in progress.

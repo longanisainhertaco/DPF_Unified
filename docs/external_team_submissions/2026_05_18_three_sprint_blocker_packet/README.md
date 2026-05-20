@@ -116,4 +116,4 @@ Top-level: `README.md`, `CLAIMS_LEDGER.csv`, `BLOCKER_MATRIX.csv`,
 `WP_N1B_TIME_CENTERING_PROPOSAL.md`, `WP_N4B_12US_ORCHESTRATION_PROPOSAL.md`,
 `WP_N4B_LEDGER_MERGE_AND_ARTIFACT_COMBINER_PROPOSAL.md`.
 
-`sprint_3/SPRINT_3_STATUS_LEDGER.md` — Sprint 3 status ledger (supersedes the deleted `sprint_3/PENDING.md`; research_packets_delivered=true; runtime_implementation_delivered=false; first_principles_acceptance=false). See `sprint_3/` for the seven delivered research packets.
+`sprint_3/SPRINT_3_STATUS_LEDGER.md` — Sprint 3 status ledger (supersedes the deleted `sprint_3/PENDING.md`; research_packet_delivered=true; runtime_foundation_delivered=true; accepted_physics_delivered=false; validation_delivered=false). See `sprint_3/` for the seven delivered research packets and the S3.2–S3.8 runtime foundation commits.
