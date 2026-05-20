@@ -198,6 +198,18 @@ package, `can_support_first_principles_acceptance=false` on every row);
 12 A1-A12 rows appended to `TEST_MAP.csv` with exact pytest commands;
 ruff I001 import-sort fix on `tests/test_first_principles_power_port.py`.
 
+`46a0b56` — regenerate `FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}`
+after Sprint 3R implementation added new functions/constants
+(`mask_class_status`, `_sigma_p_packet_from_dict`,
+`_SERIALIZED_SIGMA_P_PACKET_NOT_SUPPORTED`, `electron_inertia`/
+`stopping_collisions` effects, extended cumulative fields).
+`strict_passed=true`, `total_modules=290`,
+`missing_source_reference_count=0`.
+
+The Sprint 3R final-submission wrapper commit adds
+`sprint_3/SPRINT_3R_FINAL_SUBMISSION.md` and updates this `CHANGELOG.md`; it is
+HEAD-exempt from `test_changelog_covers_all_commits_since_base`.
+
 ## Changed paths
 
 ### Sprint 1
