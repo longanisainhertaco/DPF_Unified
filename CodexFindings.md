@@ -6248,3 +6248,24 @@ to close them. Status as of 2026-05-19:
   CortexFindings.md updated with this Sprint 3R entry.
 
 Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
+
+### 2026-05-20: PDF Corpus Rescan Added A Source-Extraction Queue
+
+- Work completed:
+  rescanned the local PDF corpus for first-principles blocker leads while
+  preserving the rule that raw PDFs are not scientific authority. The durable
+  report is
+  `docs/FIRST_PRINCIPLES_PDF_CORPUS_RESCAN_2026_05_20.md`.
+- Findings:
+  the strongest new raw-PDF promotion candidates are Auluck et al. 2021
+  (`/Users/anthonyzamora/Downloads/plasma-04-00033.pdf`) and Bernard et al.
+  1977 (`/Users/anthonyzamora/Downloads/bernard1977.pdf`). Several useful
+  sources are already in `KnowledgeReference/` and need target extraction
+  rather than duplicate ingestion, including Krishnan 2012, Malir 2024, UCSD/Beg
+  current-sheath initiation, Blagoev electric-flux formation diagnostics, and
+  Beresnyak HAWK/ideal-MHD method records.
+- Boundary:
+  no validation state changed. Same-scope PF-1000/Akel 16 kV `V(t)`,
+  `T_e/T_i`, X-ray, neutron spectrum, and anisotropy remain blocked. The next
+  useful parallel work is KR promotion plus typed target extraction, followed by
+  source-index alias reconciliation.

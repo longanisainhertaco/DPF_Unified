@@ -276,6 +276,22 @@ restrike appears only as experimental context in KR; no governing equation.
 Cross-cutting test confirms no blocker flips
 `can_support_first_principles_acceptance`.
 
+`7362251` — S4-Priority 4 (Neutron mechanism authority): three scope-
+mismatched method-context labels exported as
+`SPRINT4_METHOD_CONTEXT_LABELS` (Talebitaher 2012 NX2 wrong device, Krasa
+2008 PF-1000 full-energy wrong scope, Klir 2011 ToF wrong scope), each with
+`can_promote_authority=False`. Bosch-Hale 1992 D-D cross-section + reactivity
+attached via `bosch_hale_dd_reactivity_ref`
+(`KR:bosch-hale-1992-fusion-reactivity.md:59-93,106-109`): upgrades the
+thermonuclear channel from `missing_or_blocked` to `inferred_candidate`
+(cross-section source-supported) but stays non-accepting because the 1/4
+volumetric prefactor is uncited (WP-N6 §4). `NEUTRON-BLK-001` ion
+distribution, `NEUTRON-BLK-002` deuteron stopping, `NEUTRON-BLK-003`
+beam-target yield (depends on 001+002), `NEUTRON-BLK-004` Brysk Doppler,
+`NEUTRON-BLK-005` same-scope anisotropy — all blocked. New negative test:
+all three scope-mismatched method contexts combined still cannot promote
+`accepted_neutron_authority`.
+
 ## Changed paths
 
 ### Sprint 1

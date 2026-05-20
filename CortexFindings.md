@@ -6818,3 +6818,23 @@ S3R.1 (this pass) closes A10, A11, A12:
   references, no shorthand citations, no bad module paths.
 
 S3R.2–S3R.7 are assigned to parallel agents and are in progress.
+
+### 2026-05-20: PDF Corpus Rescan Added A Source-Extraction Queue
+
+- Work completed:
+  rescanned the local PDF corpus for first-principles blocker leads and added
+  `docs/FIRST_PRINCIPLES_PDF_CORPUS_RESCAN_2026_05_20.md` as the durable
+  discovery and extraction-priority record.
+- Findings:
+  the strongest raw-PDF promotion candidates are Auluck et al. 2021
+  (`/Users/anthonyzamora/Downloads/plasma-04-00033.pdf`) and Bernard et al.
+  1977 (`/Users/anthonyzamora/Downloads/bernard1977.pdf`). The rescan also
+  identified already-KR records that should be target-extracted instead of
+  reingested, including Krishnan 2012, Malir 2024, UCSD/Beg current-sheath
+  initiation, Blagoev electric-flux formation diagnostics, and Beresnyak
+  HAWK/ideal-MHD method records.
+- Boundary:
+  no raw PDF was promoted to authority and no validation state changed.
+  Same-scope PF-1000/Akel 16 kV `V(t)`, `T_e/T_i`, X-ray, neutron spectrum, and
+  anisotropy remain blocked. The next parallel source work is KR promotion,
+  target extraction, and source-index alias reconciliation.
