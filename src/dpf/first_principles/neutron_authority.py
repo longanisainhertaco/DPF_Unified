@@ -246,6 +246,101 @@ NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE = (
     "scatter_background",
 )
 
+# ---------------------------------------------------------------------------
+# Sprint 4 Priority 4 — method-context labels for scope-mismatched sources
+# ---------------------------------------------------------------------------
+#
+# Three extraction packets are available but NONE matches the Akel 16 kV scope.
+# They supply METHOD DESIGN context only and must never promote authority for
+# the Akel target scope.  ``can_promote_authority`` is False for all three.
+#
+# Blocker IDs cross-referenced in per-channel verdicts:
+#   NEUTRON-BLK-001  ion_energy_distribution  (no same-scope PF-1000 KR source)
+#   NEUTRON-BLK-002  stopping_transport        (no tabulated dE/dx in KR)
+#   NEUTRON-BLK-003  beam_target_yield_history (missing distribution + stopping)
+#   NEUTRON-BLK-004  neutron_spectrum          (Brysk 1973 Doppler not in KR)
+#   NEUTRON-BLK-005  anisotropy                (no same-scope anisotropy in KR)
+SPRINT4_METHOD_CONTEXT_LABELS = (
+    {
+        "source_id": "talebitaher_2012_nx2_detector_anisotropy",
+        "label": "candidate_method_context_wrong_scope_nx2_not_pf1000",
+        "scope": "NX2 1.6 kJ device, ~1-3e8 n/shot, NOT PF-1000 (~1 MA, ~1e10-1e11 n/shot)",
+        "kr_path": (
+            "KnowledgeReference/coded-aperture-imaging-of-nuclear-fusion-"
+            "in-the-plasma-focus-device-9b79429f.md"
+        ),
+        "what_transfers": (
+            "directed-deuteron-cone model (30 deg forward cone) as beam-target "
+            "METHOD design context; BC-408 detector geometry as METHOD design context"
+        ),
+        "what_does_not_transfer": (
+            "fast-ion distribution authority for PF-1000/Akel 16 kV; "
+            "anisotropy authority for PF-1000/Akel 16 kV"
+        ),
+        "can_promote_authority": False,
+        "blocker_ids_addressed": ["NEUTRON-BLK-001", "NEUTRON-BLK-005"],
+        "channels_affected": ["ion_energy_distribution", "anisotropy"],
+    },
+    {
+        "source_id": "krasa_2008_pf1000_vessel_scatter_anisotropy",
+        "label": "candidate_method_context_pf1000_full_energy_not_akel_16kv",
+        "scope": (
+            "PF-1000 full-energy 450-500 kJ, 3.5 Torr, ~3.5e11 n/shot, "
+            "NOT PF-1000/Akel 16 kV 1.2 Torr, ~6.14e9 n/shot"
+        ),
+        "kr_path": (
+            "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-"
+            "neutrons-caused-by-the-plasma-focus-vessel-527cc533.md"
+        ),
+        "kr_lines": "121-137,175-204,269-288",
+        "what_transfers": (
+            "MCNP vessel-scatter schema (material, thickness, TOF kernel L^2/t^5); "
+            "direct/scattered neutron separation requirement; "
+            "detector geometry design context"
+        ),
+        "what_does_not_transfer": (
+            "scatter fraction or anisotropy ratio authority for Akel 16 kV; "
+            "same-scope detector-response acceptance without a reviewed transfer rule"
+        ),
+        "can_promote_authority": False,
+        "blocker_ids_addressed": ["NEUTRON-BLK-005"],
+        "channels_affected": ["scatter_background", "detector_response", "anisotropy"],
+        "note": (
+            "A reviewed transfer rule with uncertainty inflation is required before "
+            "any Krasa 2008 number can be applied to the Akel 16 kV scope."
+        ),
+    },
+    {
+        "source_id": "klir_2011_tof_detector_response",
+        "label": "candidate_method_context_pf1000_full_energy_not_akel_16kv",
+        "scope": (
+            "PF-1000 / z-pinch BC-408 detector calibration (Klir 2011); "
+            "used at PF-1000 but NOT same-shot-condition as Akel 16 kV"
+        ),
+        "kr_path": (
+            "KnowledgeReference/fusion-neutron-detector-for-time-of-flight-"
+            "measurements-in-z-pinch-and-plasma-focus-214fbdae.md"
+        ),
+        "kr_lines": "78-102,118-138,154-170,171-198,199-207",
+        "what_transfers": (
+            "BC-408 scintillator timing parameters (FWHM 5.7 ns, rise 2.9 ns, "
+            "fall 8.0 ns); PMT Hamamatsu H1949-51 design context; "
+            "2.45 MeV calibration point"
+        ),
+        "what_does_not_transfer": (
+            "detector-response authority for Akel 16 kV acceptance; "
+            "absolute sensitivity without same-detector geometry mapping"
+        ),
+        "can_promote_authority": False,
+        "blocker_ids_addressed": [],
+        "channels_affected": ["detector_response"],
+        "note": (
+            "Same detector hardware was used at PF-1000; however acceptance "
+            "requires a same-scope detector-response model (digitized sensitivity "
+            "curve + geometry mapping), not available in this KR extract."
+        ),
+    },
+)
 
 @dataclass(frozen=True)
 class KRRef:
@@ -265,6 +360,22 @@ class KRRef:
 
     def is_local_knowledge_reference(self) -> bool:
         return self.path.startswith("KnowledgeReference/")
+
+
+# Bosch-Hale KR source for the DD cross-section σ(E) and reactivity <σv>(T)
+# path.  This is the ONLY thermonuclear channel ingredient that is
+# KR-source-backed; the 1/4 volumetric prefactor remains inferred_candidate
+# (WP-N6 §4) and keeps the thermonuclear channel at inferred_candidate until
+# prefactor_citation is also a reviewed KR source.
+BOSCH_HALE_DD_CROSS_SECTION_KR_REF = KRRef(
+    path="KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
+    lines="59-93,106-109",
+    role=(
+        "DD fusion cross-section sigma(E) fit (Table IV, D(d,n)He-3 branch) "
+        "and reactivity <sigma v>(Ti) fit (Table VII, D(d,n)3He branch); "
+        "Bosch & Hale 1992 Nucl. Fusion 32(4):611-631"
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -333,6 +444,12 @@ class NeutronAuthorityRuntime:
     # --- ion energy distribution (WP-N6 §1.5; blocked for Akel authority) ---
     ion_energy_distribution_ref: KRRef | None = None
     ion_distribution_is_core_tail_separated: bool = False
+
+    # --- DD cross-section / reactivity (Sprint 4: Bosch-Hale KR-source-backed) ---
+    # σ(E) and <σv>(T) are KR-source-backed via bosch-hale-1992-fusion-reactivity.md.
+    # The thermonuclear channel still stays inferred_candidate until
+    # prefactor_citation is also reviewed (WP-N6 §4: 1/4 prefactor uncited).
+    bosch_hale_dd_reactivity_ref: KRRef | None = None
 
     # --- transport / stopping (WP-N6 §1.6 / §4: no KR source) ---
     beam_transport_stopping_status: str = "blocked_no_kr_source"
@@ -480,6 +597,34 @@ def build_mechanism_separated_neutron_packet(
         "runtime_scope_decision": mechanism_report["runtime_scope_decision"],
         "uncited_coefficient_isolation": mechanism_report["uncited_coefficient_isolation"],
         "source_references": list(NEUTRON_AUTHORITY_SOURCE_REFS),
+        # Sprint 4 Priority 4: scope-mismatched method-context packets.
+        # These three sources are candidate_method_context only — none can
+        # promote accepted_neutron_authority for the Akel 16 kV scope.
+        "sprint4_method_context_labels": list(SPRINT4_METHOD_CONTEXT_LABELS),
+        "sprint4_bosch_hale_thermonuclear_status": {
+            "channel": "thermonuclear_history",
+            "cross_section_path": "source_supported",
+            "cross_section_kr_ref": BOSCH_HALE_DD_CROSS_SECTION_KR_REF.to_dict(),
+            "prefactor_1_4_status": "inferred_candidate_no_kr_source",
+            "channel_verdict": (
+                "thermonuclear channel stays inferred_candidate: σ(E)/<σv>(T) "
+                "is KR-source-backed via Bosch-Hale 1992, but the 1/4 volumetric "
+                "prefactor has no verbatim KR formula (WP-N6 §4); "
+                "beam-target channel stays blocked: ion-distribution (BLK-001) "
+                "and stopping (BLK-002) are absent"
+            ),
+            "beam_target_blocker_ids": [
+                "NEUTRON-BLK-001-ion-distribution-no-same-scope-kr-source",
+                "NEUTRON-BLK-002-deuteron-stopping-power-no-tabulated-kr-source",
+                "NEUTRON-BLK-003-beam-target-yield-no-distribution-no-stopping",
+            ],
+            "spectrum_blocker_id": (
+                "NEUTRON-BLK-004-doppler-broadening-brysk-1973-not-in-kr"
+            ),
+            "anisotropy_blocker_id": (
+                "NEUTRON-BLK-005-anisotropy-same-scope-not-in-kr"
+            ),
+        },
         "same_scope_source_status": (
             None if same_scope_source is None else same_scope_source.get("status")
         ),
@@ -717,24 +862,32 @@ def _blocked_local_channel(
     }
     reasons = {
         "ion_energy_distribution": (
-            "no same-scope ion f(E) channel; PIC path does not split "
-            "thermal-core vs beam-tail (WP-N6 §1.5)"
+            "NEUTRON-BLK-001: no same-scope PF-1000/Akel ion f(E) KR source; "
+            "Talebitaher 2012 NX2 30-deg cone model is "
+            "candidate_method_context_wrong_scope_nx2_not_pf1000 only "
+            "(Sprint 4 P4)"
         ),
         "stopping_transport": (
-            "no KR deuteron stopping-power / range model in the corpus "
+            "NEUTRON-BLK-002: no tabulated deuteron dE/dx (Andersen-Ziegler / "
+            "ICRU / Bethe) KR source; plasma stopping model also absent "
             "(WP-N6 §1.6, §4)"
         ),
         "detector_response": (
-            "no runtime TOF/activation detector-response model; KR gives only "
-            "the L^2/t^5 kernel and counter layout (WP-N6 §1.9)"
+            "NEUTRON-BLK: no runtime TOF/activation detector-response model; "
+            "Klir 2011 (PF-1000 hardware, not Akel 16 kV) is "
+            "candidate_method_context_pf1000_full_energy_not_akel_16kv; "
+            "Talebitaher 2012 BC-408 NX2 is "
+            "candidate_method_context_wrong_device_nx2_not_pf1000 (Sprint 4 P4)"
         ),
         "activation_response": (
             "no runtime activation-counter response model; calibration "
             "constant absent from KR (WP-N6 §1.10)"
         ),
         "scatter_background": (
-            "no runtime scatter-transport model; KR requires direct-vs-"
-            "scattered separation before any TOF inversion (WP-N6 §1.11)"
+            "no runtime scatter-transport model; Krasa 2008 MCNP vessel-scatter "
+            "is candidate_method_context_pf1000_full_energy_not_akel_16kv — "
+            "KR requires direct-vs-scattered separation before TOF inversion "
+            "(WP-N6 §1.11, Sprint 4 P4)"
         ),
     }
     ref = refs[channel]
@@ -754,6 +907,17 @@ def _evaluate_thermonuclear_channel(
 ) -> tuple[str, str]:
     history = runtime.thermonuclear_yield_history
     if history is None:
+        # Sprint 4: Bosch-Hale σ(E)/<σv>(T) is KR-source-backed, but a yield
+        # history is still required to evaluate the thermonuclear rate channel.
+        if runtime.bosch_hale_dd_reactivity_ref is not None:
+            return (
+                "inferred_candidate",
+                "thermonuclear cross-section path (Bosch-Hale 1992) is "
+                "KR-source-backed via bosch_hale_dd_reactivity_ref; "
+                "thermonuclear_yield_history still absent and the 1/4 "
+                "volumetric prefactor has no KR citation (WP-N6 §4) — "
+                "channel stays inferred_candidate not accepted",
+            )
         return "missing_or_blocked", "thermonuclear_yield_history not supplied"
     if not history.is_time_series():
         return (
@@ -763,10 +927,17 @@ def _evaluate_thermonuclear_channel(
         )
     if history.prefactor_citation is None:
         # WP-N6 §6.1 rule 5: the 1/4 volumetric prefactor is uncited.
+        # Sprint 4: note whether the cross-section path is KR-source-backed.
+        bh_note = (
+            "; Bosch-Hale σ(E)/<σv>(T) is KR-source-backed via "
+            "BOSCH_HALE_DD_CROSS_SECTION_KR_REF (Sprint 4 P4)"
+            if runtime.bosch_hale_dd_reactivity_ref is not None
+            else ""
+        )
         return (
             "inferred_candidate",
             "thermonuclear (1/4) volumetric prefactor has no KR citation "
-            "(prefactor_citation is None) — WP-N6 §4",
+            f"(prefactor_citation is None) — WP-N6 §4{bh_note}",
         )
     if history.source_ref is None or not history.source_ref.is_local_knowledge_reference():
         return (

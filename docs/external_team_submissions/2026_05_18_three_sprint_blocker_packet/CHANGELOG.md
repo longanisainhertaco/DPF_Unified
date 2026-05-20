@@ -262,6 +262,20 @@ UCSD/Beg KR is labeled `candidate_method_context_not_acceptance` only (UCSD
 4.6 kJ DPF wrong scope and no closed BVP initial/boundary data); D2 Townsend
 α(E/p), Paschen A/B, and Cu/pyrex/alumina SEE γ are confirmed absent from KR.
 
+`57360f9` — S4-Priority 3 (Transport and closures): five stable Sprint 4
+blocker IDs exported as module constants on `closure_packet.py`.
+`CLOSURE-BLK-BRAG-001` — Braginskii 1965 PDF on disk but no KR extract;
+direct coefficients unavailable as authority. `CLOSURE-BLK-D2-EN-001` — no
+KR file for D2 electron-neutral cross-sections. `CLOSURE-BLK-ION-001` — NRL
+formulary registered as `nrl_crosscheck_only` (Saha + S(Z) + α_r + α_3)
+cannot promote the closure; no non-NRL DPF-regime source. `CLOSURE-BLK-
+ANOM-001` — neon Hall/LHDI paper attached as
+`candidate_zpinch_formula_not_dpf_authority` with full symbol map and
+`dpf_applicability=not_established_no_kr_source`. `CLOSURE-BLK-REST-001` —
+restrike appears only as experimental context in KR; no governing equation.
+Cross-cutting test confirms no blocker flips
+`can_support_first_principles_acceptance`.
+
 ## Changed paths
 
 ### Sprint 1

@@ -35,9 +35,11 @@ from dpf.fields.kinetic_yield import (
 )
 from dpf.first_principles.neutron_authority import (
     BLOCKING_NEUTRON_AUTHORITY_CHANNELS,
+    BOSCH_HALE_DD_CROSS_SECTION_KR_REF,
     NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE,
     NEUTRON_MECHANISM_CHANNELS,
     REQUIRED_NEUTRON_AUTHORITY_CHANNELS,
+    SPRINT4_METHOD_CONTEXT_LABELS,
     KRRef,
     MechanismYieldHistory,
     NeutronAuthorityRuntime,
@@ -983,3 +985,196 @@ def test_trapezoid_integral_works_on_active_numpy_lane() -> None:
     result = _trapezoid_integral(values, times)
     assert isinstance(result, float), f"Expected float, got {type(result)}"
     assert abs(result - 2.0) < 1e-12, f"Expected 2.0, got {result}"
+
+
+# ---------------------------------------------------------------------------
+# Sprint 4 Priority 4 — neutron mechanism authority tests
+# ---------------------------------------------------------------------------
+
+
+def test_all_three_scope_mismatched_method_contexts_cannot_promote_akel_authority() -> None:
+    """Presenting ALL three scope-mismatched method-context extractions (Krasa 2008
+    PF-1000 full-energy, Talebitaher 2012 NX2, Klir 2011 PF-1000 detector) as
+    accepted validation targets still CANNOT promote accepted_neutron_authority
+    for the Akel 16 kV target scope.
+
+    Sprint 4 Priority 4 negative test.  Each source is scope-mismatched:
+    - Krasa 2008: PF-1000 450-500 kJ, 3.5 Torr — NOT Akel 16 kV, 1.2 Torr.
+    - Talebitaher 2012: NX2 1.6 kJ device — NOT PF-1000.
+    - Klir 2011: PF-1000 detector calibration — NOT Akel 16 kV shot condition.
+
+    Rule 3 (scalar yield is never mechanism authority) and Rule 6 (no cross-scope
+    acceptance without a reviewed transfer rule) jointly block all three.
+
+    KR:
+    - anisotropy-...-527cc533.md:121-137,175-204,269-288 (Krasa, full-energy scope)
+    - coded-aperture-imaging-...-9b79429f.md (Talebitaher, NX2 scope)
+    - fusion-neutron-detector-...-214fbdae.md:78-102,118-138 (Klir, detector only)
+    """
+    # Simulate submitting all three as accepted same-scope sources (incorrect
+    # scope metadata — each uses its own device scope, not _AKEL).
+    krasa_target = {
+        "name": "krasa_2008_pf1000_vessel_scatter",
+        "observable": "neutron_anisotropy",
+        "status": "accepted_same_scope_source",
+        "declared_scope": "pf1000_full_energy_vessel_scatter_2008_krasa",
+    }
+    talebitaher_target = {
+        "name": "talebitaher_2012_nx2_detector_anisotropy",
+        "observable": "neutron_anisotropy",
+        "status": "accepted_same_scope_source",
+        "declared_scope": "nx2_coded_aperture_and_be_activation_neutron_context",
+    }
+    klir_target = {
+        "name": "klir_2011_tof_detector_response",
+        "observable": "detector_response",
+        "status": "accepted_same_scope_source",
+        "declared_scope": "tof_detector_response_2011_klir",
+    }
+
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        device_name="PF-1000/Akel",
+        validation_targets=[krasa_target, talebitaher_target, klir_target],
+    )
+
+    # Packet stays blocked — no scope-matched evidence.
+    assert packet["status"] == (
+        "blocked_mechanism_separated_neutron_authority_not_available"
+    ), f"Expected blocked status, got {packet['status']!r}"
+    assert packet["can_support_first_principles_acceptance"] is False
+
+    # All three targets must be rejected due to scope mismatch.
+    decisions = packet["validation_target_scope_decisions"]
+    rejected = [
+        d for d in decisions
+        if d["decision"] == "rejected_missing_or_mismatched_scope_metadata"
+    ]
+    assert len(rejected) == 3, (
+        f"Expected 3 scope-rejected targets, got {len(rejected)}: {rejected}"
+    )
+
+    # No mechanism channel should be accepted_neutron_authority.
+    ch_status = packet["mechanism_channel_status"]
+    assert all(v != "accepted_neutron_authority" for v in ch_status.values()), (
+        f"No channel should be accepted; got: {ch_status}"
+    )
+
+    # The five no-KR-source channels stay blocked_by_missing_local_source.
+    for ch in NEUTRON_BLOCKED_BY_MISSING_LOCAL_SOURCE:
+        assert ch_status[ch] == "blocked_by_missing_local_source", (
+            f"{ch} must be blocked_by_missing_local_source, got {ch_status[ch]!r}"
+        )
+
+    # Cross-scope policy forbids other-scope acceptance without transfer rule.
+    assert packet["cross_scope_policy"]["can_use_other_scope_for_acceptance"] is False
+
+    # The Sprint 4 method-context labels must be present in the packet.
+    labels = packet["sprint4_method_context_labels"]
+    assert len(labels) == 3
+    label_ids = {lbl["source_id"] for lbl in labels}
+    assert "talebitaher_2012_nx2_detector_anisotropy" in label_ids
+    assert "krasa_2008_pf1000_vessel_scatter_anisotropy" in label_ids
+    assert "klir_2011_tof_detector_response" in label_ids
+    # Every label must have can_promote_authority=False.
+    for lbl in labels:
+        assert lbl["can_promote_authority"] is False, (
+            f"{lbl['source_id']} must have can_promote_authority=False"
+        )
+
+
+def test_sprint4_method_context_labels_are_all_non_promoting() -> None:
+    """SPRINT4_METHOD_CONTEXT_LABELS: all three entries are non-promoting.
+
+    Sprint 4 Priority 4 structural test: verifies the constant is present,
+    has three entries, and every entry declares can_promote_authority=False.
+    """
+    assert len(SPRINT4_METHOD_CONTEXT_LABELS) == 3
+    for entry in SPRINT4_METHOD_CONTEXT_LABELS:
+        assert "source_id" in entry
+        assert "label" in entry
+        assert entry.get("can_promote_authority") is False, (
+            f"{entry['source_id']}: can_promote_authority must be False"
+        )
+        assert "channels_affected" in entry
+        assert isinstance(entry["channels_affected"], list)
+
+
+def test_bosch_hale_cross_section_is_kr_source_backed_but_does_not_promote_thermonuclear() -> None:
+    """Bosch-Hale σ(E)/<σv>(T) is KR-source-backed, but the thermonuclear channel
+    stays inferred_candidate because the 1/4 prefactor has no KR citation (WP-N6 §4).
+
+    Sprint 4 Priority 4: the cross-section PATH is source_supported via
+    KnowledgeReference/bosch-hale-1992-fusion-reactivity.md:59-93,106-109.
+    The thermonuclear channel cannot be accepted_neutron_authority because:
+    (a) prefactor_citation is None (1/4 factor uncited), and
+    (b) no thermonuclear_yield_history time series is present.
+
+    KR: bosch-hale-1992-fusion-reactivity.md:59-93 (reactivity fit eqs. 12-14,
+    Table VII D(d,n)3He), :106-109 (validity and uncertainty notes).
+    """
+    # BOSCH_HALE_DD_CROSS_SECTION_KR_REF must be a local KnowledgeReference ref.
+    assert BOSCH_HALE_DD_CROSS_SECTION_KR_REF.is_local_knowledge_reference()
+    assert "bosch-hale-1992-fusion-reactivity" in BOSCH_HALE_DD_CROSS_SECTION_KR_REF.path
+    assert "59-93" in BOSCH_HALE_DD_CROSS_SECTION_KR_REF.lines
+
+    # Build a runtime record with only the Bosch-Hale reactivity ref set.
+    runtime = NeutronAuthorityRuntime(
+        declared_scope=_AKEL,
+        bosch_hale_dd_reactivity_ref=BOSCH_HALE_DD_CROSS_SECTION_KR_REF,
+        source_review_status="passed_same_scope_review",
+    )
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        runtime=runtime,
+    )
+    # Thermonuclear channel: cross-section path KR-backed but prefactor missing
+    # → inferred_candidate (not accepted_neutron_authority, not missing_or_blocked).
+    tn_status = packet["mechanism_channel_status"]["thermonuclear_history"]
+    assert tn_status == "inferred_candidate", (
+        f"Expected inferred_candidate for thermonuclear with Bosch-Hale ref but "
+        f"no prefactor citation; got {tn_status!r}"
+    )
+    assert "thermonuclear_history" in packet["inferred_candidate_channels"]
+
+    # Packet is still blocked overall.
+    assert packet["status"] == (
+        "blocked_mechanism_separated_neutron_authority_not_available"
+    )
+    assert packet["can_support_first_principles_acceptance"] is False
+
+    # Sprint 4 status block should confirm source_supported for cross-section path.
+    s4 = packet["sprint4_bosch_hale_thermonuclear_status"]
+    assert s4["cross_section_path"] == "source_supported"
+    assert s4["prefactor_1_4_status"] == "inferred_candidate_no_kr_source"
+
+    # Beam-target stays blocked — missing ion distribution and stopping.
+    bt_status = packet["mechanism_channel_status"]["beam_target_history"]
+    assert bt_status == "missing_or_blocked"
+
+
+def test_bosch_hale_thermonuclear_blocker_ids_present_in_packet() -> None:
+    """The Sprint 4 packet must surface explicit blocker IDs for beam-target,
+    spectrum, and anisotropy channels.
+
+    Sprint 4 Priority 4: NEUTRON-BLK-001 through NEUTRON-BLK-005 must appear
+    in the sprint4_bosch_hale_thermonuclear_status block.
+    """
+    packet = build_mechanism_separated_neutron_packet(
+        declared_scope=_AKEL,
+        device_name="PF-1000/Akel",
+    )
+    s4 = packet["sprint4_bosch_hale_thermonuclear_status"]
+    bt_blockers = s4["beam_target_blocker_ids"]
+    assert any("BLK-001" in b for b in bt_blockers), (
+        f"BLK-001 (ion distribution) not in beam_target_blocker_ids: {bt_blockers}"
+    )
+    assert any("BLK-002" in b for b in bt_blockers), (
+        f"BLK-002 (stopping power) not in beam_target_blocker_ids: {bt_blockers}"
+    )
+    assert any("BLK-003" in b for b in bt_blockers), (
+        f"BLK-003 (beam-target yield) not in beam_target_blocker_ids: {bt_blockers}"
+    )
+    assert "BLK-004" in s4["spectrum_blocker_id"]
+    assert "BLK-005" in s4["anisotropy_blocker_id"]
+    assert packet["can_support_first_principles_acceptance"] is False
