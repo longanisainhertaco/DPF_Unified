@@ -123,3 +123,10 @@ KnowledgeReference/
 
 # Sprint 4 PDF corpus rescan scratch (per Sprint 4 P5 scope-decision memo work)
 tmp/pdfs/
+
+# Sprint 4 corpus-rescan PDF intake — these are the raw P0 candidate PDFs the
+# rescan promoted into KR; the rescan ledger is tracked via
+# docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.{json,md}, the source PDFs themselves
+# stay out of git (mirror the pattern used for other intake directories).
+downloaded_books_papers/Research Papers/*-corpus-rescan/
+downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/

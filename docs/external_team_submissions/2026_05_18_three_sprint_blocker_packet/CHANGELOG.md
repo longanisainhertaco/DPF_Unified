@@ -355,6 +355,14 @@ matrix recommendation Option B (PF-1000 full-energy 27-40 kV) is reaffirmed;
 no cell flips after the new KR ingests. Handoff document:
 `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_2026_05_20.md`.
 
+`8f6a0ae` — Audit handoff document (above section) committed.
+
+`(this commit)` — Housekeeping: regenerate
+`docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_18.{json,md}` and
+`docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_18.{json,md}` after
+the Sprint 4 corpus-rescan additions; add `.gitignore` pattern for the
+2026-05-20 rescan intake directory.
+
 ## Changed paths
 
 ### Sprint 1

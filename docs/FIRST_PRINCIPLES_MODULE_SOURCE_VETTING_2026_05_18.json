@@ -11407,8 +11407,8 @@
       "uncertainty_uq",
       "validation_target"
     ],
-    "knowledge_reference_document_count": 528,
-    "knowledge_reference_file_count": 1396,
+    "knowledge_reference_document_count": 530,
+    "knowledge_reference_file_count": 1409,
     "path": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.json"
   },
   "strict_passed": true,
