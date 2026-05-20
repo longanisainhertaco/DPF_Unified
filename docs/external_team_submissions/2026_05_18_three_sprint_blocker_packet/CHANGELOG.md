@@ -320,6 +320,41 @@ Scientific Status of the Plasma Focus", 220 pages). New scoped utility
 `docs/CORPUS_RESCAN_KR_PROMOTION_2026_05_20.{json,md}` capture the ledger.
 Source-truth indices regenerated for the 2026-05-20 baseline date.
 
+`022b774` — Sprint 4 corpus-rescan KR promotion (above section): brings
+Bernard 1977 and Plasma Focus Update 2021 into KR; refreshes source-truth
+indices and source-truth-exhaustion exports for the 2026-05-20 baseline.
+
+### Sprint 4 blocker-resolution audit handoff (2026-05-20)
+
+Seven parallel research sub-agents fanned out across KR + on-disk corpus +
+legacy DB to convert every Sprint 4 named blocker (21 distinct items across
+geometry, startup, transport/closures, neutron, and comparator) into one of
+four definite resolution categories:
+- `RESOLVED_VIA_KR`: cathode-cage 200 mm (3 hardware-scope KR sources),
+  qualitative DPF anomalous resistivity (LLNL kinetic simulations KR).
+- `KR_PROMOTION_RECOMMENDED`: Bennett 2017 on disk
+  (filename `schmidt-2017-kinetic-dpf-breakdown.pdf` is mislabeled — actually
+  Bennett et al. 2017 Phys. Plasmas 24, 062705) resolves 3 startup channels;
+  Braginskii 1965 PDF on disk (Table 2 p.251) resolves CLOSURE-BLK-BRAG-001;
+  Talebitaher PhD pp.100-119 resolves NEUTRON-BLK-001 at NX2 scope.
+- `EXISTING_KR_TARGET_EXTRACTION_RECOMMENDED`: UCSD/Beg b2e95b88:615-670
+  (massf relation, Paschen-regime boundaries); Plasma Focus Update
+  pages-0026-0050:512-517 and pages-0126-0150 (Te filter-ratio, beam-target).
+- `EXTERNAL_ACQUISITION_REQUIRED`: 11 named citations with DOI/journal/page
+  (Raizer 1991; Brysk 1973; ICRU 49; Davidson-Gladd 1975; Bruzzone 2001;
+  Voronov 1997; Janev-Smith 1993; Itikawa-Mason 2005; Gribkov 2007;
+  Schmidt 2012; Hagstrum 1956; Miklaszewski 2001; etc.).
+- `ABSENT_FROM_LITERATURE`: PF-1000 insulator wall thickness, insulator outer
+  radius, backplate radial extent, backplate axial thickness (all likely
+  IPPLM-internal engineering drawings).
+Notable finding: Bernard 1977 contains the first direct Thomson-scattering
+Ti = 700 eV measurement of a DPF (filament phase, ~500 kA Limeil/Jülich
+Mather-type) — historically significant; does not map to PF-1000 but is the
+only direct spectroscopic Ti measurement in the searched corpus. Comparator
+matrix recommendation Option B (PF-1000 full-energy 27-40 kV) is reaffirmed;
+no cell flips after the new KR ingests. Handoff document:
+`docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_2026_05_20.md`.
+
 ## Changed paths
 
 ### Sprint 1
