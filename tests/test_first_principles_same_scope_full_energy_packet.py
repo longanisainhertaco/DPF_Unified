@@ -172,7 +172,7 @@ def test_akel_16kv_scope_keeps_akel_named_gate_label() -> None:
         device_name=AKEL_16KV_DEVICE,
     )
     assert packet["acceptance_gate"].startswith(
-        "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics"
+        "text_supported_pf1000_akel_scalars_and_cross_scope_diagnostics"
     )
 
 

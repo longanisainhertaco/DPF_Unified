@@ -452,3 +452,149 @@ def test_pf1000_full_energy_relocates_hybrid_pic_ref_to_non_same_scope_field() -
     blob = json.dumps(context, default=str)
     assert "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield" in blob
     assert "hybrid_pic_architecture_order_of_magnitude_other_scope" in blob
+
+
+# --------------------------------------------------------------------------
+# SS12-P0-3 (audit SS11-A3): the ``same_scope_source`` packet must carry ONLY
+# strict same-scope evidence.  No ``same_scope_source``-named subtree may carry
+# cross-scope / other-scope context, wrong-scope diagnostics, the LLNL-like
+# architecture scope, or the hybrid-PIC source slug.  All such material is
+# relocated to the sibling ``cross_scope_context_sources`` field.
+# --------------------------------------------------------------------------
+_P0_3_FORBIDDEN_UNDER_SAME_SCOPE_SOURCE = (
+    "other_scope",
+    "wrong_scope",
+    "llnl_like",
+    "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield",
+)
+
+
+def _scan_same_scope_source_keys_for_forbidden(
+    obj: object,
+) -> list[tuple[str, str]]:
+    """Return (key_path, forbidden_token) pairs for any leaking same_scope_source key.
+
+    Walks every dict/list recursively.  For any dict key whose name contains the
+    substring ``same_scope_source``, its whole subtree (every nested dict key and
+    every string value) must contain none of the SS12-P0-3 forbidden tokens.
+    """
+    leaks: list[tuple[str, str]] = []
+
+    def _walk(node: object, path: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                key_path = f"{path}.{key}"
+                if "same_scope_source" in str(key).lower():
+                    subtree = _same_scope_subtree_strings(value)
+                    subtree.append(str(key))
+                    blob = "\n".join(subtree)
+                    for forbidden in _P0_3_FORBIDDEN_UNDER_SAME_SCOPE_SOURCE:
+                        if forbidden in blob:
+                            leaks.append((key_path, forbidden))
+                _walk(value, key_path)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                _walk(value, f"{path}[{index}]")
+
+    _walk(obj, "")
+    return leaks
+
+
+def test_pf1000_full_energy_no_same_scope_source_key_carries_cross_scope() -> None:
+    """No ``same_scope_source``-named key carries cross-scope/other-scope material.
+
+    SS12-P0-3 (audit SS11-A3): walk the full PF-1000 full-energy runtime payload
+    (telemetry + manifest + run-result payload).  For every dict key containing
+    the substring ``same_scope_source``, its subtree must contain none of
+    ``other_scope``, ``wrong_scope``, ``llnl_like``, or the hybrid-PIC source
+    slug.  Cross-scope source groups and the cross-scope transfer policy are
+    relocated to the non-``same_scope`` field ``cross_scope_context_sources``.
+    """
+    result = run_first_principles_3d_deck(
+        pf1000_scholz_2001_24rod_full_energy_deck()
+    )
+
+    telemetry_leaks = _scan_same_scope_source_keys_for_forbidden(result.telemetry)
+    assert telemetry_leaks == [], (
+        f"telemetry same_scope_source keys carry cross-scope material: "
+        f"{telemetry_leaks}"
+    )
+
+    manifest_leaks = _scan_same_scope_source_keys_for_forbidden(result.manifest)
+    assert manifest_leaks == [], (
+        f"manifest same_scope_source keys carry cross-scope material: "
+        f"{manifest_leaks}"
+    )
+
+    payload_leaks = _scan_same_scope_source_keys_for_forbidden(result.to_dict())
+    assert payload_leaks == [], (
+        f"runtime payload same_scope_source keys carry cross-scope material: "
+        f"{payload_leaks}"
+    )
+
+
+def test_pf1000_segmented_manifest_no_same_scope_source_key_carries_cross_scope(
+    tmp_path,
+) -> None:
+    """The segmented whole-shot manifest has no leaking ``same_scope_source`` key.
+
+    SS12-P0-3 (audit SS11-A3): the segmented manifest embeds the per-segment
+    runtime telemetry and manifest, so the same-scope namespace split must hold
+    over the full segmented whole-shot payload as well.
+    """
+    deck = pf1000_scholz_2001_24rod_full_energy_deck().to_dict()
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "pf1000_ss12_p0_3_same_scope_source_scan",
+        segment_steps=2,
+        explicit_total_steps=6,
+        verify_restart_equivalence=False,
+    )
+
+    leaks = _scan_same_scope_source_keys_for_forbidden(manifest)
+    assert leaks == [], (
+        f"segmented manifest same_scope_source keys carry cross-scope "
+        f"material: {leaks}"
+    )
+
+
+def test_pf1000_full_energy_relocates_cross_scope_context_to_sibling_field() -> None:
+    """Cross-scope context is retained under the non-same-scope sibling field.
+
+    SS12-P0-3 (audit SS11-A3): relocation, not deletion.  The cross-scope source
+    groups, transfer policy, and scope-mismatched source references must remain
+    available under ``cross_scope_context_sources`` -- a sibling of
+    ``same_scope_source`` in telemetry and manifest, never nested inside it.
+    """
+    result = run_first_principles_3d_deck(
+        pf1000_scholz_2001_24rod_full_energy_deck()
+    )
+
+    # The sibling exists in telemetry and the segmented/candidate manifest.
+    context = result.telemetry["cross_scope_context_sources"]
+    assert "same_scope_source" not in "cross_scope_context_sources"
+    assert context["is_same_scope_validation_evidence"] is False
+    assert context["can_support_first_principles_acceptance"] is False
+    assert (
+        result.manifest["candidate_evidence"]["cross_scope_context_sources"]
+        == context
+    )
+
+    # The relocated material is preserved in full.
+    blob = json.dumps(context, default=str)
+    assert "sixteenframe-interferometer" in blob, (
+        "the cross-scope interferometry source reference was lost in relocation"
+    )
+    assert "anisotropy-of-the-emission" in blob, (
+        "the cross-scope anisotropy source reference was lost in relocation"
+    )
+    assert "cross_scope_source_groups" in context
+    assert "cross_scope_policy" in context
+    assert (
+        context["cross_scope_policy"]["can_use_cross_scope_for_acceptance"] is False
+    )
+
+    # The same_scope_source packet no longer carries the relocated keys.
+    same_scope = result.telemetry["same_scope_source"]
+    assert "other_scope_source_groups" not in same_scope
+    assert "cross_scope_policy" not in same_scope

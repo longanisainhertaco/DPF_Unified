@@ -51,6 +51,7 @@ from dpf.first_principles.current_waveform_comparator import (
     build_engineering_current_waveform_comparator,
 )
 from dpf.first_principles.deck import (
+    CONTEXT_ONLY_STARTUP_MODES,
     FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES,
     FirstPrinciplesInputDeck,
 )
@@ -83,6 +84,7 @@ from dpf.first_principles.power_port import build_engineering_power_port_packet
 from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
 from dpf.first_principles.same_scope import (
     ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES,
+    build_cross_scope_context_sources,
     build_same_scope_source_packet,
 )
 from dpf.first_principles.spatial_field_temperature import (
@@ -243,6 +245,27 @@ class FirstPrinciples3DDeck:
     certificate_accepted_channels: tuple[str, ...] = ()
     generalization_accepted_channels: tuple[str, ...] = ()
     seed: int | None = 0
+
+    def __post_init__(self) -> None:
+        # SS12-P0-1 (closes audit SS11-A1): clamp the raw runtime-deck field at
+        # DIRECT construction.  SS11-1 closed the
+        # FirstPrinciplesInputDeck -> FirstPrinciples3DDeck conversion path via
+        # StartupPolicy.__post_init__, but a caller could still build this deck
+        # directly --
+        # FirstPrinciples3DDeck(startup_mode="imported_pic_sheath_state",
+        # startup_can_support_whole_shot_acceptance=True) -- and hold the raw
+        # field True.  A context-only startup mode (imported PIC) is an import,
+        # not a same-scope measured diagnostic; it can NEVER carry runtime
+        # whole-shot acceptance authority.  Mirrors the deck.py StartupPolicy
+        # force-branch: a force (not a raise) keeps construction non-breaking.
+        # This is a fail-closed tightening only -- it never promotes anything.
+        if (
+            self.startup_mode in CONTEXT_ONLY_STARTUP_MODES
+            and self.startup_can_support_whole_shot_acceptance
+        ):
+            object.__setattr__(
+                self, "startup_can_support_whole_shot_acceptance", False
+            )
 
     @classmethod
     def from_deck(
@@ -1252,6 +1275,12 @@ class HybridEMPicFluidRun:
             # field, never inside ``same_scope_source``.  It is architecture
             # context only and promotes nothing.
             "architecture_or_schema_context_sources": _architecture_context_sources(),
+            # SS12-P0-3 (audit SS11-A3): cross-scope source groups, the
+            # cross-scope transfer policy, and scope-mismatched source
+            # references live under this NON-``same_scope``-named sibling
+            # field, never inside ``same_scope_source``.  Context only;
+            # promotes nothing.
+            "cross_scope_context_sources": build_cross_scope_context_sources(),
             "waveform_phase": waveform_phase_packet,
             "engineering_current_waveform_comparison": (
                 current_waveform_comparison_packet
@@ -3226,6 +3255,9 @@ def _build_manifest(
         "architecture_or_schema_context_sources": telemetry[
             "architecture_or_schema_context_sources"
         ],
+        # SS12-P0-3 (audit SS11-A3): cross-scope source/transfer-policy context
+        # under a non-``same_scope``-named manifest key.
+        "cross_scope_context_sources": telemetry["cross_scope_context_sources"],
         "waveform_phase_packet": telemetry["waveform_phase"],
         "spatial_field_temperature_packet": telemetry["spatial_field_temperature"],
         "neutron_authority_packet": telemetry["neutron_authority"],

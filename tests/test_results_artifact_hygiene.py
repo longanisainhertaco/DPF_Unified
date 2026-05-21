@@ -1,9 +1,18 @@
-"""Tests for the active results artifact hygiene audit.
+"""Tests for the active results artifact same-scope namespace hygiene audit.
 
-Verifies that:
-  1. Zero active (non-archive) result artifacts contain forbidden stale patterns.
-  2. A temp non-archive file with a forbidden pattern is correctly flagged.
-  3. A temp file placed under an archive_* directory is correctly ignored.
+SS12-P0 (finding SS11-A4): the linter was upgraded from flat-string scanning to
+structured JSON key-chain scanning.  These tests verify that:
+
+  1. The live repo's active (non-archive) result artifacts are clean — no
+     same-scope namespace violation.
+  2. A temp active JSON with a hybrid-PIC source slug under a ``same_scope_source``
+     key is flagged.
+  3. A temp active JSON with an ``other_scope`` / ``wrong_scope`` value under a
+     ``same_scope_source`` key is flagged.
+  4. A temp active JSON with the SAME architecture evidence under an approved
+     ``*_context_sources`` context key is NOT flagged.
+  5. Files under an ``archive_*`` directory are excluded from the scan.
+  6. A malformed (non-JSON) active file is reported, not crashed on.
 """
 
 from __future__ import annotations
@@ -26,6 +35,18 @@ scan_active_results = _mod.scan_active_results
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The SS11 hybrid-PIC source slug used as the canonical architecture evidence
+# in the namespace fixtures below.
+_HYBRID_PIC_SLUG = "llnl_like_180ka_axisymmetric_hybrid_pic"
+
+
+def _write_results_json(results_dir: Path, name: str, payload: dict) -> Path:
+    """Write *payload* as JSON to ``results_dir/name`` and return the path."""
+    results_dir.mkdir(parents=True, exist_ok=True)
+    target = results_dir / name
+    target.write_text(json.dumps(payload, indent=2))
+    return target
+
 
 # ---------------------------------------------------------------------------
 # Positive test: live repo results/ must be clean
@@ -33,65 +54,296 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class TestLiveRepoResultsClean:
-    """The live results/ directory must contain no active stale artifacts."""
+    """The live results/ directory must contain no namespace violations."""
 
-    def test_no_active_forbidden_patterns(self) -> None:
+    def test_no_active_namespace_violations(self) -> None:
         issues = scan_active_results(ROOT)
         if issues:
             detail = "\n".join(
-                f"  {i['file']}: pattern={i['pattern']!r} lines={i['lines']}"
+                f"  {i['file']}: rule={i.get('rule')!r} "
+                f"key_path={i.get('key_path')!r} "
+                f"violation={i.get('violation') or i.get('error')!r}"
                 for i in issues
             )
             pytest.fail(
-                f"Found {len(issues)} active result artifact(s) with forbidden "
-                f"same-scope/LLNL-like patterns:\n{detail}"
+                f"Found {len(issues)} active result artifact namespace "
+                f"violation(s):\n{detail}"
             )
 
 
 # ---------------------------------------------------------------------------
-# Negative test: temp non-archive file with forbidden pattern must be flagged
+# Negative test: hybrid-PIC slug under a same_scope key chain must be flagged
 # ---------------------------------------------------------------------------
 
 
-class TestNonArchiveFileIsFlagged:
-    """A forbidden pattern in a non-archive result file must produce an issue."""
+class TestSlugUnderSameScopeIsFlagged:
+    """A hybrid-PIC slug under a same_scope_source key must produce an issue."""
 
-    def test_non_archive_json_with_forbidden_pattern_is_flagged(
+    def test_slug_under_same_scope_source_is_flagged(
         self, tmp_path: Path
     ) -> None:
         results_dir = tmp_path / "results"
-        results_dir.mkdir()
-        stale_file = results_dir / "probe_active_2026_05_21.json"
         payload = {
-            "selected": "same_scope_3d_validation_packet",
-            "note": "this is a synthetic stale artifact for test purposes",
+            "same_scope_source": {
+                "selected_source_references": [
+                    {"path": f"KnowledgeReference/{_HYBRID_PIC_SLUG}.md"},
+                ],
+            },
         }
-        stale_file.write_text(json.dumps(payload, indent=2))
+        _write_results_json(
+            results_dir, "probe_same_scope_slug_2026_05_21.json", payload
+        )
 
         issues = scan_active_results(tmp_path)
-        assert len(issues) >= 1, "Expected at least one issue for the stale file"
-        matching = [i for i in issues if "same_scope_3d_validation_packet" in i["pattern"]]
-        assert matching, "Expected an issue reporting same_scope_3d_validation_packet"
-        assert matching[0]["file"] == "results/probe_active_2026_05_21.json"
+        matching = [i for i in issues if i.get("rule") == "slug_under_same_scope"]
+        assert matching, (
+            f"Expected a slug_under_same_scope issue; got {issues}"
+        )
+        issue = matching[0]
+        assert issue["file"] == "results/probe_same_scope_slug_2026_05_21.json"
+        assert issue["violation"] == _HYBRID_PIC_SLUG
+        assert "same_scope_source" in issue["key_path"]
 
-    def test_non_archive_json_with_llnl_pattern_is_flagged(
+    def test_slug_nested_deep_under_same_scope_is_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        # The same_scope key may be any ancestor, not just the top level.
+        results_dir = tmp_path / "results"
+        payload = {
+            "candidate_results": [
+                {
+                    "same_scope_validation_packet": {
+                        "evidence": {
+                            "source": (
+                                "fully-electromagnetic-hybrid-pic-fluid-dpf-"
+                                "neutron-yield-acb71fa9.md"
+                            ),
+                        },
+                    },
+                },
+            ],
+        }
+        _write_results_json(
+            results_dir, "probe_nested_same_scope_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        matching = [i for i in issues if i.get("rule") == "slug_under_same_scope"]
+        assert matching, (
+            f"Expected a slug_under_same_scope issue for the nested slug; "
+            f"got {issues}"
+        )
+        assert matching[0]["violation"] == (
+            "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Negative test: other_scope/wrong_scope token under same_scope_source flagged
+# ---------------------------------------------------------------------------
+
+
+class TestScopeTokenUnderSameScopeSourceIsFlagged:
+    """other_scope / wrong_scope under a same_scope_source key must be flagged."""
+
+    def test_other_scope_token_under_same_scope_source_is_flagged(
         self, tmp_path: Path
     ) -> None:
         results_dir = tmp_path / "results"
-        results_dir.mkdir()
-        stale_file = results_dir / "scope_stale_2026_05_21.json"
         payload = {
-            "source_scope": "llnl_like_180ka_axisymmetric_hybrid_pic",
-            "note": "synthetic stale artifact",
+            "same_scope_source": {
+                "context_group": "hybrid_pic_architecture_other_scope_evidence",
+            },
         }
-        stale_file.write_text(json.dumps(payload, indent=2))
+        _write_results_json(
+            results_dir, "probe_other_scope_2026_05_21.json", payload
+        )
 
         issues = scan_active_results(tmp_path)
         matching = [
-            i for i in issues if "llnl_like_180ka_axisymmetric_hybrid_pic" in i["pattern"]
+            i
+            for i in issues
+            if i.get("rule") == "scope_token_under_same_scope_source"
         ]
-        assert matching, "Expected an issue reporting llnl_like_180ka_axisymmetric_hybrid_pic"
-        assert matching[0]["file"] == "results/scope_stale_2026_05_21.json"
+        assert matching, (
+            f"Expected a scope_token_under_same_scope_source issue; got {issues}"
+        )
+        assert matching[0]["violation"] == "other_scope"
+        assert matching[0]["file"] == "results/probe_other_scope_2026_05_21.json"
+
+    def test_wrong_scope_token_under_same_scope_source_is_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        results_dir = tmp_path / "results"
+        payload = {
+            "telemetry": {
+                "same_scope_source_packet": {
+                    "status": "carried_wrong_scope_group",
+                },
+            },
+        }
+        _write_results_json(
+            results_dir, "probe_wrong_scope_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        matching = [
+            i
+            for i in issues
+            if i.get("rule") == "scope_token_under_same_scope_source"
+        ]
+        assert matching, (
+            f"Expected a scope_token_under_same_scope_source issue; got {issues}"
+        )
+        assert matching[0]["violation"] == "wrong_scope"
+
+
+# ---------------------------------------------------------------------------
+# Negative test: a forbidden token in a KEY NAME under a same_scope chain
+# (SS12-P0 review HIGH) must be flagged — the scalar-value scan alone misses it
+# ---------------------------------------------------------------------------
+
+
+class TestForbiddenKeyNameUnderSameScopeIsFlagged:
+    """A forbidden slug/token in a dict KEY name under same_scope is flagged."""
+
+    def test_other_scope_key_name_under_same_scope_source_is_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        # The forbidden token lives in the KEY name other_scope_source_groups,
+        # not in any scalar value — the SS11-era value-only scan missed this.
+        results_dir = tmp_path / "results"
+        payload = {
+            "telemetry": {
+                "same_scope_source": {
+                    "status": "blocked_same_scope_source_packet_not_available",
+                    "other_scope_source_groups": [
+                        {"name": "pf1000_interferometry_density_campaign"},
+                    ],
+                },
+            },
+        }
+        _write_results_json(
+            results_dir, "probe_key_name_other_scope_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        matching = [
+            i
+            for i in issues
+            if i.get("rule") == "forbidden_key_name_under_same_scope_source"
+        ]
+        assert matching, (
+            f"Expected a forbidden_key_name_under_same_scope_source issue for "
+            f"the other_scope_source_groups key; got {issues}"
+        )
+        assert matching[0]["violation"] == "other_scope"
+        assert matching[0]["value"] == "other_scope_source_groups"
+        assert "same_scope_source" in matching[0]["key_path"]
+
+    def test_slug_key_name_under_same_scope_is_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        # A hybrid-PIC slug carried by a dict KEY name under a same_scope chain.
+        results_dir = tmp_path / "results"
+        payload = {
+            "same_scope_validation_packet": {
+                f"{_HYBRID_PIC_SLUG}_packet": {"status": "present"},
+            },
+        }
+        _write_results_json(
+            results_dir, "probe_key_name_slug_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        matching = [
+            i
+            for i in issues
+            if i.get("rule") == "forbidden_key_name_under_same_scope"
+        ]
+        assert matching, (
+            f"Expected a forbidden_key_name_under_same_scope issue; got {issues}"
+        )
+        assert matching[0]["violation"] == _HYBRID_PIC_SLUG
+
+
+# ---------------------------------------------------------------------------
+# Positive test: same evidence under an approved context key must NOT be flagged
+# ---------------------------------------------------------------------------
+
+
+class TestArchitectureEvidenceUnderContextKeyIsAllowed:
+    """The same architecture evidence is allowed under an approved context key."""
+
+    def test_slug_under_architecture_context_key_is_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        results_dir = tmp_path / "results"
+        payload = {
+            "architecture_or_schema_context_sources": [
+                {"path": f"KnowledgeReference/{_HYBRID_PIC_SLUG}.md"},
+            ],
+        }
+        _write_results_json(
+            results_dir, "probe_arch_context_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        assert issues == [], (
+            "Architecture evidence under architecture_or_schema_context_sources "
+            f"must be allowed; got issues: {issues}"
+        )
+
+    def test_slug_under_cross_scope_context_key_is_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        results_dir = tmp_path / "results"
+        payload = {
+            "cross_scope_context_sources": {
+                "other_scope_reference": (
+                    "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield.md"
+                ),
+            },
+        }
+        _write_results_json(
+            results_dir, "probe_cross_scope_context_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        assert issues == [], (
+            "Architecture/cross-scope evidence under cross_scope_context_sources "
+            f"must be allowed; got issues: {issues}"
+        )
+
+    def test_slug_outside_any_same_scope_chain_is_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        # Mirrors the live repo: the slug appears in ordinary physics-domain
+        # source fields with no same_scope ancestor key — that is allowed.
+        results_dir = tmp_path / "results"
+        payload = {
+            "last_step": {
+                "electron_energy": {
+                    "closure_validity": {
+                        "electron_fluid_domain": {
+                            "source": (
+                                "KnowledgeReference/fully-electromagnetic-"
+                                "hybrid-pic-fluid-dpf-neutron-yield.md"
+                            ),
+                        },
+                    },
+                },
+            },
+        }
+        _write_results_json(
+            results_dir, "probe_plain_source_2026_05_21.json", payload
+        )
+
+        issues = scan_active_results(tmp_path)
+        assert issues == [], (
+            "A hybrid-PIC slug in a plain source field outside any same_scope "
+            f"key chain must be allowed; got issues: {issues}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -100,18 +352,23 @@ class TestNonArchiveFileIsFlagged:
 
 
 class TestArchiveFileIsIgnored:
-    """A forbidden pattern inside an archive_* directory must be ignored."""
+    """A namespace violation inside an archive_* directory must be ignored."""
 
-    def test_archive_dir_file_not_flagged(self, tmp_path: Path) -> None:
-        results_dir = tmp_path / "results"
-        archive_dir = results_dir / "archive_stale_pre_ss11_2026_05_21"
-        archive_dir.mkdir(parents=True)
-        archived_file = archive_dir / "experimental_old_artifact_2026_05_16.json"
+    def test_archive_dir_namespace_violation_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        archive_dir = (
+            tmp_path / "results" / "archive_stale_pre_ss11_2026_05_21"
+        )
         payload = {
-            "selected": "same_scope_3d_validation_packet",
-            "source_scope": "llnl_like_180ka_axisymmetric_hybrid_pic",
+            "same_scope_source": {
+                "path": f"KnowledgeReference/{_HYBRID_PIC_SLUG}.md",
+                "context_group": "other_scope_evidence",
+            },
         }
-        archived_file.write_text(json.dumps(payload, indent=2))
+        _write_results_json(
+            archive_dir, "experimental_old_artifact_2026_05_16.json", payload
+        )
 
         issues = scan_active_results(tmp_path)
         assert issues == [], (
@@ -119,13 +376,17 @@ class TestArchiveFileIsIgnored:
             f"got issues: {issues}"
         )
 
-    def test_nested_archive_dir_file_not_flagged(self, tmp_path: Path) -> None:
-        results_dir = tmp_path / "results"
-        nested_archive = results_dir / "archive_stale_pre_ssr_2026_05_18"
-        nested_archive.mkdir(parents=True)
-        nested_file = nested_archive / "some_old_probe.json"
-        payload = {"cap": "same_scope_3d_validation_packet"}
-        nested_file.write_text(json.dumps(payload, indent=2))
+    def test_nested_archive_dir_violation_not_flagged(
+        self, tmp_path: Path
+    ) -> None:
+        nested_archive = (
+            tmp_path
+            / "results"
+            / "family"
+            / "archive_stale_pre_ssr_2026_05_18"
+        )
+        payload = {"same_scope_source": {"slug": _HYBRID_PIC_SLUG}}
+        _write_results_json(nested_archive, "some_old_probe.json", payload)
 
         issues = scan_active_results(tmp_path)
         assert issues == [], (
@@ -137,17 +398,57 @@ class TestArchiveFileIsIgnored:
     ) -> None:
         results_dir = tmp_path / "results"
         archive_dir = results_dir / "archive_stale_pre_ss11_2026_05_21"
-        archive_dir.mkdir(parents=True)
-        # Archive file (forbidden pattern — must be ignored)
-        (archive_dir / "old.json").write_text(
-            '{"source_scope": "llnl_like_180ka_axisymmetric_hybrid_pic"}'
+        # Archive file (namespace violation — must be ignored).
+        _write_results_json(
+            archive_dir,
+            "old.json",
+            {"same_scope_source": {"slug": _HYBRID_PIC_SLUG}},
         )
-        # Clean active file (no forbidden patterns — must not produce issues)
-        (results_dir / "clean_active_probe.json").write_text(
-            '{"status": "ok", "result": "clean"}'
+        # Clean active file (no namespace violation — must produce no issues).
+        _write_results_json(
+            results_dir,
+            "clean_active_probe.json",
+            {"status": "ok", "result": "clean"},
         )
 
         issues = scan_active_results(tmp_path)
         assert issues == [], (
-            "A clean active file alongside an archived file must produce no issues"
+            "A clean active file alongside an archived file must produce no "
+            f"issues; got: {issues}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Malformed-file test: a non-JSON active file is reported, not crashed on
+# ---------------------------------------------------------------------------
+
+
+class TestMalformedActiveFileIsReported:
+    """A non-JSON active file is reported as malformed_json without crashing."""
+
+    def test_malformed_active_json_is_reported(self, tmp_path: Path) -> None:
+        results_dir = tmp_path / "results"
+        results_dir.mkdir()
+        broken = results_dir / "broken_active_2026_05_21.json"
+        broken.write_text("{ this is not valid json ]")
+
+        issues = scan_active_results(tmp_path)
+        malformed = [i for i in issues if i.get("rule") == "malformed_json"]
+        assert malformed, (
+            f"Expected a malformed_json issue for the broken file; got {issues}"
+        )
+        assert malformed[0]["file"] == "results/broken_active_2026_05_21.json"
+        assert "error" in malformed[0]
+
+    def test_malformed_archive_json_is_ignored(self, tmp_path: Path) -> None:
+        archive_dir = (
+            tmp_path / "results" / "archive_stale_pre_ss11_2026_05_21"
+        )
+        archive_dir.mkdir(parents=True)
+        broken = archive_dir / "broken_archived.json"
+        broken.write_text("{ not json")
+
+        issues = scan_active_results(tmp_path)
+        assert issues == [], (
+            "A malformed file under archive_* must be excluded from the scan"
         )

@@ -9,7 +9,6 @@ from dpf.first_principles.channel_state import (
     ACCEPTED,
     AKEL_16KV_SHOT_MARKERS,
     BLOCKED_MISSING_SOURCE,
-    BLOCKED_WRONG_SCOPE,
     EXCLUDED_NOT_VALIDATED,
     NOT_CLAIMED,
     ChannelState,
@@ -18,19 +17,40 @@ from dpf.first_principles.channel_state import (
     looks_like_pf1000_akel_16kv_scope,
 )
 
+# SS12-P0-3 (closes audit SS11-A3): ``SAME_SCOPE_SOURCE_REFS`` carries ONLY
+# strict same-scope evidence -- reviewed source references whose scope exactly
+# matches the declared runtime scope.  The two PF-1000 interferometry/anisotropy
+# references previously held here carried roles ending in ``_other_scope``:
+# they describe different PF-1000 campaigns (full-scale 450-500 kJ at 3.5 Torr
+# and a separate interferometry shot set) than the Akel 16 kV scope, so they are
+# genuinely cross-scope.  They are relocated -- not deleted -- to
+# ``CROSS_SCOPE_CONTEXT_SOURCE_REFS`` and emitted under the sibling
+# ``cross_scope_context_sources`` runtime field, never under ``same_scope``.
 SAME_SCOPE_SOURCE_REFS = (
     {
         "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
         "lines": "108-142,256-333,862-889",
         "role": "pf1000_akel_16kv_current_yield_reference_candidate",
     },
+)
+
+# SS12-P0-3 (closes audit SS11-A3): cross-scope context source references.
+# These PF-1000 references are NOT same-scope evidence for any declared runtime
+# scope -- they belong to different campaigns/operating points.  They are
+# retained in full as diagnostic-requirement and schema context and emitted by
+# the runner under the sibling, non-``same_scope``-named field
+# ``cross_scope_context_sources``.  They promote nothing.
+CROSS_SCOPE_CONTEXT_SOURCE_REFS = (
     {
         "path": (
             "KnowledgeReference/"
             "sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md"
         ),
         "lines": "129-131,162-176",
-        "role": "pf1000_spatial_density_other_scope",
+        "role": "pf1000_spatial_density_cross_scope_context",
+        "scope": "cross_scope_context_not_same_scope",
+        "usable_for": "density_history_diagnostic_requirement_and_schema_only",
+        "can_support_first_principles_acceptance": False,
     },
     {
         "path": (
@@ -38,7 +58,10 @@ SAME_SCOPE_SOURCE_REFS = (
             "anisotropy-of-the-emission-of-dd-fusion-neutrons-caused-by-the-plasma-focus-vessel-527cc533.md"
         ),
         "lines": "121-137,175-177,269-275",
-        "role": "pf1000_neutron_transport_detector_other_scope",
+        "role": "pf1000_neutron_transport_detector_cross_scope_context",
+        "scope": "cross_scope_context_not_same_scope",
+        "usable_for": "detector_response_and_neutron_transport_requirement_schema_only",
+        "can_support_first_principles_acceptance": False,
     },
 )
 
@@ -141,20 +164,30 @@ TRANSFER_RULE_REQUIRED_CHANNELS = (
 # pf1000_full_energy_27_to_40_kv -- must NOT carry Akel-named wording
 # (Codex S9 P1-1): a full-energy packet has no Akel evidence, so an Akel-named
 # gate label would be a scope-classification defect.
+#
+# SS12-P0-3 (closes audit SS11-A3): these gate strings live INSIDE the
+# ``same_scope_source`` packet.  They must not carry the literal ``other_scope``
+# token, because no value under a ``same_scope``-named key may name other-scope
+# material.  The wording uses ``cross_scope_diagnostics`` instead; the meaning
+# is unchanged (cross-scope diagnostics cannot promote whole-shot acceptance).
 _AKEL_16KV_ACCEPTANCE_GATE = (
-    "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_"
+    "text_supported_pf1000_akel_scalars_and_cross_scope_diagnostics_"
     "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
     "current_startup_density_fields_temperatures_neutrons_detector_uq_"
     "review_and_cross_scope_rejection_tests_pass"
 )
 _SAME_SCOPE_ACCEPTANCE_GATE = (
-    "text_supported_scalars_and_other_scope_diagnostics_"
+    "text_supported_scalars_and_cross_scope_diagnostics_"
     "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
     "current_startup_density_fields_temperatures_neutrons_detector_uq_"
     "review_and_cross_scope_rejection_tests_pass"
 )
 
-OTHER_SCOPE_SOURCE_GROUPS = (
+# SS12-P0-3 (closes audit SS11-A3): cross-scope source groups.  These describe
+# scope-mismatched sources kept as diagnostic-requirement / schema context.
+# They are NOT same-scope evidence and are emitted only under the sibling
+# ``cross_scope_context_sources`` field, never inside ``same_scope_source``.
+CROSS_SCOPE_SOURCE_GROUPS = (
     {
         "name": "pf1000_interferometry_density_other_campaign",
         "scope_mismatch": "PF-1000 interferometry shot is not the Akel 16 kV, 1.05-1.2 Torr shot set.",
@@ -171,6 +204,37 @@ OTHER_SCOPE_SOURCE_GROUPS = (
         "usable_for": "architecture and closure-gap requirements",
     },
 )
+
+
+def build_cross_scope_context_sources() -> dict[str, Any]:
+    """Return the non-same-scope cross-scope context block.
+
+    SS12-P0-3 (closes audit SS11-A3): cross-scope source references, scope-
+    mismatched source groups, the cross-scope transfer policy, and the
+    transfer-rule required-channel list are all CONTEXT, not same-scope
+    evidence.  They were previously emitted inside ``build_same_scope_source_packet``
+    under ``other_scope_source_groups`` / ``cross_scope_policy``, which let
+    other-scope material live under a ``same_scope``-named subtree.
+
+    They are relocated here -- preserved in full, deleted from nowhere -- so the
+    runner can emit them under the sibling, non-``same_scope``-named runtime
+    field ``cross_scope_context_sources``.  This block promotes nothing.
+    """
+    return {
+        "status": "cross_scope_context_only_not_same_scope_evidence",
+        "role": "cross_scope_context_and_transfer_policy_sources",
+        "usable_for": "diagnostic_requirements_or_schema_only",
+        "is_same_scope_validation_evidence": False,
+        "source_references": list(CROSS_SCOPE_CONTEXT_SOURCE_REFS),
+        "cross_scope_source_groups": list(CROSS_SCOPE_SOURCE_GROUPS),
+        "cross_scope_policy": {
+            "status": "blocked_without_reviewed_transfer_rule",
+            "required_transfer_rule_channels": list(TRANSFER_RULE_REQUIRED_CHANNELS),
+            "cross_scope_sources_usable_for": "requirements_or_schema_only",
+            "can_use_cross_scope_for_acceptance": False,
+        },
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def build_same_scope_source_packet(
@@ -265,6 +329,22 @@ def build_same_scope_source_packet(
     )
     state_summary = channel_state_summary(channel_states)
     missing = set(state_summary["missing_acceptance_channels"])
+    # SS12-P0-3 (closes audit SS11-A3): channel_state_summary.counts_by_state
+    # enumerates EVERY canonical channel-state value, including
+    # ``blocked_wrong_scope``.  That zero-count vocabulary key would otherwise
+    # publish the ``wrong_scope`` token inside this ``same_scope_source``
+    # packet, even though no same-scope channel is in that state.  Publish only
+    # the states that actually occur: a zero count carries no information, and
+    # if a same-scope channel ever genuinely became ``blocked_wrong_scope`` the
+    # nonzero count would (correctly) surface it as a real namespace defect.
+    state_summary = {
+        **state_summary,
+        "counts_by_state": {
+            state: count
+            for state, count in state_summary["counts_by_state"].items()
+            if count
+        },
+    }
 
     return {
         "status": "blocked_same_scope_source_packet_not_available",
@@ -298,13 +378,13 @@ def build_same_scope_source_packet(
             "accepted_targets_must_include_review_certificate": True,
             "cross_scope_targets_require_reviewed_transfer_rule": True,
         },
-        "other_scope_source_groups": list(OTHER_SCOPE_SOURCE_GROUPS),
-        "cross_scope_policy": {
-            "status": "blocked_without_reviewed_transfer_rule",
-            "required_transfer_rule_channels": list(TRANSFER_RULE_REQUIRED_CHANNELS),
-            "other_scope_sources_usable_for": "requirements_or_schema_only",
-            "can_use_other_scope_for_acceptance": False,
-        },
+        # SS12-P0-3 (closes audit SS11-A3): cross-scope source groups and the
+        # cross-scope transfer policy are NOT same-scope evidence.  They no
+        # longer live inside this ``same_scope_source`` packet -- the runner
+        # emits them under the sibling field ``cross_scope_context_sources``
+        # (see ``build_cross_scope_context_sources``).  This pointer names the
+        # sibling so consumers can find the relocated context.
+        "cross_scope_context_sources_emitted_under": "cross_scope_context_sources",
         "acceptance_gate": (
             _AKEL_16KV_ACCEPTANCE_GATE
             if is_akel_16kv_scope
@@ -312,7 +392,7 @@ def build_same_scope_source_packet(
         ),
         "negative_test_policy": {
             "text_reference_promotion_rejection_required": True,
-            "other_scope_diagnostic_promotion_rejection_required": True,
+            "cross_scope_diagnostic_promotion_rejection_required": True,
             "mismatched_shot_or_pressure_rejection_required": True,
             "missing_review_certificate_rejection_required": True,
             "missing_uncertainty_budget_rejection_required": True,
@@ -450,12 +530,24 @@ def _same_scope_channel_states(
 
     - ``accepted`` -- backed by a reviewed, scope-matched validation target.
     - ``blocked_missing_source`` -- a blocking same-scope channel with no
-      independent source packet.
-    - ``blocked_wrong_scope`` -- only other-scope material is available.
+      independent source packet.  Includes
+      ``cross_scope_transfer_rule_or_rejection_tests``: an absent transfer
+      rule / rejection-test artifact is a missing same-scope source, so it
+      blocks acceptance as a missing-source channel.
     - ``excluded_not_validated`` -- a manually requested channel that is not
       backed by a reviewed target (Codex S7-A8), or a text-supported reference
       channel which is explicitly not acceptance evidence.
     - ``not_claimed`` -- no evidence offered and not otherwise constrained.
+
+    SS12-P0-3 (closes audit SS11-A3): the
+    ``cross_scope_transfer_rule_or_rejection_tests`` channel previously used
+    ``blocked_wrong_scope``.  That published the ``wrong_scope`` token inside
+    the ``same_scope_source`` packet's ``channel_states`` map.  The transfer
+    rule is an absent source artifact, not wrong-scope material present, so the
+    accurate fail-closed state is ``blocked_missing_source`` -- it reaches that
+    state through ``BLOCKING_SAME_SCOPE_CHANNELS`` like every other blocking
+    channel.  Both states block acceptance; this only sharpens the label and
+    keeps the same-scope namespace free of the ``wrong_scope`` token.
     """
 
     states: dict[str, ChannelState] = {}
@@ -468,8 +560,6 @@ def _same_scope_channel_states(
         elif channel in text_supported:
             # Text scalars seed an engineering reference only.
             states[channel] = EXCLUDED_NOT_VALIDATED
-        elif channel == "cross_scope_transfer_rule_or_rejection_tests":
-            states[channel] = BLOCKED_WRONG_SCOPE
         elif channel in BLOCKING_SAME_SCOPE_CHANNELS:
             states[channel] = BLOCKED_MISSING_SOURCE
         else:

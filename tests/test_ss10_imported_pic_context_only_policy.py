@@ -343,3 +343,81 @@ def test_imported_pic_input_deck_converts_to_nonpromoting_runtime_deck() -> None
         runtime_startup["startup_mode_status"]["imported_pic_sheath_state"]["status"]
         == "context_only_not_an_acceptance_path"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test 4 (SS12-P0-1 / SS11-A1): the DIRECT FirstPrinciples3DDeck constructor
+# clamps imported-PIC startup, closing the runtime-deck constructor gap.
+# ---------------------------------------------------------------------------
+
+
+def test_direct_runtime_deck_constructor_clamps_imported_pic_whole_shot_flag() -> None:
+    """SS12-P0-1 / SS11-A1 required test: build FirstPrinciples3DDeck DIRECTLY
+    with startup_mode='imported_pic_sheath_state' and the most permissive
+    startup_can_support_whole_shot_acceptance=True.
+
+    SS11-1 closed the FirstPrinciplesInputDeck -> FirstPrinciples3DDeck
+    conversion path, but the direct runtime-deck constructor remained a gap:
+    the raw field could still hold True and contradict the context-only startup
+    policy.  FirstPrinciples3DDeck.__post_init__ now forces the field to False
+    for any startup mode in CONTEXT_ONLY_STARTUP_MODES.
+
+    Both (a) the raw deck field and (b) the startup packet output must be False.
+    """
+    deck = FirstPrinciples3DDeck(
+        startup_mode="imported_pic_sheath_state",
+        startup_can_support_whole_shot_acceptance=True,
+    )
+
+    # (a) The raw runtime-deck field is forced non-promoting.
+    assert deck.startup_can_support_whole_shot_acceptance is False, (
+        "direct FirstPrinciples3DDeck construction carried an accepting "
+        "whole-shot flag for an imported-PIC startup mode (SS11-A1 regression)"
+    )
+
+    # (b) The startup packet the deck emits is blocked and non-promoting.
+    packet = deck.startup_packet()
+    assert packet["status"] == "blocked_startup_bvp_packet_not_available"
+    assert packet["can_support_whole_shot_acceptance"] is False
+    assert packet["can_support_first_principles_acceptance"] is False
+    assert packet["whole_shot_startup_blocked"] is True
+    assert (
+        packet["startup_mode_status"]["imported_pic_sheath_state"]["status"]
+        == "context_only_not_an_acceptance_path"
+    )
+
+
+def test_direct_runtime_deck_constructor_clamps_every_context_only_mode() -> None:
+    """The direct-constructor clamp covers EVERY mode in
+    CONTEXT_ONLY_STARTUP_MODES, not just the imported-PIC literal (SS12-P0-1).
+
+    This guards the clamp against future additions to the context-only
+    taxonomy: any new context-only startup mode is clamped automatically.
+    """
+    for mode in CONTEXT_ONLY_STARTUP_MODES:
+        deck = FirstPrinciples3DDeck(
+            startup_mode=mode,
+            startup_can_support_whole_shot_acceptance=True,
+        )
+        assert deck.startup_can_support_whole_shot_acceptance is False, (
+            f"context-only startup mode {mode!r} was not clamped by the "
+            "direct FirstPrinciples3DDeck constructor"
+        )
+        assert deck.startup_packet()["can_support_first_principles_acceptance"] is False
+
+
+def test_direct_runtime_deck_constructor_leaves_non_context_modes_untouched() -> (
+    None
+):
+    """The SS12-P0-1 clamp is scoped: a non-context-only startup mode keeps the
+    caller-declared raw field.  The clamp tightens fail-closed policy ONLY for
+    context-only modes; it must not silently mutate other decks.
+    """
+    deck = FirstPrinciples3DDeck(
+        startup_mode="source_backed_end_rundown_sheath",
+        startup_can_support_whole_shot_acceptance=True,
+    )
+    # The raw field is preserved for a non-context-only mode; acceptance is
+    # still gated downstream by the startup packet, which stays blocked.
+    assert deck.startup_can_support_whole_shot_acceptance is True
+    assert deck.startup_packet()["can_support_first_principles_acceptance"] is False

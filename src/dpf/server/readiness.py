@@ -120,6 +120,18 @@ def api_readiness_payload(
 # scope to its own runtime deck.  A scope that is not in this map (including
 # ``not_declared``/unknown) MUST NOT silently default to any deck — it maps to
 # a fail-closed blocked readiness.
+#
+# SS11-A2 (closes the residual partial-pair mixing surface): the SS11 resolver
+# matched on a TOKEN SET — ``{validation_scope, source_scope} & deck_tokens`` —
+# so a full-energy validation scope paired with an Akel-like (or unknown, or
+# ``not_declared``) source scope still overlapped one full-energy token,
+# resolved to the full-energy deck, echoed the foreign source label, and
+# stamped ``scope_match=True``.  The resolver below instead matches the ORDERED
+# (validation_scope, source_scope) pair against the canonical accepted pairs.
+# Only an EXACT pair resolves to a deck; every partial pair, unknown pair,
+# undeclared pair, startup-source label, or mixed pair resolves to ``None`` and
+# fails closed.  ``scope_match`` is then computed from exact requested-vs-actual
+# pair equality, never from "a resolved family exists".
 
 # Akel PF-1000 16 kV shot-12581 engineering scope labels.
 _AKEL_VALIDATION_SCOPE = "pf1000_16kv_2021_akel"
@@ -132,37 +144,40 @@ _FULL_ENERGY_SOURCE_SCOPE = (
 )
 
 
+# Canonical accepted (validation_scope, source_scope) pairs.  A runtime deck is
+# resolved ONLY when the ordered requested pair is identical to one of these.
+_AKEL_SCOPE_PAIR = (_AKEL_VALIDATION_SCOPE, _AKEL_SOURCE_SCOPE)
+_FULL_ENERGY_SCOPE_PAIR = (
+    _FULL_ENERGY_VALIDATION_SCOPE,
+    _FULL_ENERGY_SOURCE_SCOPE,
+)
+
+
 def _resolve_runtime_deck_scope(
     *,
     validation_scope: str,
     source_scope: str,
 ) -> str | None:
-    """Resolve a declared scope/source to a runtime deck identity.
+    """Resolve a declared scope/source PAIR to a runtime deck identity.
 
-    Returns ``"akel"`` for an Akel 16 kV request, ``"full_energy"`` for a
-    PF-1000 full-energy request, or ``None`` when the declared scope/source is
-    not recognised.  ``None`` MUST map to a fail-closed blocked readiness — the
-    readiness layer never defaults an unrecognised scope onto a deck whose own
-    scope would contradict the request.
+    Returns ``"akel"`` only when the ordered ``(validation_scope,
+    source_scope)`` pair is EXACTLY the canonical Akel 16 kV pair, and
+    ``"full_energy"`` only when it is EXACTLY the canonical PF-1000 full-energy
+    pair.  Every other case — a partial pair (one scope canonical, the other
+    not), an unknown pair, an undeclared/``not_declared`` pair, a startup-source
+    label, or a mixed pair (validation from one family, source from another) —
+    returns ``None``.
+
+    ``None`` MUST map to a fail-closed blocked readiness (SS11-A2): the
+    readiness layer never resolves a deck from a single overlapping token, so a
+    foreign or undeclared source label can no longer ride a deck whose scope
+    contradicts the request.
     """
 
-    akel_tokens = {
-        _AKEL_VALIDATION_SCOPE,
-        _AKEL_SOURCE_SCOPE,
-    }
-    full_energy_tokens = {
-        _FULL_ENERGY_VALIDATION_SCOPE,
-        _FULL_ENERGY_SOURCE_SCOPE,
-    }
-    requested = {str(validation_scope), str(source_scope)}
-    matches_akel = bool(requested & akel_tokens)
-    matches_full_energy = bool(requested & full_energy_tokens)
-    if matches_akel and matches_full_energy:
-        # A request that names both scopes is contradictory; fail closed.
-        return None
-    if matches_akel:
+    requested_pair = (str(validation_scope), str(source_scope))
+    if requested_pair == _AKEL_SCOPE_PAIR:
         return "akel"
-    if matches_full_energy:
+    if requested_pair == _FULL_ENERGY_SCOPE_PAIR:
         return "full_energy"
     return None
 
@@ -267,15 +282,9 @@ def _package_native_first_principles_readiness(
         if validation_packet.get(f"{key}_status")
     ]
 
-    # ``actual_runtime_*`` report the runtime DECK FAMILY identity — the deck
-    # that was actually executed (Akel vs full-energy), derived from
-    # ``resolved``, never from the caller-supplied request.  ``resolved`` pinned
-    # the deck to the request, so for any request that reaches this point the
-    # runtime family equals the requested family: ``scope_match`` is True.  The
-    # genuine requested-vs-runtime mismatch — a request naming a different deck
-    # than the one that runs — is impossible here because a request that names
-    # two contradictory scopes already failed closed via ``resolved is None``
-    # above and never reaches this deck-execution path.
+    # ``actual_runtime_*`` report the runtime DECK PAIR identity — the deck that
+    # was actually executed (Akel vs full-energy), derived from ``resolved``,
+    # never from the caller-supplied request.
     actual_runtime_validation_scope = (
         _FULL_ENERGY_VALIDATION_SCOPE
         if resolved == "full_energy"
@@ -285,6 +294,17 @@ def _package_native_first_principles_readiness(
         _FULL_ENERGY_SOURCE_SCOPE
         if resolved == "full_energy"
         else _AKEL_SOURCE_SCOPE
+    )
+    # SS11-A2: ``scope_match`` is COMPUTED from exact requested-vs-actual PAIR
+    # equality — both the validation scope AND the source scope must be
+    # identical — never hard-coded ``True`` and never "a resolved family
+    # exists".  ``resolved`` already required the requested pair to be an exact
+    # canonical pair, so a request reaching this deck-execution path matches by
+    # construction; computing the flag here keeps the contract explicit and
+    # fails closed if either runtime-vs-request scope ever diverges.
+    scope_match = (
+        str(validation_scope) == actual_runtime_validation_scope
+        and str(source_scope) == actual_runtime_source_scope
     )
     # The deck-internal runtime scope as the runner reports it — surfaced for
     # traceability so a reviewer can confirm which deck telemetry was consumed.
@@ -308,9 +328,8 @@ def _package_native_first_principles_readiness(
         "actual_runtime_source_scope": actual_runtime_source_scope,
         "runtime_deck_id": deck.deck_id,
         "runtime_deck_internal_source_scope": runtime_deck_internal_source_scope,
-        # ``resolved`` pinned the deck to the requested scope, so the runtime
-        # family always matches the request that reaches this path.
-        "scope_match": True,
+        # Computed from exact requested-vs-actual PAIR equality (SS11-A2).
+        "scope_match": scope_match,
         # Legacy keys preserved for the existing Akel readiness contract.  They
         # echo the requested scope, which is now SAFE because the runtime deck
         # was selected from that same request — a requested label can no longer

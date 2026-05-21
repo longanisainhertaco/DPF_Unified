@@ -1615,8 +1615,11 @@ def test_first_principles_runner_marks_pf1000_akel_same_scope_as_blocked() -> No
         "cross_scope_transfer_rule_or_rejection_tests"
         in packet["missing_acceptance_channels"]
     )
-    assert packet["cross_scope_policy"]["can_use_other_scope_for_acceptance"] is False
-    assert packet["cross_scope_policy"]["other_scope_sources_usable_for"] == (
+    cross_scope = result.telemetry["cross_scope_context_sources"]
+    assert (
+        cross_scope["cross_scope_policy"]["can_use_cross_scope_for_acceptance"] is False
+    )
+    assert cross_scope["cross_scope_policy"]["cross_scope_sources_usable_for"] == (
         "requirements_or_schema_only"
     )
     assert (
@@ -1626,11 +1629,11 @@ def test_first_principles_runner_marks_pf1000_akel_same_scope_as_blocked() -> No
         is False
     )
     assert packet["acceptance_gate"].startswith(
-        "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics"
+        "text_supported_pf1000_akel_scalars_and_cross_scope_diagnostics"
     )
     assert (
         packet["negative_test_policy"][
-            "other_scope_diagnostic_promotion_rejection_required"
+            "cross_scope_diagnostic_promotion_rejection_required"
         ]
         is True
     )

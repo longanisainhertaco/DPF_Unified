@@ -554,3 +554,150 @@ def test_readiness_never_promotes_first_principles_acceptance() -> None:
         assert '"promotes_acceptance": true' not in blob
         assert '"can_support_first_principles_acceptance": true' not in blob
         assert '"can_support_first_principles_acceptance":true' not in blob
+
+
+# --------------------------------------------------------------------------
+# SS12-P0 / SS11-A2: exact-pair readiness scope resolver.
+#
+# SS11's resolver was token based: a full-energy validation scope paired with
+# an Akel-like or undeclared source scope still overlapped one full-energy
+# token, ran the full-energy deck, echoed the foreign source label, and stamped
+# scope_match=True.  The resolver now matches the ordered (validation_scope,
+# source_scope) pair against the canonical accepted pairs: only an exact pair
+# resolves to a deck; every partial / unknown / undeclared / mixed /
+# startup-label pair fails closed with runtime_deck_id=not_run.
+# --------------------------------------------------------------------------
+
+# An Akel-like startup source label that is NOT the canonical Akel source
+# scope — the exact label from the SS11-A2 audit probe.
+_AKEL_STARTUP_SOURCE_LABEL = (
+    "pf1000_akel_candidate_paschen_insulator_seed_layer_not_startup_bvp"
+)
+
+
+def _assert_scope_blocked_not_run(payload: dict[str, object]) -> dict[str, object]:
+    """Assert a first-principles payload fails closed with no deck executed."""
+
+    readiness = payload["first_principles_mhd_readiness"]
+    assert readiness["ready"] is False
+    assert readiness["status"] == "blocked"
+    assert readiness["scope_match"] is False
+    assert readiness["runtime_deck_id"] == "not_run"
+    assert readiness["actual_runtime_validation_scope"] == "not_run"
+    assert readiness["actual_runtime_source_scope"] == "not_run"
+    assert readiness["can_support_first_principles_acceptance"] is False
+    # No deck telemetry leaked into the energy/startup/neutron sections.
+    assert payload["first_principles_energy_accounting"] == {}
+    assert payload["first_principles_startup_initialization"] == {}
+    assert payload["first_principles_neutron_yield_authority"] == {}
+    return readiness
+
+
+def test_resolver_full_energy_validation_plus_akel_startup_source_is_not_run() -> None:
+    """Full-energy validation + Akel startup source label -> not_run.
+
+    This is the exact SS11-A2 audit probe: a full-energy validation scope
+    paired with an Akel-like seed-layer startup source label.  The token-based
+    resolver ran the full-energy deck and stamped scope_match=True; exact-pair
+    resolution must fail closed.
+    """
+
+    payload = _first_principles_payload(
+        validation_scope=PF1000_FULL_ENERGY_VALIDATION_SCOPE,
+        source_scope=_AKEL_STARTUP_SOURCE_LABEL,
+    )
+    readiness = _assert_scope_blocked_not_run(payload)
+    # The foreign source label is echoed as the request, never ridden onto a
+    # full-energy deck.
+    assert readiness["requested_source_scope"] == _AKEL_STARTUP_SOURCE_LABEL
+    assert "scholz" not in str(readiness["runtime_deck_id"]).lower()
+    assert any(
+        "does not resolve to a known runtime deck" in str(item)
+        for item in readiness["blockers"]
+    )
+
+
+def test_resolver_full_energy_validation_plus_not_declared_source_is_not_run() -> None:
+    """Full-energy validation + not_declared source -> not_run."""
+
+    payload = _first_principles_payload(
+        validation_scope=PF1000_FULL_ENERGY_VALIDATION_SCOPE,
+        source_scope="not_declared",
+    )
+    readiness = _assert_scope_blocked_not_run(payload)
+    assert "scholz" not in str(readiness["runtime_deck_id"]).lower()
+
+
+def test_resolver_unknown_validation_plus_full_energy_source_is_not_run() -> None:
+    """Unknown validation + full-energy source -> not_run."""
+
+    payload = _first_principles_payload(
+        validation_scope="pf1000_unknown_validation_scope",
+        source_scope=PF1000_FULL_ENERGY_SOURCE_SCOPE,
+    )
+    readiness = _assert_scope_blocked_not_run(payload)
+    assert "scholz" not in str(readiness["runtime_deck_id"]).lower()
+
+
+def test_resolver_akel_validation_plus_full_energy_source_is_not_run() -> None:
+    """Akel validation + full-energy source -> not_run.
+
+    A mixed pair (validation from the Akel family, source from the full-energy
+    family) is internally contradictory and must fail closed.
+    """
+
+    payload = _first_principles_payload(
+        validation_scope=PF1000_AKEL_VALIDATION_SCOPE,
+        source_scope=PF1000_FULL_ENERGY_SOURCE_SCOPE,
+    )
+    readiness = _assert_scope_blocked_not_run(payload)
+    # Neither deck ran for a contradictory pair.
+    assert "akel" not in str(readiness["runtime_deck_id"]).lower()
+    assert "scholz" not in str(readiness["runtime_deck_id"]).lower()
+
+
+def test_resolver_exact_akel_pair_runs_akel_deck() -> None:
+    """Exact Akel pair -> Akel deck with computed scope_match True."""
+
+    payload = _first_principles_payload(
+        validation_scope=PF1000_AKEL_VALIDATION_SCOPE,
+        source_scope=PF1000_AKEL_SOURCE_SCOPE,
+    )
+    readiness = payload["first_principles_mhd_readiness"]
+
+    assert readiness["ready"] is False
+    assert readiness["status"] == "blocked"
+    assert readiness["scope_match"] is True
+    assert "akel" in str(readiness["runtime_deck_id"]).lower()
+    assert "scholz" not in str(readiness["runtime_deck_id"]).lower()
+    assert (
+        readiness["actual_runtime_validation_scope"]
+        == PF1000_AKEL_VALIDATION_SCOPE
+    )
+    assert readiness["actual_runtime_source_scope"] == PF1000_AKEL_SOURCE_SCOPE
+    assert readiness["can_support_first_principles_acceptance"] is False
+
+
+def test_resolver_exact_full_energy_pair_runs_full_energy_deck() -> None:
+    """Exact full-energy pair -> full-energy deck with computed scope_match True."""
+
+    payload = _first_principles_payload(
+        validation_scope=PF1000_FULL_ENERGY_VALIDATION_SCOPE,
+        source_scope=PF1000_FULL_ENERGY_SOURCE_SCOPE,
+    )
+    readiness = payload["first_principles_mhd_readiness"]
+
+    assert readiness["ready"] is False
+    assert readiness["status"] == "blocked"
+    assert readiness["scope_match"] is True
+    assert "scholz" in str(readiness["runtime_deck_id"]).lower()
+    assert "akel" not in str(readiness["runtime_deck_id"]).lower()
+    assert (
+        readiness["actual_runtime_validation_scope"]
+        == PF1000_FULL_ENERGY_VALIDATION_SCOPE
+    )
+    assert (
+        readiness["actual_runtime_source_scope"]
+        == PF1000_FULL_ENERGY_SOURCE_SCOPE
+    )
+    assert readiness["can_support_first_principles_acceptance"] is False
