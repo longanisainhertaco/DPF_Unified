@@ -7150,3 +7150,54 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   WP-N3 reviewed face set. Super-Sprint 9 is scope/source coherence repair and
   fail-closed plumbing, not a validation sprint. Completion memo:
   `docs/SPRINT9_COMPLETION_MEMO_2026_05_20.md`.
+
+### 2026-05-21: Codex Super-Sprint 9 Audit
+
+- Verdict:
+  Super-Sprint 9 is not accepted as complete. Top-level runtime scope/source
+  propagation is materially repaired, but runtime evidence handoff is still
+  incomplete.
+- Confirmed good:
+  PF-1000 full-energy runtime uses
+  `pf1000_full_energy_27_to_40_kv` and selected-machine source scope
+  `pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source`; LLNL-like
+  hybrid-PIC evidence is top-level architecture evidence only; Akel 16 kV
+  same-scope leakage is fixed; no acceptance promotion was found.
+- Corrections required:
+  remove or rename the LLNL-like
+  `candidate_evidence.same_scope_3d_validation_packet`; emit all five blocked
+  PF-1000 geometry fields in runtime telemetry and segmented manifest; correct
+  hollow-anode telemetry to match the selected deck; add segmented-manifest
+  summaries for validation scope, same-scope scope, power-port Sigma-p blockers,
+  and geometry blockers; encode imported-PIC startup as context-only at the mode
+  policy level; update stale Sprint 9 memo/finding transcript claims.
+- Verification:
+  focused tests passed, ruff passed, and periodic audit passed under the
+  approved 146-line external-churn exception. Server readiness remains a
+  separate failing debt.
+- Controlling packet:
+  `docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`.
+
+### 2026-05-21: Super-Sprint 10 Completion (SS10-0..SS10-8)
+
+- Work completed:
+  Super-Sprint 10 closed Codex Super-Sprint 9 audit findings A1-A7 across two
+  commits — Phase 1 `a7c88cc` (SS10-1/2/3/4/6 runtime/startup/server
+  corrections) and the Phase 2 handoff commit (SS10-7 acceptance-gate dry run,
+  SS10-0/5/8). Four parallel agents ran the corrections on disjoint subsystems.
+- Plan status:
+  the Super-Sprint 9 P0 scope/source repair is confirmed; the WS9-6/WS9-7/WS9-8
+  gaps the Codex audit found are now closed — runtime telemetry no longer
+  exposes LLNL-like geometry under a `same_scope` key, the five blocked
+  geometry fields and hollow-anode state are correct, the segmented manifest is
+  audit-complete, and imported-PIC startup is context-only at the mode-policy
+  level. The new SS10-7 report-only acceptance-gate dry run makes the next
+  physics sprint measurable: all eight acceptance gates report `blocked` with
+  named missing inputs.
+- Boundary:
+  no acceptance state changed. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` remain `false` everywhere.
+  Super-Sprint 10 is correction and gate-instrumentation, not a validation
+  sprint, and closed no physics blocker. Completion memo:
+  `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`; gate dry run:
+  `docs/SPRINT10_ACCEPTANCE_GATE_DRY_RUN_2026_05_21.md`.

@@ -2959,6 +2959,55 @@ def first_principles_3d(
     click.echo(f"  artifact: {output}")
 
 
+@cli.command("first-principles-acceptance-dry-run")
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help=(
+        "Optional JSON path for the fail-closed ledger. Defaults to a temp "
+        "path so a transient ledger never dirties results/ or the artifact "
+        "linter."
+    ),
+)
+def first_principles_acceptance_dry_run(output: Path | None) -> None:
+    """Report-only dry run of the eight acceptance gates (SS10-7).
+
+    Runs the six-step PF-1000 full-energy engineering probe and reports a
+    fail-closed ledger: each gate is pass or blocked, every blocked gate names
+    its missing inputs. This command promotes no acceptance flag.
+    """
+    import json
+    import tempfile
+
+    from dpf.first_principles.acceptance_gate_dry_run import (
+        run_acceptance_gate_dry_run,
+        write_ledger_json,
+    )
+
+    ledger = run_acceptance_gate_dry_run()
+    ledger_path = (
+        output
+        if output is not None
+        else Path(tempfile.gettempdir())
+        / "dpf_first_principles_acceptance_gate_dry_run.json"
+    )
+    written = write_ledger_json(ledger, ledger_path)
+
+    click.echo("Report-only acceptance-gate dry run (SS10-7)")
+    click.echo(f"  deck_preset: {ledger.deck_preset}")
+    click.echo(f"  runtime_status: {ledger.runtime_status}")
+    click.echo(f"  report_only: {ledger.report_only}")
+    click.echo(f"  promotes_acceptance: {ledger.promotes_acceptance}")
+    click.echo(f"  accepted_runtime_claim: {ledger.accepted_runtime_claim}")
+    click.echo(f"  fail_closed: {ledger.is_fail_closed}")
+    for gate in ledger.gates:
+        click.echo(f"  {gate.gate}: {gate.status} ({len(gate.missing)} missing)")
+    click.echo(f"  ledger_json: {written}")
+    click.echo(json.dumps(stamp_artifact_provenance(ledger.as_dict()), indent=2))
+
+
 @cli.command("experimental-whole-shot")
 @click.option(
     "--deck",

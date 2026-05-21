@@ -90,6 +90,11 @@ NONPHYSICS_INFRASTRUCTURE_FILES = {
     # schema/enum + helpers with no physics claim and no KR authority -- it
     # only makes per-channel accounting honest (Codex S7-A7/S7-A8).
     "src/dpf/first_principles/channel_state.py",
+    # Super-Sprint 10 SS10-7: the report-only acceptance-gate dry run. Pure
+    # reporting infrastructure -- it READS the eight gate packets and re-emits
+    # a fail-closed ledger. It computes no physics, holds no KR authority, and
+    # has no code path that promotes acceptance (channel_state.py precedent).
+    "src/dpf/first_principles/acceptance_gate_dry_run.py",
 }
 INACTIVE_NUMERICAL_UTILITY_FILES = {
     "src/dpf/experimental/static_refinement.py",

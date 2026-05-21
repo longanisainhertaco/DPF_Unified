@@ -6682,3 +6682,71 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   `test_startup_breakdown_audit.py` (resolved by WS9-5 rewrite) and
   `test_server_readiness.py` (two assertions, confirmed identical on pristine
   `814ab10`, untouched by Sprint 9).
+
+### 2026-05-21: Codex Super-Sprint 9 Audit
+
+- Verdict:
+  Super-Sprint 9 is **not accepted as complete**. The top-level PF-1000
+  full-energy scope/source repair is accepted, but WS9-6, WS9-7, and WS9-8 are
+  incomplete as claimed.
+- Accepted corrections:
+  the runtime now emits `pf1000_full_energy_27_to_40_kv` as the selected
+  validation scope and
+  `pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source` as the
+  top-level selected-machine source scope; LLNL-like hybrid-PIC evidence is kept
+  as architecture evidence at the top-level validation packet; Akel 16 kV
+  channel matching no longer leaks into the full-energy scope; Bennett startup
+  evidence remains wrong-scope candidate context.
+- Blocking audit findings:
+  `candidate_evidence.same_scope_3d_validation_packet` still carries
+  `llnl_like_180ka_axisymmetric_hybrid_pic`; runtime conductor-mask telemetry
+  does not emit the five blocked PF-1000 geometry fields; hollow-anode telemetry
+  contradicts the selected deck's `anode_inner_radius_m=None`; the segmented
+  probe manifest lacks the required validation-packet, same-scope, power-port,
+  and geometry-blocker summaries; imported-PIC startup is functionally
+  fail-closed but still appears in accepted-mode policy; the Sprint 9 memo has
+  stale commit/test-count wording.
+- Verification:
+  focused Sprint 9/startup/git-status tests passed (`194 passed`); ruff
+  `src tests` passed; periodic audit passed 10/10 at
+  `/private/tmp/dpf-unified-audit-logs/20260521T043943Z` with the documented
+  146-line external-churn exception. `tests/test_server_readiness.py` still
+  fails; Codex reproduced the first readiness failure before pytest stopped.
+- Next instructions:
+  `docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`
+  is the controlling Super-Sprint 10 correction packet.
+
+### 2026-05-21: Super-Sprint 10 Completion (SS10-0..SS10-8)
+
+- Audit verdict honored:
+  the Codex Super-Sprint 9 audit accepted the top-level scope/source repair and
+  rejected the full Super-Sprint 9 completion claim. WS9-6 / WS9-7 / WS9-8 were
+  incomplete. Super-Sprint 10 closed findings A1-A7; A8 (no acceptance
+  promotion) is preserved.
+- Corrections landed (Phase 1 `a7c88cc`, Phase 2 this commit):
+  A1 — LLNL-like hybrid-PIC 3-D evidence moved off the `same_scope` key onto
+  `architecture_3d_geometry_candidate_packet`. A2/A3 — the five blocked PF-1000
+  geometry fields are emitted in runtime
+  `boundary_policy.conductor_mask.blocked_geometry_fields`, and hollow-anode
+  telemetry now matches the deck (`hollow_anode_declared_by_source=false`).
+  A4 — the segmented manifest carries `first_principles_scope_summary`,
+  `same_scope_summary`, `power_port_summary`, `geometry_blocker_summary`.
+  A5 — `imported_pic_sheath_state` moved into `CONTEXT_ONLY_STARTUP_MODES`,
+  removed from `ACCEPTED_STARTUP_MODES`. A6 — module-source vetting regenerated
+  (`strict_passed`, 298 modules); RTM export and source-truth `--check`
+  verified no-ops. A7 — the Sprint 9 memo stale "two commits" / inexact
+  transcript prose corrected; all four Sprint 9 commits listed.
+- New gate instrumentation (SS10-7):
+  report-only `acceptance_gate_dry_run` module + CLI subcommand runs the eight
+  acceptance gates against the PF-1000 full-energy probe and emits a
+  fail-closed ledger — all eight gates `blocked` with named missing inputs.
+  `tests/test_server_readiness.py` (SS10-6) now passes 10/10.
+- Verification:
+  800 focused tests pass (Phase 1 sweep) plus the SS10-7 dry-run / runner / CLI
+  slice; ruff `src tests` clean; periodic audit 10/10 PASS with the documented
+  146-line external-churn exception.
+- Boundary:
+  no acceptance state changed. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` stay `false` everywhere.
+  Super-Sprint 10 is correction and gate-instrumentation; it closed no physics
+  blocker. Completion memo: `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`.

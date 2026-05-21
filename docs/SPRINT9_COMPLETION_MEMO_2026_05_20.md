@@ -12,11 +12,16 @@ Super-Sprint 9 is **not a validation sprint**. Its goal was to make the
 PF-1000 full-energy package-native 3-D runtime path internally coherent as an
 engineering-experiment surface. No acceptance flag was promoted:
 `accepted_runtime_claim=false` and `can_support_first_principles_acceptance=false`
-everywhere. Reduced Lee/snowplow output drives nothing. Two commits on branch
+everywhere. Reduced Lee/snowplow output drives nothing. Four commits on branch
 `codex/corpus` (unpushed):
 
 - Phase 1 `2b2f290` — WS9-0..WS9-6.
-- Phase 2 (this commit) — WS9-7 engineering probe + WS9-8 handoff.
+- Phase 2 `e8a4818` — WS9-7 engineering probe + WS9-8 handoff.
+- Follow-up `00d7016` — WS9-0 `git_status_clean` exception extended to the
+  `external/athenak` submodule.
+- Follow-up `a4c28b9` — corrected the memo audit narrative.
+
+(See the §Addendum below for the Codex Super-Sprint 9 audit verdict.)
 
 ## 1. Codex audit findings — disposition
 
@@ -136,10 +141,12 @@ requirements). This memo is the WS9-8 completion record.
 ## 3. Verification — exact commands and outputs
 
 ```
-$ .venv312/bin/python -m pytest tests/test_first_principles_*.py \
-    tests/test_hybrid_3d_*.py tests/test_cli_first_principles_3d.py \
-    tests/test_ws9_runner_scope_source_geometry.py ... -q
-825 passed in 82.02s
+# Broad first-principles verification is the periodic-audit gate (exact,
+# reproducible): scripts/run_codex_periodic_audit.py runs
+# broad_first_principles_pytest over tests/test_first_principles_*.py +
+# tests/test_hybrid_3d_*.py + tests/test_cli_first_principles_3d.py.
+$ .venv312/bin/python scripts/run_codex_periodic_audit.py --timeout-seconds 900
+# broad_first_principles_pytest gate: PASS ; focused_pytest gate: PASS
 
 $ .venv312/bin/python -m pytest tests/test_runtime_demonstrator_scope.py \
     tests/test_first_principles_channel_state_contract.py \
@@ -190,3 +197,41 @@ Akel source-scope naming). Both were verified to fail **identically** against
 pristine HEAD `814ab10` — they predate Super-Sprint 9, are untouched by it, and
 lie outside the periodic-audit pytest glob (`test_first_principles_*`). Recorded
 here as pre-existing debt for a future scoped fix; no acceptance flag is affected.
+(Closed by Super-Sprint 10 SS10-6 — see the §Addendum below.)
+
+## Addendum — Codex Super-Sprint 9 Audit and Super-Sprint 10 (2026-05-21)
+
+The Codex audit of Super-Sprint 9
+(`docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`,
+audited HEAD `a4c28b9`) **accepted the Super-Sprint 9 P0 scope/source repair
+but did not accept the full completion claim**. The top-level
+`validation_scope`, `selected_machine_source_scope`, and architecture/same-scope
+separation were confirmed solid; but WS9-6 / WS9-7 / WS9-8 were incomplete —
+the runtime still exposed LLNL-like geometry under a `same_scope` key, the five
+blocked geometry fields were not in runtime telemetry, hollow-anode telemetry
+contradicted the deck, the segmented manifest lacked handoff summaries,
+imported-PIC was only half-encoded, and this memo overstated completion
+(audit findings A1-A7). No acceptance flag was wrongly promoted (A8).
+
+Super-Sprint 10 closed findings A1-A7:
+
+- A1 — LLNL-like hybrid-PIC 3-D evidence moved to
+  `architecture_3d_geometry_candidate_packet`; no `same_scope` key carries the
+  architecture scope.
+- A2/A3 — the five blocked geometry fields are in runtime
+  `boundary_policy.conductor_mask.blocked_geometry_fields`; hollow-anode
+  telemetry now matches the deck (`false`/`false`).
+- A4 — the segmented manifest carries `first_principles_scope_summary`,
+  `same_scope_summary`, `power_port_summary`, `geometry_blocker_summary`.
+- A5 — `imported_pic_sheath_state` is in `CONTEXT_ONLY_STARTUP_MODES`, removed
+  from `ACCEPTED_STARTUP_MODES`.
+- A6 — module-source vetting regenerated (298 modules, `strict_passed`); the
+  RTM export and the source-truth `--check` were verified no-ops (no diff).
+- A7 — this addendum corrects the stale "two commits" / inexact-transcript
+  prose; all four Super-Sprint 9 commits are listed in §0.
+
+Super-Sprint 10 also added the SS10-7 report-only acceptance-gate dry run
+(`docs/SPRINT10_ACCEPTANCE_GATE_DRY_RUN_2026_05_21.md`) and fixed the
+`test_server_readiness.py` pre-existing failures (SS10-6). The Super-Sprint 10
+completion record is `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`. No
+acceptance flag is promoted by Super-Sprint 9 or Super-Sprint 10.

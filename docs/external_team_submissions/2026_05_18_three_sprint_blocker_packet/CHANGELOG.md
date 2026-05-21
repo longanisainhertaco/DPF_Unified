@@ -1162,6 +1162,38 @@ source-truth `--check` verified no-ops. SS10-0 (handoff narrative), SS10-5
 (artifact truthfulness), SS10-7 (report-only acceptance-gate dry run), and
 SS10-8 (periodic audit) follow in Phase 2.
 
+### Super-Sprint 10 — gate dry run and handoff, Phase 2 (2026-05-21)
+
+`a7c88cc` — Super-Sprint 10 Phase 1 (above section).
+
+The Super-Sprint 10 Phase 2 commit (hash assigned at commit time) lands the
+final workstreams:
+
+- **SS10-7 report-only acceptance-gate dry run:** new
+  `src/dpf/first_principles/acceptance_gate_dry_run.py` and CLI subcommand
+  `dpf first-principles-acceptance-dry-run` run the eight acceptance gates
+  (numerical fidelity, same-scope comparator, UQ, certificate, geometry,
+  startup, power-port, neutron) against the PF-1000 full-energy probe and emit
+  a fail-closed ledger (`report_only=true`, `promotes_acceptance=false`,
+  acceptance flags false). All eight gates report `blocked` with named missing
+  inputs; full detail in `docs/SPRINT10_ACCEPTANCE_GATE_DRY_RUN_2026_05_21.md`.
+  The dry-run module is registered as non-physics infrastructure
+  (`strict_passed`, 298 modules).
+- **SS10-0 handoff narrative (A7):** the Sprint 9 memo gained a §Addendum with
+  the Codex Super-Sprint 9 audit verdict and the four-commit list; the stale
+  "two commits" / inexact-transcript prose was corrected.
+  `CodexFindings.md` / `CortexFindings.md` carry dated Super-Sprint 10 entries.
+- **SS10-5 artifact truthfulness (A6):** module-source vetting regenerated;
+  the RTM export and source-truth `--strict --check` verified no-ops.
+- **SS10-8 periodic audit:** run at this commit; `git_status_clean` PASS with
+  the documented 146-line external-churn exception, every other gate green.
+- Completion memo: `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Super-Sprint 10 closed Codex Super-Sprint 9 audit findings
+A1-A7; it is correction and gate-instrumentation work and closed no physics
+blocker.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
