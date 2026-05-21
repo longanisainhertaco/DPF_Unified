@@ -5,6 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.first_principles.channel_state import (
+    ACCEPTED,
+    BLOCKED_MISSING_SOURCE,
+    ChannelState,
+    channel_state_map,
+    channel_state_summary,
+)
+
 NUMERICAL_FIDELITY_SOURCE_REFS = (
     {
         "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
@@ -209,8 +217,12 @@ def build_numerical_fidelity_packet(
     """Return a non-promoting numerical-fidelity gate packet."""
 
     accepted = {str(channel) for channel in accepted_channels}
-    missing = set(REQUIRED_NUMERICAL_FIDELITY_CHANNELS) - accepted
-    missing.update(REQUIRED_NUMERICAL_FIDELITY_CHANNELS)
+    # Canonical per-channel states (Codex S7-A7): a channel is either
+    # ``accepted`` or ``blocked_missing_source``; it can never be both
+    # accepted and missing.
+    channel_states = _numerical_channel_states(accepted)
+    state_summary = channel_state_summary(channel_states)
+    missing = set(state_summary["missing_acceptance_channels"])
 
     return {
         "status": "blocked_numerical_fidelity_packet_not_available",
@@ -221,6 +233,8 @@ def build_numerical_fidelity_packet(
         "required_channels": list(REQUIRED_NUMERICAL_FIDELITY_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "channel_states": channel_state_map(channel_states),
+        "channel_state_summary": state_summary,
         "numerical_channel_status": _numerical_channel_statuses(
             accepted=accepted,
             missing=missing,
@@ -263,6 +277,19 @@ def build_numerical_fidelity_packet(
         },
         "can_support_numerical_acceptance": False,
         "can_support_first_principles_acceptance": False,
+    }
+
+
+def _numerical_channel_states(accepted: set[str]) -> dict[str, ChannelState]:
+    """Map every required numerical-fidelity channel onto a canonical state.
+
+    A channel is ``accepted`` only when the deck declares it; otherwise it is
+    ``blocked_missing_source`` -- no numerical reference/test artifact exists.
+    """
+
+    return {
+        channel: (ACCEPTED if channel in accepted else BLOCKED_MISSING_SOURCE)
+        for channel in REQUIRED_NUMERICAL_FIDELITY_CHANNELS
     }
 
 

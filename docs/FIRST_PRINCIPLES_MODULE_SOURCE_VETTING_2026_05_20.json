@@ -4198,6 +4198,12 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.ACCEPTED",
+        "dpf.first_principles.channel_state.BLOCKED_MISSING_SOURCE",
+        "dpf.first_principles.channel_state.ChannelState",
+        "dpf.first_principles.channel_state.channel_state_map",
+        "dpf.first_principles.channel_state.channel_state_summary",
         "typing",
         "typing.Any"
       ],
@@ -4209,6 +4215,33 @@
       "path": "src/dpf/first_principles/certificate_gate.py",
       "physics_facing": true,
       "source_reference_count": 2,
+      "status": "active_module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": true,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Iterable",
+        "collections.abc.Mapping",
+        "enum",
+        "enum.StrEnum",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.channel_state",
+      "path": "src/dpf/first_principles/channel_state.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
       "status": "active_module_vetted_nonpromoting"
     },
     {
@@ -5081,6 +5114,12 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.ACCEPTED",
+        "dpf.first_principles.channel_state.BLOCKED_MISSING_SOURCE",
+        "dpf.first_principles.channel_state.ChannelState",
+        "dpf.first_principles.channel_state.channel_state_map",
+        "dpf.first_principles.channel_state.channel_state_summary",
         "typing",
         "typing.Any"
       ],
@@ -5358,6 +5397,30 @@
       "status": "active_module_vetted_nonpromoting"
     },
     {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "reduced_or_baseline_only_not_first_principles_authority",
+      "docs_reference_paths": [
+        "docs/FIRST_PRINCIPLES_SCOPE_DECISION_MEMO_2026_05_20.md"
+      ],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.runtime_demonstrator_scope",
+      "path": "src/dpf/first_principles/runtime_demonstrator_scope.py",
+      "physics_facing": true,
+      "source_reference_count": 1,
+      "status": "baseline_only_nonpromoting"
+    },
+    {
       "active_first_principles_closure": true,
       "can_support_first_principles_acceptance": false,
       "capability_tags": [
@@ -5392,6 +5455,15 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.ACCEPTED",
+        "dpf.first_principles.channel_state.BLOCKED_MISSING_SOURCE",
+        "dpf.first_principles.channel_state.BLOCKED_WRONG_SCOPE",
+        "dpf.first_principles.channel_state.ChannelState",
+        "dpf.first_principles.channel_state.EXCLUDED_NOT_VALIDATED",
+        "dpf.first_principles.channel_state.NOT_CLAIMED",
+        "dpf.first_principles.channel_state.channel_state_map",
+        "dpf.first_principles.channel_state.channel_state_summary",
         "typing",
         "typing.Any"
       ],
@@ -11562,33 +11634,33 @@
   },
   "strict_passed": true,
   "summary": {
-    "active_first_principles_closure_count": 57,
+    "active_first_principles_closure_count": 58,
     "active_physics_unvetted_count": 0,
     "classification_counts": {
       "active_physics_source_referenced": 48,
       "inactive_backend_numerical_utility_not_first_principles_authority": 36,
       "inactive_diagnostic_surface_not_first_principles_authority": 15,
       "inactive_legacy_physics_not_first_principles_authority": 20,
-      "nonphysics_infrastructure": 62,
+      "nonphysics_infrastructure": 63,
       "package_export_surface": 32,
       "physics_source_referenced": 5,
-      "reduced_or_baseline_only_not_first_principles_authority": 30,
+      "reduced_or_baseline_only_not_first_principles_authority": 31,
       "standards_scoped_implementation_constants": 1,
       "validation_workflow_not_active_first_principles": 44
     },
     "inactive_physics_unvetted_count": 0,
     "missing_source_reference_count": 0,
     "module_role_review_required_count": 0,
-    "physics_facing_count": 180,
-    "source_referenced_count": 69,
+    "physics_facing_count": 182,
+    "source_referenced_count": 70,
     "status_counts": {
-      "active_module_vetted_nonpromoting": 48,
-      "baseline_only_nonpromoting": 30,
+      "active_module_vetted_nonpromoting": 49,
+      "baseline_only_nonpromoting": 31,
       "module_vetted_nonpromoting": 170,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
     },
-    "total_modules": 293,
+    "total_modules": 295,
     "unsafe_claim_surface_count": 0
   }
 }

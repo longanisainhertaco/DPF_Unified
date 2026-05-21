@@ -997,7 +997,7 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 3 S3.2: source-tagged `PF1000GeometryPacket` with `PF1000MaskManifest` now defines the geometry/dimensionality scope and emits `can_support_first_principles_acceptance=false` (commit `0e91f08`); bore/insulator/backplate dimensions remain blocked by missing local KR source; mask hashes are deterministic but under-resolved for rod/insulator surfaces. Remaining acceptance blockers: no accepted dimensionality or handoff packet exists; source-equivalence, same-scope 3D evidence, kinetic/electron scope, and mechanism-separated neutron evidence remain blocked. See `tests/test_first_principles_geometry.py`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.2: source-tagged `PF1000GeometryPacket` with `PF1000MaskManifest` now defines the geometry/dimensionality scope and emits `can_support_first_principles_acceptance=false` (commit `0e91f08`); Scholz 2001 now gives source availability for PF-1000 2001 cathode-rod length and insulator outer radius, but runtime revision mapping, bore length, insulator wall thickness, and backplate dimensions remain blocked. Mask hashes are deterministic but still candidate/not accepted for rod/insulator surfaces. Remaining acceptance blockers: no accepted dimensionality or handoff packet exists; source-equivalence, same-scope 3D evidence, kinetic/electron scope, and mechanism-separated neutron evidence remain blocked. See `tests/test_first_principles_geometry.py`.",
       "doorstop_import": {
         "evidence_refs": [
           "PF1000GeometryPacket",
@@ -2095,7 +2095,7 @@
       ]
     },
     {
-      "acceptance_evidence_or_blocker": "Sprint 3 S3.2 / audit finding A-7; blocker IDs `DPF-PHYS-014` (dimensionality/geometry handoff) and `DPF-VV-003` (same-scope readiness). S3.2 delivers: `PF1000GeometryPacket`, `PF1000GeometryField`, `PF1000GeometryConflict`, `PF1000MaskManifest` in `src/dpf/fields/source_geometry.py` (commit `0e91f08`); 5 fields source-supported, 4 conflict-flagged, 10 blocked; all 10 material mask classes emitted with per-mask SHA-256 hashes; under-resolution gate for rods fires on coarse grids. Remaining acceptance blockers: bore/insulator/backplate source dimensions blocked by missing local KR source; reviewed dimensionality and same-scope 3D evidence remain absent; `can_support_first_principles_acceptance=false`. See `tests/test_source_geometry_packet.py`, `tests/test_first_principles_geometry.py`.",
+      "acceptance_evidence_or_blocker": "Sprint 3 S3.2 / audit finding A-7; blocker IDs `DPF-PHYS-014` (dimensionality/geometry handoff) and `DPF-VV-003` (same-scope readiness). S3.2 delivers: `PF1000GeometryPacket`, `PF1000GeometryField`, `PF1000GeometryConflict`, `PF1000MaskManifest` in `src/dpf/fields/source_geometry.py` (commit `0e91f08`); S4 target extraction promotes PF-1000 chamber wall material/thickness from Krasa 2008 and records Stepniewski's `0.015 m` hollow-bore value as simulation-context-only; Sprint 6 user-supplied extraction adds Scholz 2001 24-rod rod length and alumina-insulator outer radius for the 2001 PF-1000 revision. All 10 material mask classes emit hashes but remain non-accepting. Remaining acceptance blockers: full bore authority, insulator wall thickness, backplate dimensions, reviewed dimensionality, and same-scope 3D evidence remain absent; `can_support_first_principles_acceptance=false`. See `tests/test_source_geometry_packet.py`, `tests/test_first_principles_geometry.py`, `docs/extractions/SCHOLZ_2001_RECENT_PROGRESS_PF1000_HARDWARE_TARGET_EXTRACTION_2026_05_20.md`.",
       "doorstop_import": {
         "evidence_refs": [
           "DPF-PHYS-014",
@@ -2106,9 +2106,11 @@
           "PF1000MaskManifest",
           "src/dpf/fields/source_geometry.py",
           "0e91f08",
+          "0.015 m",
           "can_support_first_principles_acceptance=false",
           "tests/test_source_geometry_packet.py",
-          "tests/test_first_principles_geometry.py"
+          "tests/test_first_principles_geometry.py",
+          "docs/extractions/SCHOLZ_2001_RECENT_PROGRESS_PF1000_HARDWARE_TARGET_EXTRACTION_2026_05_20.md"
         ],
         "level": "shall",
         "normative": true,
@@ -2130,15 +2132,17 @@
         "PF1000MaskManifest",
         "src/dpf/fields/source_geometry.py",
         "0e91f08",
+        "0.015 m",
         "can_support_first_principles_acceptance=false",
         "tests/test_source_geometry_packet.py",
-        "tests/test_first_principles_geometry.py"
+        "tests/test_first_principles_geometry.py",
+        "docs/extractions/SCHOLZ_2001_RECENT_PROGRESS_PF1000_HARDWARE_TARGET_EXTRACTION_2026_05_20.md"
       ],
       "id": "DPF-PHYS-022",
       "import_guardrail": "Import as satisfied only when status is implemented and evidence_refs or explicit inspection evidence are present.",
       "owner": "Physics/Architecture",
       "priority": "P0",
-      "requirement": "WP-N3 PF-1000 geometry and materials shall provide deterministic reviewed masks with separate hashes and source dimensions for the 12 cathode rods, hollow anode bore, alumina insulator, backplate/source interface, chamber wall, PML/open boundary, and plasma domain, with a resolution-review gate.",
+      "requirement": "WP-N3 PF-1000 geometry and materials shall provide deterministic reviewed masks with separate hashes and source dimensions for the source-scoped cathode-rod set (12-rod and 24-rod revisions kept separate), hollow anode bore, alumina insulator, backplate/source interface, chamber wall, PML/open boundary, and plasma domain, with a resolution-review gate.",
       "source_section": "Candidate Requirements",
       "status": "partial",
       "verification_methods": [

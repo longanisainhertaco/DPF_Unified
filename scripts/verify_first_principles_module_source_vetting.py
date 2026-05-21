@@ -86,6 +86,10 @@ NONPHYSICS_INFRASTRUCTURE_FILES = {
     "src/dpf/engine/memory_preflight.py",
     "src/dpf/engine/runtime_telemetry.py",
     "src/dpf/engine/state_management.py",
+    # Sprint 8 WS1: the shared 7-state acceptance-channel vocabulary. Pure
+    # schema/enum + helpers with no physics claim and no KR authority -- it
+    # only makes per-channel accounting honest (Codex S7-A7/S7-A8).
+    "src/dpf/first_principles/channel_state.py",
 }
 INACTIVE_NUMERICAL_UTILITY_FILES = {
     "src/dpf/experimental/static_refinement.py",

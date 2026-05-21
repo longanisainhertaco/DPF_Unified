@@ -6516,3 +6516,63 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
 - Boundary:
   no physics acceptance state changed. Source availability does not unlock
   runtime acceptance. All fail-closed guards remain in force.
+
+### 2026-05-20: Sprint 7 Multi-Agent Audit And Super-Sprint 8 Handoff
+
+- Work completed:
+  audited Sprint 7 at HEAD `35bb1a9` with five focused agents covering source
+  ledgers, runtime gates, PF-1000 geometry/whole-shot readiness,
+  traceability/tests, and next-sprint design. Durable records:
+  `docs/SPRINT7_CODEX_MULTIAGENT_AUDIT_2026_05_20.md` and
+  `docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md`.
+- Audit state:
+  Sprint 7 is accepted as a fail-closed runtime-contract sprint with required
+  corrections. Material findings: Bennett 2017 is line/page verified but not
+  KR-authoritative; Braginskii Table 2 is target-extracted/render-verified but
+  stale in the normalized ledgers; RTM JSON drifted from the baseline/CSV;
+  acceptance-channel internals need explicit per-channel states before future
+  promotion work.
+- Verification:
+  focused audit tests passed (`158 passed`), source-truth exhaustion check
+  passed (`open_issue_count=0`), and module-source vetting passed
+  (`strict_passed=true`, 293 modules). Passing tests are not enough by
+  themselves because current ledger tests still encode stale Braginskii status.
+- Boundary:
+  no runtime physics was accepted. Super-Sprint 8 must start with ledger/KR/RTM
+  repair before wiring Bennett startup or Braginskii transport candidates.
+
+### 2026-05-20: Sprint 7 WS-B/WS-C/WS-D Scope And Super-Sprint 8 WS0 Completion
+
+- Sprint 7 WS-B/WS-C/WS-D scope (tail completeness per audit finding S7-A6):
+  WS-B exposed `hybrid_pic_3d_readiness` through the package-native runner, CLI
+  telemetry, manifest candidate evidence, and validation packet, keeping
+  candidate 3-D evidence non-promoting. WS-C added the revision-specific
+  2000/2001 24-rod PF-1000 geometry constructor without mutating the Akel/Krauz
+  constructors. WS-D kept reduced Lee/snowplow models as comparator baselines
+  only and rejected Te/Ti caveat/model/manual evidence for same-scope
+  acceptance. None of WS-B/WS-C/WS-D produced an accepted first-principles
+  runtime claim; all acceptance flags stayed false.
+- Super-Sprint 8 WS0 work completed:
+  ledger/KR/traceability repair at HEAD `35bb1a9`. Bennett 2017 corrected to
+  `on_disk_line_page_verified_kr_promotion_required` on the four startup-BVP
+  blocker rows (S7-A1); Braginskii corrected to
+  `target_extracted_source_supported_pending_equation_extraction_and_review`
+  on `CLOSURE-BLK-BRAG-001` (S7-A2); `SAME-SCOPE-COMPARATOR-DECISION`
+  reclassified to `scope_governance_decision_pending` control-plane governance
+  (S7-A4). The six Sprint 7-reverified rows are re-pinned to commit `35bb1a9`;
+  the other 25 rows keep the Sprint 4 commit `8e6b5e9`. The Sprint 7 WS-E
+  source packet was corrected to stop claiming target extraction for Bennett
+  while its source-ledger row keeps `already_in_kr=false`.
+- Verification:
+  RTM CSV/JSON regenerated from `docs/DPF_REQUIREMENTS_BASELINE.md` (the
+  committed exports had drifted, S7-A5). Source-truth index refreshed
+  (`exhausted=true`, `open_issue_count=0`); module-source vetting clean
+  (`strict_passed=true`, 293 modules). Ledger tests no longer hardcode the
+  stale `8e6b5e9` commit for Sprint 7 rows; `test_first_principles_v2_handoff_
+  ledgers.py`, `test_external_team_submission_package.py`, and
+  `test_srs_traceability_export.py` pass (`43 passed`).
+- Boundary:
+  no runtime physics was accepted. Bennett remains on-disk-only and not
+  KR-authoritative; Braginskii equations 4.30-4.45 and five review-required
+  cells stay blocked; the comparator scope decision is governance, not
+  scientific evidence. WS0 is a bookkeeping/traceability repair pass.

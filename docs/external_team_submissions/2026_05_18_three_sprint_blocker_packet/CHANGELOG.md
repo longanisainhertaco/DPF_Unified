@@ -848,7 +848,7 @@ extracted) are indexed and the periodic-audit `module_source_vetting` +
 
 `b176c47` — Sprint 6 vetting/source-truth regeneration (above section).
 
-The Sprint 7 commit (hash assigned at commit time) delivers, per
+Sprint 7 commit `35bb1a9` delivers, per
 `docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_2026_05_20.md`,
 five workstreams plus the Sprint 6 user-supplied-papers intake baseline
 that Sprint 7 WS-A consumes (the two tracks are interleaved in the same
@@ -898,6 +898,47 @@ runtime files and committed together):
 `accepted_runtime_claim` and `can_support_first_principles_acceptance`
 remain `false` everywhere. Sprint 7 is not a validation sprint and produces
 no engineering-firm certificate. 233 focused tests pass; ruff clean.
+
+### Sprint 8 — super-sprint source-to-runtime, Phase A P0 (2026-05-20)
+
+`35bb1a9` — Sprint 7 first-principles runtime contract (above section).
+
+The Sprint 8 Phase A commit (hash assigned at commit time) delivers the three
+P0 workstreams of
+`docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md`:
+
+- **WS0 Ledger / KR / Traceability Repair:** Bennett 2017 corrected to
+  `on_disk_line_page_verified_kr_promotion_required` (4 STARTUP-BVP rows);
+  `CLOSURE-BLK-BRAG-001` corrected to
+  `target_extracted_source_supported_pending_equation_extraction_and_review`
+  (Eqs. 4.30-4.45 and the five flagged Table-2 cells stay blocked);
+  `SAME-SCOPE-COMPARATOR-DECISION` reclassified to
+  `scope_governance_decision_pending` (control-plane governance, not KR
+  authority); SRS RTM CSV/JSON regenerated (DPF-PHYS-014/022 drift fixed);
+  source-truth index refreshed (`exhausted=true`, 0 open issues); dated
+  findings-tail entries added to `CodexFindings.md` / `CortexFindings.md`;
+  ledger commit pins moved to a per-row scheme (no stale global `8e6b5e9`).
+- **WS1 Shared Acceptance Channel Contract:** new
+  `src/dpf/first_principles/channel_state.py` defines exactly seven canonical
+  channel states (`accepted`, `blocked_missing_source`, `blocked_wrong_scope`,
+  `blocked_missing_review`, `blocked_missing_uncertainty`,
+  `excluded_not_validated`, `not_claimed`), shared by `same_scope.py`,
+  `numerical_fidelity.py`, and `certificate_gate.py`. Manual same-scope
+  channel lists are demoted to *requested* channels — never accepted evidence
+  without a reviewed, scope-matched target with uncertainty. The legacy
+  cylindrical `first_principles_mhd.py` gate now refuses to judge a
+  package-native 3-D run (it defers to the `hybrid_pic_3d` gate).
+- **WS2 Runtime-Demonstrator Scope Lock:** Option B (PF-1000 full-energy
+  27-40 kV) encoded as a control-plane scope packet in
+  `src/dpf/first_principles/runtime_demonstrator_scope.py`
+  (`is_scientific_authority=false`, `governance_class=control_plane`) with a
+  single canonical scope label `pf1000_full_energy_27_to_40_kv` and an
+  in-scope / context-only / wrong-scope source classification. Governance
+  memo: `docs/SPRINT8_WS2_RUNTIME_DEMONSTRATOR_SCOPE_LOCK_2026_05_20.md`.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Sprint 8 Phase A is not a validation sprint. 305 focused
+tests pass; ruff clean.
 
 ## Notes on CHANGELOG conventions
 

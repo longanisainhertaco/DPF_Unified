@@ -134,9 +134,11 @@ plasmas. Z=1 column applies to the DPF deuterium plasma case.
 ### Remaining blockers
 
 - `CLOSURE-BLK-BRAG-001`: status `target_extracted_source_supported_pending_
-  runtime_consumption_and_review`. Blocks on: code consumption in
-  `closure_packet.py`, numerical-fidelity test, same-scope comparator,
-  certificate gate.
+  equation_extraction_and_review` (Sprint 7 multi-agent audit finding S7-A2).
+  Table 2 Z=1 cells are render-verified and target-extracted. Blocks on:
+  equation-level extraction of Eqs. 4.30-4.45, second-reader confirmation of
+  the five review-required cells, code consumption in `closure_packet.py`,
+  numerical-fidelity test, same-scope comparator, certificate gate.
 - 5 `(review-required)` cells: α₀' (Z=3, 4, ∞), α₀'' (Z=3 anomalous),
   γ₁' (Z=∞) — require second-reader confirmation before any code path
   consuming those cells may proceed.
@@ -398,14 +400,17 @@ CH03/CH04/CH07/CH08 as documented in Sprint 5 extraction.
 
 ### Remaining blockers
 
-- `STARTUP-BVP-CH03`: `existing_kr_source_supported` pending code consumption
-  and numerical acceptance.
+- `STARTUP-BVP-CH03`: `on_disk_line_page_verified_kr_promotion_required`
+  (Sprint 7 multi-agent audit finding S7-A1). Bennett is on-disk line/page
+  verified but not KR-authoritative; blocked pending canonical KR ingestion,
+  code consumption, and numerical acceptance.
 - `STARTUP-BVP-CH04`: same.
 - `STARTUP-BVP-CH07`: same.
 - `STARTUP-BVP-CH08`: same.
-- KR promotion: `kr_promotion_recommended = True`; the paper must be ingested
-  as `KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md` before the
-  code consumer cites the KR record. Not done in Sprint 7.
+- KR promotion: required and not done. The paper must be ingested as
+  `KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md` before the code
+  consumer cites the KR record. The source-acquisition ledger keeps
+  `bennett_2017_startup.already_in_kr=false` until that ingestion exists.
 - Filename mislabel: the on-disk PDF filename
   (`schmidt-2017-kinetic-dpf-breakdown.pdf`) does not match the actual authors.
   A renaming or symlink must be agreed before the code consumer hard-codes
@@ -486,8 +491,8 @@ for/against analysis and the decision list.
 
 | source | blocker(s) | lane | source_equivalence_granted | sprint_7_action |
 | --- | --- | --- | --- | --- |
-| Braginskii 1965 Table 2 | CLOSURE-BLK-BRAG-001 | primary (target-extracted) | N/A — primary source | re-audit CONFIRMED; no new wiring |
-| Bennett 2017 startup | CH03/CH04/CH07/CH08 | primary (target-extracted) | N/A — primary source | line/page verification CONFIRMED; no new wiring |
+| Braginskii 1965 Table 2 | CLOSURE-BLK-BRAG-001 | primary (Table 2 target-extracted; render-verified) | N/A — primary source | re-audit CONFIRMED; no new wiring |
+| Bennett 2017 startup | CH03/CH04/CH07/CH08 | primary (on-disk line/page verified; KR promotion required) | N/A — primary source | line/page verification CONFIRMED; NOT KR-authoritative; no new wiring |
 | LXCat D₂ cross-sections | CH02, D2-EN-001 | candidate_substitute | **false** | queue only |
 | SRIM/PSTAR/IAEA stopping | NEUTRON-BLK-002 | candidate_substitute | **false** | queue only |
 | Munro 2012 (Brysk) | NEUTRON-BLK-004 | candidate_substitute | **false** | queue only |
@@ -504,12 +509,24 @@ Per the Sprint 7 controlling document §WS-E (Apply):
 
 **Runtime coefficients wired this sprint: NONE.**
 
-Both primary-source packets (Braginskii Table 2 and Bennett 2017) are
-`target_extracted_source_supported` and have completed line/page verification
-this sprint. They are NOT `implemented-candidate`. The transition from
-`target_extracted` to `implemented-candidate` requires the additional gates
-listed in §Required tests of each packet above, plus independent Codex +
-external-team convergence on exact values at a reviewed commit.
+The two primary-source packets carry distinct, non-equal states (Sprint 7
+multi-agent audit finding S7-A1):
+
+- Braginskii 1965 Table 2 is `target_extracted_source_supported_pending_
+  equation_extraction_and_review`: the Z=1 Table 2 cells are render-verified
+  and target-extracted; Eqs. 4.30-4.45 and the five review-required cells
+  remain blocked.
+- Bennett 2017 is `on_disk_line_page_verified_kr_promotion_required`: it is
+  on-disk line/page verified this sprint but is NOT yet KR-authoritative.
+  Bennett 2017 is not target-extracted and must be ingested as canonical KR
+  markdown (`KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md`) before
+  any runtime startup code consumes it. The source-acquisition ledger keeps
+  `bennett_2017_startup.already_in_kr=false`.
+
+Neither packet is `implemented-candidate`. The transition to
+`implemented-candidate` requires the additional gates listed in §Required
+tests of each packet above, plus independent Codex + external-team convergence
+on exact values at a reviewed commit.
 
 The four substitute/cross-check lane sources remain in the review queue with
 `source_equivalence_granted = false`. No dataset ingestion, KR record

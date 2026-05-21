@@ -5,6 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.first_principles.channel_state import (
+    ACCEPTED,
+    BLOCKED_MISSING_SOURCE,
+    ChannelState,
+    channel_state_map,
+    channel_state_summary,
+)
+
 CERTIFICATE_GATE_SOURCE_REFS = (
     {
         "path": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
@@ -121,8 +129,13 @@ def build_first_principles_certificate_gate_packet(
     """Return a non-promoting first-principles certificate gate packet."""
 
     accepted = {str(channel) for channel in accepted_channels}
-    missing = set(REQUIRED_CERTIFICATE_CHANNELS) - accepted
-    missing.update(REQUIRED_CERTIFICATE_CHANNELS)
+    # Canonical per-channel states (Codex S7-A7): each certificate channel is
+    # either ``accepted`` or ``blocked_missing_source``.  The old code
+    # unconditionally re-added every channel to ``missing``, so an accepted
+    # channel was also reported missing -- that contradiction is now gone.
+    channel_states = _certificate_channel_states(accepted)
+    state_summary = channel_state_summary(channel_states)
+    missing = set(state_summary["missing_acceptance_channels"])
     upstream_statuses = _upstream_statuses(upstream_packets)
     upstream_blockers = {
         name: status
@@ -139,6 +152,8 @@ def build_first_principles_certificate_gate_packet(
         "required_channels": list(REQUIRED_CERTIFICATE_CHANNELS),
         "accepted_channels": sorted(accepted),
         "missing_acceptance_channels": sorted(missing),
+        "channel_states": channel_state_map(channel_states),
+        "channel_state_summary": state_summary,
         "certificate_channel_status": _certificate_channel_statuses(
             accepted=accepted,
             missing=missing,
@@ -173,6 +188,20 @@ def _upstream_statuses(
             None if packet.get("status") is None else str(packet["status"])
         )
     return statuses
+
+
+def _certificate_channel_states(accepted: set[str]) -> dict[str, ChannelState]:
+    """Map every required certificate channel onto a canonical state.
+
+    A channel is ``accepted`` only when the deck declares it; otherwise it is
+    ``blocked_missing_source``.  Top-level certificate acceptance is hard-coded
+    False regardless -- this map only makes the per-channel accounting honest.
+    """
+
+    return {
+        channel: (ACCEPTED if channel in accepted else BLOCKED_MISSING_SOURCE)
+        for channel in REQUIRED_CERTIFICATE_CHANNELS
+    }
 
 
 def _certificate_channel_statuses(

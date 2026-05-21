@@ -5,6 +5,17 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.first_principles.channel_state import (
+    ACCEPTED,
+    BLOCKED_MISSING_SOURCE,
+    BLOCKED_WRONG_SCOPE,
+    EXCLUDED_NOT_VALIDATED,
+    NOT_CLAIMED,
+    ChannelState,
+    channel_state_map,
+    channel_state_summary,
+)
+
 SAME_SCOPE_SOURCE_REFS = (
     {
         "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
@@ -134,32 +145,63 @@ def build_same_scope_source_packet(
     device_name: str | None = None,
     validation_targets: tuple[Mapping[str, Any], ...] | list[Mapping[str, Any]] = (),
     accepted_same_scope_channels: tuple[str, ...] | list[str] = (),
+    synthetic_fixture: bool = False,
 ) -> dict[str, Any]:
-    """Return a non-promoting packet describing same-scope source availability."""
+    """Return a non-promoting packet describing same-scope source availability.
 
-    accepted: set[str] = set()
-    manual_decisions: list[dict[str, Any]] = []
-    for channel in accepted_same_scope_channels:
-        channel_name = str(channel)
-        if channel_name in TEMPERATURE_HISTORY_CHANNELS:
-            manual_decisions.append({
-                "target": f"manual_channel:{channel_name}",
-                "observable": channel_name,
-                "status": "manual_accepted_same_scope_channel",
-                "decision": (
-                    "rejected_temperature_history_requires_direct_same_scope_"
-                    "diagnostic_review_and_uncertainty"
-                ),
-            })
-            continue
-        accepted.add(channel_name)
+    Sprint 8 WS1 (Codex S7-A8): the ``accepted_same_scope_channels`` argument
+    is a list of *manually requested* channels.  A manual channel is NOT
+    evidence -- it can only become ``accepted`` when a reviewed, scope-matched
+    validation target with an uncertainty budget backs it.  Manual channels
+    with no such target are reported as ``requested_manual_channel_not_evidence``
+    and carry the ``excluded_not_validated`` per-channel state.
+
+    ``synthetic_fixture`` only changes labelling for test/fixture transparency;
+    it never weakens acceptance and never promotes a manual channel.
+    """
+
+    # Channels backed by a reviewed, scope-matched validation target.  This is
+    # the ONLY path to ``accepted``.
     target_channels, target_decisions = _accepted_channels_from_targets(
         validation_targets,
         declared_scope=declared_scope,
         device_name=device_name,
     )
+    accepted: set[str] = set(target_channels)
+
+    # Manual same-scope channel list -> *requested* channels, never evidence
+    # (Codex S7-A8).  A manual channel only counts when a target above already
+    # accepted it; otherwise it is recorded as a request and excluded.
+    requested_manual_channels: list[str] = []
+    manual_decisions: list[dict[str, Any]] = []
+    for channel in accepted_same_scope_channels:
+        channel_name = str(channel)
+        requested_manual_channels.append(channel_name)
+        backed_by_target = channel_name in accepted
+        if channel_name in TEMPERATURE_HISTORY_CHANNELS:
+            manual_decisions.append({
+                "target": f"manual_channel:{channel_name}",
+                "observable": channel_name,
+                "status": "manual_requested_same_scope_channel",
+                "decision": (
+                    "rejected_temperature_history_requires_direct_same_scope_"
+                    "diagnostic_review_and_uncertainty"
+                ),
+                "backed_by_reviewed_target": False,
+            })
+            continue
+        manual_decisions.append({
+            "target": f"manual_channel:{channel_name}",
+            "observable": channel_name,
+            "status": "manual_requested_same_scope_channel",
+            "decision": (
+                "accepted_via_reviewed_validation_target"
+                if backed_by_target
+                else "requested_manual_channel_not_evidence"
+            ),
+            "backed_by_reviewed_target": backed_by_target,
+        })
     target_decisions = manual_decisions + target_decisions
-    accepted.update(target_channels)
     declared = bool(str(declared_scope).strip()) and declared_scope != "not_declared"
     if declared:
         accepted.add("declared_validation_scope")
@@ -169,15 +211,24 @@ def build_same_scope_source_packet(
     else:
         text_supported = set()
 
-    missing = set(REQUIRED_SAME_SCOPE_CHANNELS) - accepted
-    missing.update(BLOCKING_SAME_SCOPE_CHANNELS)
-    if not declared:
-        missing.add("declared_validation_scope")
+    # Canonical per-channel states (Codex S7-A7).  A channel is in exactly one
+    # state, so ``accepted`` and ``missing`` are mutually exclusive.
+    requested_not_accepted = {
+        name for name in requested_manual_channels if name not in accepted
+    }
+    channel_states = _same_scope_channel_states(
+        accepted=accepted,
+        text_supported=text_supported,
+        requested_not_accepted=requested_not_accepted,
+    )
+    state_summary = channel_state_summary(channel_states)
+    missing = set(state_summary["missing_acceptance_channels"])
 
     return {
         "status": "blocked_same_scope_source_packet_not_available",
         "declared_scope": declared_scope,
         "device_name": device_name or "not_declared",
+        "synthetic_fixture": bool(synthetic_fixture),
         "decision": "do_not_promote_whole_shot_first_principles_claim",
         "scope_policy": (
             "single_declared_scope_only_no_cross_device_shot_or_configuration_mix "
@@ -187,7 +238,11 @@ def build_same_scope_source_packet(
         "text_supported_reference_channels": sorted(text_supported),
         "text_supported_not_acceptance_channels": sorted(text_supported - accepted),
         "accepted_same_scope_channels": sorted(accepted),
+        "requested_manual_channels": sorted(set(requested_manual_channels)),
+        "requested_manual_channels_not_evidence": sorted(requested_not_accepted),
         "missing_acceptance_channels": sorted(missing),
+        "channel_states": channel_state_map(channel_states),
+        "channel_state_summary": state_summary,
         "same_scope_channel_status": _channel_statuses(
             required_channels=REQUIRED_SAME_SCOPE_CHANNELS,
             accepted=accepted,
@@ -335,6 +390,43 @@ def _channel_statuses(
         else:
             statuses[channel] = "not_available"
     return statuses
+
+
+def _same_scope_channel_states(
+    *,
+    accepted: set[str],
+    text_supported: set[str],
+    requested_not_accepted: set[str],
+) -> dict[str, ChannelState]:
+    """Map every required same-scope channel onto a canonical state.
+
+    - ``accepted`` -- backed by a reviewed, scope-matched validation target.
+    - ``blocked_missing_source`` -- a blocking same-scope channel with no
+      independent source packet.
+    - ``blocked_wrong_scope`` -- only other-scope material is available.
+    - ``excluded_not_validated`` -- a manually requested channel that is not
+      backed by a reviewed target (Codex S7-A8), or a text-supported reference
+      channel which is explicitly not acceptance evidence.
+    - ``not_claimed`` -- no evidence offered and not otherwise constrained.
+    """
+
+    states: dict[str, ChannelState] = {}
+    for channel in REQUIRED_SAME_SCOPE_CHANNELS:
+        if channel in accepted:
+            states[channel] = ACCEPTED
+        elif channel in requested_not_accepted:
+            # Manual request that no reviewed target backed.
+            states[channel] = EXCLUDED_NOT_VALIDATED
+        elif channel in text_supported:
+            # Text scalars seed an engineering reference only.
+            states[channel] = EXCLUDED_NOT_VALIDATED
+        elif channel == "cross_scope_transfer_rule_or_rejection_tests":
+            states[channel] = BLOCKED_WRONG_SCOPE
+        elif channel in BLOCKING_SAME_SCOPE_CHANNELS:
+            states[channel] = BLOCKED_MISSING_SOURCE
+        else:
+            states[channel] = NOT_CLAIMED
+    return states
 
 
 def _target_scope_matches(

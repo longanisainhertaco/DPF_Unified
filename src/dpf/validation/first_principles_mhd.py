@@ -22,6 +22,33 @@ FIRST_PRINCIPLES_MHD_EXECUTION_MODE = "mhd"
 PF1000_AKEL_SOURCE_SCOPE = "pf1000_16kv_2021_akel_shot12581"
 PF1000_AKEL_VALIDATION_SCOPE = "pf1000_16kv_2021_akel"
 
+# The package-native 3-D hybrid EM/PIC-fluid runner labels its results with
+# this run-mode.  Such a run is NOT a cylindrical MHD run; it must be judged by
+# ``dpf.validation.hybrid_pic_3d`` / the package-native readiness packet, never
+# by this legacy cylindrical gate's cylindrical key expectations (Codex S7-A7,
+# Sprint 8 WS1).
+PACKAGE_NATIVE_3D_RUN_MODE = "first_principles_3d_hybrid_em_pic_fluid"
+_THREE_D_DIMENSIONALITIES = {"3d", "three_dimensional", "cartesian_3d"}
+
+
+def is_package_native_3d_result(result: Mapping[str, object]) -> bool:
+    """True when ``result`` came from the package-native 3-D hybrid runner.
+
+    The legacy cylindrical gate must defer to the 3-D readiness packet for
+    these runs rather than silently scoring them against cylindrical output
+    keys it never produced.
+    """
+
+    run_mode = str(result.get("run_mode") or "").strip().lower()
+    if run_mode == PACKAGE_NATIVE_3D_RUN_MODE:
+        return True
+    dimensionality = str(
+        result.get("geometry_dimensionality")
+        or result.get("dimensionality")
+        or ""
+    ).strip().lower()
+    return dimensionality in _THREE_D_DIMENSIONALITIES
+
 _BASELINE_OUTPUT_KEYS = (
     "Lp_snowplow_nH",
     "phase_model_authority",
@@ -671,6 +698,59 @@ def first_principles_neutron_yield_authority_status(
     }
 
 
+def _package_native_3d_deferral_readiness(
+    result: Mapping[str, object],
+    *,
+    run_mode: str,
+    execution_mode: str,
+    validation_scope: str,
+    source_scope: str,
+    source_scope_status: str,
+) -> FirstPrinciplesMHDReadiness:
+    """Return a blocked readiness that defers a 3-D run to its own gate.
+
+    The legacy cylindrical gate cannot accept or reject a package-native 3-D
+    hybrid run.  It returns ``ready=False`` with a single explicit blocker
+    pointing at ``hybrid_pic_3d_readiness`` so no caller can mistake the
+    silence-on-cylindrical-keys for either acceptance or a cylindrical
+    rejection (Codex S7-A7, Sprint 8 WS1).
+    """
+
+    hybrid_pic_3d_status = hybrid_pic_3d_readiness_status(result)
+    blocker = (
+        "package_native_3d_run_detected: this run is judged by the "
+        "package-native hybrid_pic_3d readiness packet, not the legacy "
+        "cylindrical first_principles_mhd gate. The cylindrical gate does "
+        "not accept or reject 3-D runs."
+    )
+    return FirstPrinciplesMHDReadiness(
+        ready=False,
+        status="blocked_package_native_3d_run_uses_hybrid_pic_3d_gate",
+        run_mode=run_mode,
+        execution_mode=execution_mode,
+        validation_scope=validation_scope,
+        source_scope=source_scope,
+        source_scope_status=source_scope_status,
+        satisfied_evidence=[],
+        missing_evidence=["package_native_3d_uses_hybrid_pic_3d_gate"],
+        blockers=[blocker],
+        hybrid_pic_3d_status=hybrid_pic_3d_status,
+        validity_notes={
+            "gate_separation": (
+                "Package-native 3-D hybrid EM/PIC-fluid runs are gated by "
+                "dpf.validation.hybrid_pic_3d.hybrid_pic_3d_readiness_status. "
+                "The legacy cylindrical MHD gate does not apply cylindrical "
+                "key expectations (current/density/sheath_position) to 3-D "
+                "runs and cannot grant or deny their acceptance."
+            ),
+            "authority_packet": (
+                "hybrid_pic_3d_readiness is the authoritative 3-D gate; its "
+                "missing_capabilities list governs 3-D acceptance."
+            ),
+        },
+    )
+
+
 def first_principles_mhd_readiness_report(
     result: Mapping[str, object],
     *,
@@ -688,6 +768,22 @@ def first_principles_mhd_readiness_report(
     preset_name = str(preset_name or "")
     run_mode = str(run_mode or FIRST_PRINCIPLES_MHD_MODE)
     execution_mode = str(execution_mode or FIRST_PRINCIPLES_MHD_EXECUTION_MODE)
+
+    # Codex S7-A7 / Sprint 8 WS1: a package-native 3-D hybrid run is outside
+    # this legacy cylindrical gate's authority.  Do NOT score it against
+    # cylindrical output keys (I_MA, rho, sheath_position, ...) -- that would
+    # silently mark unrelated channels missing.  Defer to the package-native
+    # 3-D readiness packet and stay blocked here.
+    if is_package_native_3d_result(result):
+        return _package_native_3d_deferral_readiness(
+            result,
+            run_mode=run_mode,
+            execution_mode=execution_mode,
+            validation_scope=validation_scope,
+            source_scope=source_scope,
+            source_scope_status=source_scope_status,
+        )
+
     output_status = first_principles_output_status(result)
     closure_status = _closure_factor_status(result)
     baselines = reduced_model_baseline_authority(result)
