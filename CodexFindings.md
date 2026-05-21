@@ -6847,3 +6847,102 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   everywhere. SS11 closed no physics blocker; it is policy/artifact integrity only.
   S10-A7 (no acceptance promotion) preserved as required.
   Completion memo: `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 11 Audit
+
+- Verdict:
+  Super-Sprint 11 is **not accepted as fully complete**. It materially improved
+  policy/artifact integrity and preserved the no-promotion boundary, but four
+  residual gaps remain before the project should move into the next physics
+  acceptance sprint.
+- Accepted:
+  the current dry-run remains report-only with all eight gates blocked; no
+  `accepted_runtime_claim`, top-level `can_support_first_principles_acceptance`,
+  or `promotes_acceptance` promotion was found; focused SS11 integration tests
+  pass (`241 passed`); ruff passes; source-truth exhaustion and module-source
+  vetting pass at `2026_05_21`; periodic audit passed at current HEAD
+  (`/private/tmp/dpf-unified-audit-logs/20260521T140234Z`).
+- Blocking audit findings:
+  direct `FirstPrinciples3DDeck(...)` construction can still carry
+  `startup_can_support_whole_shot_acceptance=True` for
+  `imported_pic_sheath_state` even though `startup_packet()` blocks it;
+  server readiness still accepts partial scope/source pairs and can report
+  `scope_match=true` while requested and actual source scopes differ;
+  `same_scope_source` still contains `other_scope_source_groups`; active
+  results artifact hygiene is clean for the two SS11 stale strings but not yet
+  a structured namespace linter.
+- Next instructions:
+  `docs/CODEX_SUPER_SPRINT11_AUDIT_AND_SUPER_SPRINT12_INSTRUCTIONS_2026_05_21.md`
+  is the controlling packet. Super-Sprint 12 P0 must close these four policy
+  gaps before P1 starts PF-1000 full-energy source-packet, numerical-fidelity,
+  startup BVP, power-port Sigma-p, geometry, and comparator/UQ physics work.
+
+### 2026-05-21: Super-Sprint 12 Phase P0 — SS11-A1..A4 closure
+
+- Code commit: `5aefb6df707aa25f6c4d7393fd17e0dcae60fc2b` (`5aefb6d`).
+  Docs commit: assigned at commit time.
+- P0 closed all four SS11 audit findings (SS11-A1 through SS11-A4).
+  SS11-A5/A6/A7 were already Closed.
+- P0-1 (closes SS11-A1 — direct runtime-deck imported-PIC clamp gap):
+  `src/dpf/first_principles/runner.py:247–269` — `FirstPrinciples3DDeck`
+  (frozen dataclass) gained a `__post_init__` using `object.__setattr__` to
+  force `startup_can_support_whole_shot_acceptance=False` whenever
+  `startup_mode` is in `CONTEXT_ONLY_STARTUP_MODES`. Direct/indirect
+  construction (direct constructor, from_deck, dataclasses.replace) can no
+  longer hold the raw field True for imported-PIC. Adversarial direct-
+  constructor probe post-fix: deck field
+  `startup_can_support_whole_shot_acceptance=False`,
+  `packet_status=blocked_startup_bvp_packet_not_available`,
+  `packet_can_support_whole_shot_acceptance=False`,
+  `packet_can_support_first_principles_acceptance=False`. 3 new tests in
+  `tests/test_ss10_imported_pic_context_only_policy.py`.
+- P0-2 (closes SS11-A2 — readiness scope resolver partial pair matches):
+  `src/dpf/server/readiness.py` — `_resolve_runtime_deck_scope` replaced
+  token-overlap matching with exact ordered `(validation_scope, source_scope)`
+  pair matching (`_AKEL_SCOPE_PAIR`, `_FULL_ENERGY_SCOPE_PAIR`); any
+  partial/unknown/undeclared/mixed/startup-label pair returns the fail-closed
+  payload with `runtime_deck_id=not_run` and no deck run; `scope_match`
+  computed from exact pair equality (was hard-coded True). Adversarial mixed-
+  pair probe post-fix: `runtime_deck_id=not_run`, `scope_match=False`, no deck
+  executed. 6 new tests in `tests/test_server_readiness.py`.
+- P0-3 (closes SS11-A3 — same-scope packet carries other-scope context):
+  `src/dpf/first_principles/same_scope.py` — `other_scope_source_groups` and
+  cross-scope policy removed from `build_same_scope_source_packet`; new
+  `build_cross_scope_context_sources()` helper and `CROSS_SCOPE_*` constants;
+  runner emits sibling `cross_scope_context_sources` key in telemetry and
+  segmented manifest. Recursive runtime scan of PF-1000 full-energy preset:
+  0 leaks — no path containing `same_scope_source` carries `other_scope`,
+  `wrong_scope`, `llnl_like`, or the hybrid-PIC source slug. Recursive ban
+  tests added to `tests/test_ws9_runner_scope_source_geometry.py`.
+- P0-4 (closes SS11-A4 — active results linter coverage too narrow):
+  `scripts/verify_active_results_artifact_hygiene.py` rewritten from
+  flat-string scanning to structured JSON key-chain scanning over both scalar
+  VALUES and dict KEY NAMES; forbids hybrid-PIC slugs under any `same_scope`
+  key chain and `other_scope`/`wrong_scope` under any `same_scope_source` key
+  chain; permits architecture evidence only under approved context keys;
+  excludes `archive_*` dirs. Opus code review found and fixed a HIGH (key-name
+  scanning gap). Linter `--strict --check`: `clean=true`, `active_hit_count=0`.
+  15 tests in `tests/test_results_artifact_hygiene.py`.
+- P0 acceptance pytest set (test_ss10_imported_pic_context_only_policy,
+  test_server_readiness, test_ws9_runner_scope_source_geometry,
+  test_results_artifact_hygiene, test_first_principles_acceptance_gate_dry_run):
+  **84 passed**. Pre-commit gate at code commit: **123 passed**.
+  Ruff `src tests`: `All checks passed.`
+  Source-truth: `exhausted=true`, `open_issue_count=0`.
+  Module vetting: `strict_passed=true`, `total_modules=298`.
+  Dry-run: all 8 gates blocked, `report_only=True`, `promotes_acceptance=False`,
+  `accepted_runtime_claim=False`, `can_support_first_principles_acceptance=False`.
+- Known scope boundary (MEDIUM): three other packet builders
+  (`comparator_uq.py`, `neutron_authority.py`, `spatial_field_temperature.py`)
+  retain `OTHER_SCOPE_SOURCE_GROUPS` and emit `other_scope_source_groups`, but
+  those packets are emitted under their own non-same_scope telemetry/manifest
+  keys and are NOT a namespace leak; compliant with the literal SS11-A3/P0-3
+  scope. The key-name-aware linter guards future misfiling. Candidate for a
+  future consistency pass. LOW: readiness constants duplicate canonical labels;
+  follow-up centralization needed.
+- Boundary:
+  All acceptance flags remain false. `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, `promotes_acceptance=false`
+  everywhere. P0 closed no physics blocker; it closed audit findings
+  SS11-A1..A4 only. P1 physics work may begin only after P0 is accepted.
+  Completion memo: `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.

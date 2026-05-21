@@ -7276,3 +7276,79 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   All acceptance flags remain false. SS11 closed no physics blocker. S10-A7
   (no acceptance promotion defect) preserved. Completion memo:
   `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 11 Audit
+
+- Verdict:
+  Super-Sprint 11 is not accepted as fully complete. The no-promotion boundary
+  held, and the main integration gates pass, but the audit found residual policy
+  gaps that must be closed before new physics acceptance work starts.
+- What passed:
+  dry-run ledger all eight gates blocked and report-only; focused integration
+  gate `241 passed`; ruff clean; source-truth exhaustion clean; module-source
+  vetting strict-passed for 298 modules; SRS traceability export passed;
+  periodic audit passed at
+  `/private/tmp/dpf-unified-audit-logs/20260521T140234Z`.
+- What remains:
+  direct runtime-deck construction still allows a raw imported-PIC whole-shot
+  flag even though packet output blocks it; readiness scope resolution still
+  permits partial pair matches and reports `scope_match=true` when requested and
+  actual source scopes differ; `same_scope_source` still carries other-scope
+  context groups; active artifact hygiene needs structured namespace scanning,
+  not only flat stale-string scanning.
+- Controlling packet:
+  `docs/CODEX_SUPER_SPRINT11_AUDIT_AND_SUPER_SPRINT12_INSTRUCTIONS_2026_05_21.md`.
+  Super-Sprint 12 P0 is mandatory closeout of these policy gaps; only after P0
+  passes should the team start the P1 physics-source closure work for PF-1000
+  full-energy same-scope evidence, numerical fidelity, startup, power port,
+  geometry, comparator/UQ, and certificate gates.
+
+### 2026-05-21: Super-Sprint 12 Phase P0 — SS11-A1..A4 closure
+
+- Code commit: `5aefb6df707aa25f6c4d7393fd17e0dcae60fc2b` (`5aefb6d`).
+  Docs commit: assigned at commit time.
+- P0 closed all four SS11 audit findings. SS11-A5/A6/A7 were already Closed.
+- P0-1 (closes SS11-A1):
+  Added `FirstPrinciples3DDeck.__post_init__` at `runner.py:247–269` that uses
+  `object.__setattr__` to force `startup_can_support_whole_shot_acceptance=False`
+  for any `startup_mode` in `CONTEXT_ONLY_STARTUP_MODES`. Covers all
+  construction paths. Post-fix adversarial probe: deck field False, packet
+  blocked, both acceptance flags False. 3 new tests.
+- P0-2 (closes SS11-A2):
+  `_resolve_runtime_deck_scope` in `readiness.py` now uses exact
+  `(validation_scope, source_scope)` pair matching via `_AKEL_SCOPE_PAIR` /
+  `_FULL_ENERGY_SCOPE_PAIR`. Any non-matching pair returns `runtime_deck_id=
+  not_run`, `scope_match=False`, no deck executed. Post-fix adversarial probe
+  on the SS11 mixed pair confirms `not_run` / `scope_match=False`. 6 new tests.
+- P0-3 (closes SS11-A3):
+  `other_scope_source_groups` removed from `build_same_scope_source_packet` in
+  `same_scope.py`; relocated to new `build_cross_scope_context_sources()` with
+  `CROSS_SCOPE_*` constants. Runner emits sibling `cross_scope_context_sources`
+  in telemetry and manifest. Recursive runtime scan: 0 leaks under any
+  `same_scope_source` path. Recursive ban tests added.
+- P0-4 (closes SS11-A4):
+  `verify_active_results_artifact_hygiene.py` rewritten to structured JSON
+  key-chain scanning (values AND key names). Opus code review caught a HIGH
+  (key-name gap); fixed before merge. Linter: `clean=true`, `active_hit_count=0`.
+  15 tests including key-name fixture tests.
+- Integration evidence:
+  P0 acceptance pytest set: **84 passed**. Pre-commit gate: **123 passed**.
+  Ruff clean. Source-truth: `exhausted=true`, `open_issue_count=0`.
+  Module vetting: `strict_passed=true`, 298 modules. Dry-run: all 8 gates
+  blocked, `report_only=True`, `promotes_acceptance=False`,
+  `accepted_runtime_claim=False`, `can_support_first_principles_acceptance=False`.
+- Known scope boundary:
+  MEDIUM — `comparator_uq.py`, `neutron_authority.py`, and
+  `spatial_field_temperature.py` still define `OTHER_SCOPE_SOURCE_GROUPS` and
+  emit `other_scope_source_groups`, but only under their own dedicated
+  non-same_scope manifest keys. This is not a namespace leak; it is compliant
+  with the literal P0-3 scope (which targeted `same_scope_source`). The
+  key-name-aware linter guards future misfiling. Candidate for a future
+  consistency pass (rename to `CROSS_SCOPE_SOURCE_GROUPS`).
+  LOW — readiness pair constants duplicate canonical label strings; follow-up
+  centralization needed.
+- Boundary:
+  All acceptance flags remain false. SS12-P0 closed no physics blocker.
+  SS12-P0 closed audit findings SS11-A1..A4. P1 physics work may begin only
+  after P0 is accepted by the Codex audit.
+  Completion memo: `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.

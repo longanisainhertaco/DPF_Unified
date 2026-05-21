@@ -1,8 +1,8 @@
 # Codex Super-Sprint 10 Audit and Super-Sprint 11 Instructions
 
-Date: 2026-05-21  
-Branch audited: `codex/corpus`  
-Audited HEAD: `fa713a83f53602d20d3eacc1a078202185f9b603`  
+Date: 2026-05-21
+Branch audited: `codex/corpus`
+Audited HEAD: `fa713a83f53602d20d3eacc1a078202185f9b603`
 Prior controlling packet:
 `docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`
 

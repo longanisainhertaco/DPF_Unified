@@ -1222,12 +1222,58 @@ policy and artifact-integrity closure sprint and closed no physics blocker:
   and `CortexFindings.md` carry dated Super-Sprint 11 entries.
 
 Module-source vetting and source-truth dated baselines were regenerated at
-`2026_05_21`. The Super-Sprint 11 documentation commit (hash assigned at commit
-time) lands this CHANGELOG entry, the periodic-audit evidence in the Sprint 11
-completion memo, and the `CodexFindings.md` / `CortexFindings.md` audit tails.
+`2026_05_21`. The Super-Sprint 11 documentation commit `0dcf778` lands this
+CHANGELOG entry, the periodic-audit evidence in the Sprint 11 completion memo,
+and the `CodexFindings.md` / `CortexFindings.md` audit tails.
 
 `accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
 `false` everywhere. Super-Sprint 11 promoted nothing.
+
+### Super-Sprint 12 Phase P0 — SS11-A1..A4 policy closure (2026-05-21)
+
+`0dcf778` — Super-Sprint 11 documentation commit (above section).
+
+Super-Sprint 12 Phase P0 commit `5aefb6d` closes Codex Super-Sprint 11 audit
+findings SS11-A1 through SS11-A4. It is a policy and artifact-integrity closure
+sprint and closed no physics blocker:
+
+- **P0-1 (SS11-A1):** `FirstPrinciples3DDeck.__post_init__` added at
+  `runner.py:247–269`; uses `object.__setattr__` to force
+  `startup_can_support_whole_shot_acceptance=False` for any `startup_mode` in
+  `CONTEXT_ONLY_STARTUP_MODES`. All construction paths (direct constructor,
+  `from_deck`, `dataclasses.replace`) are clamped. Adversarial probe post-fix:
+  deck field False, packet blocked, both acceptance flags False. 3 new tests.
+- **P0-2 (SS11-A2):** `_resolve_runtime_deck_scope` in `readiness.py` rewritten
+  to exact `(validation_scope, source_scope)` pair matching via
+  `_AKEL_SCOPE_PAIR` / `_FULL_ENERGY_SCOPE_PAIR`; any non-matching pair returns
+  `runtime_deck_id=not_run`, `scope_match=False`, no deck executed. 6 new tests
+  covering all six SS11-A2 adversarial cases.
+- **P0-3 (SS11-A3):** `other_scope_source_groups` and cross-scope policy removed
+  from `build_same_scope_source_packet` in `same_scope.py`; relocated to new
+  `build_cross_scope_context_sources()` helper and `CROSS_SCOPE_*` constants;
+  runner emits sibling `cross_scope_context_sources` key in telemetry and
+  segmented manifest. Recursive runtime scan: 0 leaks under any
+  `same_scope_source` path. Recursive ban tests added.
+- **P0-4 (SS11-A4):** `scripts/verify_active_results_artifact_hygiene.py`
+  rewritten from flat-string scanning to structured JSON key-chain scanning over
+  both values and key names; forbids hybrid-PIC slugs under any `same_scope`
+  key chain; forbids `other_scope`/`wrong_scope` under any `same_scope_source`
+  key chain; permits architecture evidence only under approved context keys.
+  Opus review caught and fixed a HIGH (key-name gap). Linter:
+  `clean=true`, `active_hit_count=0`. 15 tests.
+
+P0 acceptance pytest set (test_ss10_imported_pic_context_only_policy,
+test_server_readiness, test_ws9_runner_scope_source_geometry,
+test_results_artifact_hygiene, test_first_principles_acceptance_gate_dry_run):
+**84 passed**. Pre-commit gate: **123 passed**. Ruff clean. Source-truth and
+module vetting pass at 2026_05_21. Dry-run: all 8 gates blocked.
+
+The Super-Sprint 12 Phase P0 documentation commit (assigned at commit time)
+lands this CHANGELOG entry, `CodexFindings.md` / `CortexFindings.md` SS12-P0
+entries, and `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Super-Sprint 12 Phase P0 promoted nothing.
 
 ## Notes on CHANGELOG conventions
 
