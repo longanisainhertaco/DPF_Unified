@@ -132,3 +132,52 @@ exception classifier:
 - Rejects ` D ` deleted lines
 - Rejects `??` untracked lines
 - Rejects staged typechange `T ` lines
+
+---
+
+## 6. Addendum (2026-05-20) — `external/athenak` Submodule Exception
+
+The first periodic-audit run after the Super-Sprint 9 Phase 2 commit showed the
+145 PDF typechanges correctly excused, but `git_status_clean` still failed on a
+second, distinct dirty line:
+
+```
+ m external/athenak
+```
+
+### Observed state
+
+`external/athenak` is a C++ dependency submodule (AthenaK). `git submodule
+status external/athenak` shows it at its recorded commit (leading space, no
+`+`/`-`) — the submodule pointer is correct. The ` m ` (submodule
+modified-content) status comes entirely from `external/athenak`'s own **nested
+`kokkos` submodule**, whose worktree is dirty:
+
+```
+$ git -C external/athenak status --short
+ m kokkos
+```
+
+`git diff 35bb1a9..HEAD -- external/athenak` is empty — this submodule has been
+in this state since at least Sprint 7 and is untouched by any Super-Sprint 8 or
+9 work. It is external-dependency churn of the same class as the PDF symlinks.
+
+### Decision
+
+Extend the WS9-0 exception to also excuse the ` m ` modified-content line for
+the **named** external dependency submodule `external/athenak`. The rule stays
+narrow:
+
+1. The XY code must be exactly ` m ` (space-m-space — unstaged submodule
+   modified content).
+2. The path must be exactly `external/athenak` (an explicit named allowlist —
+   `_EXCUSED_EXTERNAL_SUBMODULES`).
+
+Any other submodule, a ` M ` content modification of that path, an `??`
+untracked, or a ` m ` on a non-submodule path still fails the gate.
+`_is_excused_external_submodule()` implements this; `_classify_git_status_lines`
+excuses a line if either helper matches. The audit `note` now names both
+excused categories. `tests/test_git_status_clean_exception.py` gains a
+`TestIsExcusedExternalSubmodule` class plus realistic 146-line classifier
+tests (145 PDF + the athenak submodule) and a narrowness test (the submodule is
+excused but a co-occurring real ` M ` still fails).

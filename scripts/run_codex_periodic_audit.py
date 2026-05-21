@@ -27,10 +27,14 @@ DEFAULT_LOG_ROOT = Path("/private/tmp/dpf-unified-audit-logs")
 # See docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md for rationale.
 #
 # EXCEPTION SCOPE (narrow, intentional):
-#   Only ` T ` (typechange) lines whose path starts with one of these
-#   well-known PDF reference directories are excused from git_status_clean.
-#   All other status codes ( M, D, ??, A, R, C, U, X) and any ` T ` line
-#   whose path falls outside these directories still fail the gate.
+#   Two classes of known external churn are excused from git_status_clean:
+#   (1) ` T ` (typechange) lines whose path is inside a well-known PDF
+#       reference directory; (2) the ` m ` (submodule modified-content) line
+#       for the named external dependency submodule external/athenak, whose
+#       nested kokkos submodule carries a dirty worktree unrelated to the
+#       first-principles codebase.
+#   All other status codes ( M, D, ??, A, R, C, U, X), any ` T ` line outside
+#   the PDF directories, and any other ` m ` submodule still fail the gate.
 # ---------------------------------------------------------------------------
 _PDF_SYMLINK_DIRS: tuple[str, ...] = (
     "downloaded_books_papers/",
@@ -60,6 +64,35 @@ def _is_excused_pdf_typechange(line: str) -> bool:
     return any(raw_path.startswith(d) for d in _PDF_SYMLINK_DIRS)
 
 
+# ---------------------------------------------------------------------------
+# Known external-dependency submodule exception.  external/athenak is a C++
+# dependency submodule; it reports ` m ` (submodule modified content) because
+# its own nested kokkos submodule carries a dirty worktree.  That churn is
+# external to the first-principles codebase and is not modified by any sprint.
+# ---------------------------------------------------------------------------
+_SUBMODULE_MODIFIED_PREFIX = " m "
+_EXCUSED_EXTERNAL_SUBMODULES: tuple[str, ...] = ("external/athenak",)
+_EXCUSED_EXTERNAL_SUBMODULES_REPR = ", ".join(
+    f"`{s}`" for s in _EXCUSED_EXTERNAL_SUBMODULES
+)
+
+
+def _is_excused_external_submodule(line: str) -> bool:
+    """Return True iff *line* is a ` m ` modified-content line for a known
+    external-dependency submodule.
+
+    The narrow exception: the XY code must be exactly ` m ` (space-m-space,
+    unstaged submodule modified content) and the path must be exactly one of
+    the named external dependency submodules.  Everything else returns False.
+    """
+    if not line.startswith(_SUBMODULE_MODIFIED_PREFIX):
+        return False
+    raw_path = line[len(_SUBMODULE_MODIFIED_PREFIX):]
+    if raw_path.startswith('"') and raw_path.endswith('"'):
+        raw_path = raw_path[1:-1]
+    return raw_path in _EXCUSED_EXTERNAL_SUBMODULES
+
+
 def _classify_git_status_lines(
     dirty_lines: list[str],
 ) -> tuple[list[str], list[str]]:
@@ -72,7 +105,7 @@ def _classify_git_status_lines(
     excused: list[str] = []
     real_dirty: list[str] = []
     for line in dirty_lines:
-        if _is_excused_pdf_typechange(line):
+        if _is_excused_pdf_typechange(line) or _is_excused_external_submodule(line):
             excused.append(line)
         else:
             real_dirty.append(line)
@@ -227,9 +260,10 @@ def _run_gate(gate: Gate, cycle_dir: Path, timeout_s: int) -> dict[str, object]:
                 # not silently calling the tree clean. See:
                 # docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md
                 note = (
-                    f"APPROVED EXCEPTION: {len(excused)} PDF-symlink typechange(s) in "
-                    f"known external-storage dirs excused (Sprint 9 WS9-0 decision). "
-                    f"Dirs: {_PDF_SYMLINK_DIRS_REPR}"
+                    f"APPROVED EXCEPTION: {len(excused)} known external-churn "
+                    f"line(s) excused (Sprint 9 WS9-0 decision) -- PDF-symlink "
+                    f"typechanges in {_PDF_SYMLINK_DIRS_REPR} and the "
+                    f"{_EXCUSED_EXTERNAL_SUBMODULES_REPR} dependency submodule."
                 )
     return {
         "name": gate.name,

@@ -1096,6 +1096,24 @@ scope/source coherence; it closed no physics blocker and is not a validation
 sprint. The verification command set (825 + 65 + 67 focused tests, ruff
 clean) is in the completion memo.
 
+### Super-Sprint 9 — WS9-0 audit-exception follow-up (2026-05-20)
+
+`e8a4818` — Super-Sprint 9 Phase 2 (above section).
+
+The post-Phase-2 periodic audit showed the WS9-0 `git_status_clean` exception
+correctly excused the 145 PDF-symlink typechanges but still failed on a second,
+distinct line: ` m external/athenak`. The `external/athenak` C++ dependency
+submodule reports modified content because its own nested `kokkos` submodule
+carries a dirty worktree — pre-existing external-dependency churn unchanged
+since Sprint 7, untouched by any sprint. This follow-up commit extends the
+WS9-0 exception with a narrow `_is_excused_external_submodule()` helper that
+excuses only the ` m ` modified-content line for the explicitly named
+`external/athenak` submodule (any other submodule, a ` M ` content modification,
+or a ` m ` on a non-submodule path still fails the gate). The decision is
+recorded in the §6 addendum of
+`docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md`;
+`tests/test_git_status_clean_exception.py` covers it (31 tests).
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

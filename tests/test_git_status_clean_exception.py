@@ -1,8 +1,9 @@
-"""Unit tests for the Sprint 9 WS9-0 narrow PDF-symlink typechange exception.
+"""Unit tests for the Sprint 9 WS9-0 narrow git_status_clean exceptions.
 
-Tests verify that _is_excused_pdf_typechange and _classify_git_status_lines
-accept ONLY ` T ` typechange lines inside the known PDF reference directories
-and reject everything else.
+Tests verify that _is_excused_pdf_typechange, _is_excused_external_submodule,
+and _classify_git_status_lines excuse ONLY ` T ` typechange lines inside the
+known PDF reference directories and the ` m ` modified-content line for the
+named external dependency submodule, and reject everything else.
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ sys.path.insert(0, str(_SCRIPTS_DIR))
 
 _mod = importlib.import_module("run_codex_periodic_audit")
 _is_excused = _mod._is_excused_pdf_typechange
+_is_excused_submodule = _mod._is_excused_external_submodule
 _classify = _mod._classify_git_status_lines
 
 
@@ -101,6 +103,39 @@ class TestIsExcusedPdfTypechange:
 
 
 # ---------------------------------------------------------------------------
+# _is_excused_external_submodule
+# ---------------------------------------------------------------------------
+
+
+class TestIsExcusedExternalSubmodule:
+    """Narrow acceptance: only ` m ` lines for named external submodules."""
+
+    def test_external_athenak_modified_excused(self) -> None:
+        assert _is_excused_submodule(" m external/athenak") is True
+
+    def test_other_external_submodule_not_excused(self) -> None:
+        assert _is_excused_submodule(" m external/other_dependency") is False
+
+    def test_modified_M_on_athenak_not_excused(self) -> None:
+        # a real ` M ` content modification of the path is not a submodule pointer
+        assert _is_excused_submodule(" M external/athenak") is False
+
+    def test_untracked_athenak_not_excused(self) -> None:
+        assert _is_excused_submodule("?? external/athenak") is False
+
+    def test_m_on_non_submodule_path_not_excused(self) -> None:
+        assert _is_excused_submodule(" m src/dpf/first_principles/runner.py") is False
+
+    def test_typechange_line_not_a_submodule(self) -> None:
+        line = ' T "downloaded_books_papers/Research Papers/foo.pdf"'
+        assert _is_excused_submodule(line) is False
+
+    def test_pdf_helper_does_not_excuse_submodule(self) -> None:
+        # the two helpers stay disjoint
+        assert _is_excused(" m external/athenak") is False
+
+
+# ---------------------------------------------------------------------------
 # _classify_git_status_lines
 # ---------------------------------------------------------------------------
 
@@ -170,3 +205,28 @@ class TestClassifyGitStatusLines:
         excused, real_dirty = _classify(lines)
         assert len(excused) == 145
         assert real_dirty == [" M src/mhd_runner.py"]
+
+    def test_real_worktree_145_pdf_plus_athenak_submodule_all_excused(self) -> None:
+        """The actual post-commit worktree: 145 PDF typechanges plus the
+        external/athenak submodule modified-content line -- all excused."""
+        lines = [
+            f' T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/paper{i:03d}.pdf"'
+            for i in range(144)
+        ] + [
+            " T tmp/pdfs/may16_verified_batch/sawsorheoh_ocr.pdf",
+            " m external/athenak",
+        ]
+        assert len(lines) == 146
+        excused, real_dirty = _classify(lines)
+        assert len(excused) == 146
+        assert real_dirty == []
+
+    def test_athenak_submodule_plus_one_real_dirty_fails(self) -> None:
+        """The submodule is excused, but a real dirty line still fails."""
+        lines = [
+            " m external/athenak",
+            " M src/dpf/first_principles/runner.py",
+        ]
+        excused, real_dirty = _classify(lines)
+        assert excused == [" m external/athenak"]
+        assert real_dirty == [" M src/dpf/first_principles/runner.py"]
