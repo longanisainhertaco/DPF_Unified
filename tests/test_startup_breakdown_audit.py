@@ -134,12 +134,14 @@ def test_reviewed_imported_pic_startup_payload_is_context_only_not_acceptance() 
     assert packet["whole_shot_startup_blocked"] is True
     assert packet["can_support_first_principles_acceptance"] is False
     assert packet["can_support_whole_shot_acceptance"] is False
-    # The payload is preserved as engineering-candidate context only: the
-    # per-channel payload review can mark the payload "complete", but completeness
-    # is engineering telemetry and does NOT promote the headline packet status.
+    # SS10-4 (A5): imported-PIC is context-only at the mode-policy level, so
+    # the payload review explicitly marks the payload non-promoting regardless
+    # of how complete or well-reviewed it is.
     assert packet["startup_payload_review"]["status"] == (
-        "reviewed_startup_payload_complete"
+        "startup_payload_for_context_only_mode_not_promoting"
     )
+    # channel_acceptance_eligible must be False for a context-only mode.
+    assert packet["startup_payload_review"]["channel_acceptance_eligible"] is False
     # The typed StartupPacket — the single acceptance authority — stays blocked
     # because no startup channel reaches "computed" status.
     assert packet["startup_channel_packet"]["status"] == (
@@ -149,10 +151,11 @@ def test_reviewed_imported_pic_startup_payload_is_context_only_not_acceptance() 
         packet["startup_channel_packet"]["can_support_first_principles_acceptance"]
         is False
     )
-    # Imported PIC sheath state stays an accepted-only-after-complete-reviewed
-    # mode at the registry level; it is not promoted by the import.
+    # Imported PIC sheath state is context-only at the mode-policy level
+    # (SS10-4 A5): it is not in ACCEPTED_STARTUP_MODES and cannot satisfy
+    # mode_is_accepted; even a fully reviewed payload cannot promote it.
     assert packet["startup_mode_status"]["imported_pic_sheath_state"]["status"] == (
-        "accepted_only_after_complete_reviewed_imported_state"
+        "context_only_not_an_acceptance_path"
     )
 
 
@@ -178,8 +181,12 @@ def test_incomplete_imported_pic_startup_payload_stays_blocked() -> None:
 
     assert packet["status"] == "blocked_startup_bvp_packet_not_available"
     assert packet["whole_shot_startup_blocked"] is True
-    assert packet["startup_payload_review"]["status"] == "startup_payload_incomplete"
-    assert "particles" in packet["startup_payload_review"]["missing_payload_fields"]
+    # SS10-4 (A5): context-only mode check fires before completeness check —
+    # the mode is the gate regardless of payload completeness.
+    assert packet["startup_payload_review"]["status"] == (
+        "startup_payload_for_context_only_mode_not_promoting"
+    )
+    assert packet["startup_payload_review"]["channel_acceptance_eligible"] is False
 
 
 def test_package_runner_attaches_startup_breakdown_audit_to_pf1000_deck() -> None:

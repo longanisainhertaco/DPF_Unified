@@ -8,6 +8,7 @@ hybrid EM/PIC-fluid runner and rejects reduced-model authority fields.
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -489,6 +490,46 @@ class ClosurePolicy:
 
 
 @dataclass(frozen=True)
+class BlockedGeometryField:
+    """One blocked geometry field on the conductor-mask blocked manifest.
+
+    Super-Sprint 10 SS10-2 (closes audit A2).  A blocked geometry field is a
+    device dimension that has no same-scope KR source for the selected scope.
+    It is NEVER invented; it is carried explicitly with its WP-N3 blocker id so
+    the conductor-mask runtime telemetry and the segmented manifest expose it.
+    """
+
+    field_name: str
+    blocker_id: str
+    blocked: bool = True
+    source_scope_reason: str = (
+        "no_same_scope_kr_source_for_selected_scope"
+    )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "field_name": self.field_name,
+            "blocker_id": self.blocker_id,
+            "blocked": self.blocked,
+            "source_scope_reason": self.source_scope_reason,
+        }
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> BlockedGeometryField:
+        return cls(
+            field_name=str(value["field_name"]),
+            blocker_id=str(value.get("blocker_id", "")),
+            blocked=bool(value.get("blocked", True)),
+            source_scope_reason=str(
+                value.get(
+                    "source_scope_reason",
+                    "no_same_scope_kr_source_for_selected_scope",
+                )
+            ),
+        )
+
+
+@dataclass(frozen=True)
 class BoundaryPolicy:
     """Candidate field and particle boundary policy for the 3-D runner."""
 
@@ -498,6 +539,10 @@ class BoundaryPolicy:
     open_boundary: bool = True
     conductor_mask_status: str = "not_supplied"
     conductor_mask_mode: str = "none"
+    # SS10-2 (closes audit A2): geometry fields with no same-scope KR source for
+    # the selected scope.  They are carried verbatim with WP-N3 blocker ids so
+    # the conductor-mask runtime telemetry exposes every one of them.
+    blocked_geometry_fields: tuple[BlockedGeometryField, ...] = ()
     source_references: tuple[SourceReference, ...] = ()
 
     @property
@@ -550,6 +595,10 @@ class BoundaryPolicy:
                 value.get("conductor_mask_status", "not_supplied")
             ),
             conductor_mask_mode=str(value.get("conductor_mask_mode", "none")),
+            blocked_geometry_fields=tuple(
+                BlockedGeometryField.from_mapping(item)
+                for item in value.get("blocked_geometry_fields", ())
+            ),
             source_references=_source_refs(value.get("source_references", ())),
         )
 
@@ -1136,24 +1185,12 @@ def pf1000_scholz_2001_24rod_full_energy_deck(
     )
 
     # -- blocked field manifest (explicitly listed, not silently omitted) --
-    _blocked_field_manifest: dict[str, str] = {
-        "anode_hollow_bore_length_m": (
-            geom_packet.get_field("anode_hollow_bore_length_m").blocker_id or ""
-        ),
-        "insulator_wall_thickness_m": (
-            geom_packet.get_field("insulator_wall_thickness_m").blocker_id or ""
-        ),
-        "backplate_radial_extent_m": (
-            geom_packet.get_field("backplate_radial_extent_m").blocker_id or ""
-        ),
-        "backplate_axial_thickness_m": (
-            geom_packet.get_field("backplate_axial_thickness_m").blocker_id or ""
-        ),
-        "same_scope_reviewed_geometry_mask": (
-            "PF1000-BLK-WS3-same-scope-reviewed-geometry-mask-"
-            "no-reviewed-transfer-rule-sprint8"
-        ),
-    }
+    # SS10-2 (closes audit A2): the same manifest is also threaded onto the
+    # boundary policy as typed ``BlockedGeometryField`` entries so the
+    # conductor-mask runtime telemetry and the segmented manifest expose every
+    # one of the five blocked geometry fields with its blocker id.
+    _blocked_field_manifest: dict[str, str] = _pf1000_scholz_2001_24rod_blocked_fields()
+    _blocked_geometry_fields = _pf1000_scholz_2001_24rod_blocked_geometry_fields()
 
     return FirstPrinciplesInputDeck(
         deck_id=(
@@ -1236,6 +1273,10 @@ def pf1000_scholz_2001_24rod_full_energy_deck(
             # are blocked, so the mask cannot be reviewed same-scope.
             conductor_mask_status="candidate_geometry_mask",
             conductor_mask_mode="pf1000_rod_hollow_projection",
+            # SS10-2 (closes audit A2): the five blocked geometry fields are
+            # threaded onto the boundary policy so the conductor-mask runtime
+            # telemetry and the segmented manifest expose them with blocker ids.
+            blocked_geometry_fields=_blocked_geometry_fields,
             source_references=(scholz2001_ref,),
         ),
         diagnostics=DiagnosticPolicy(n_steps=n_steps, dt_s=dt_s),
@@ -1261,6 +1302,12 @@ def pf1000_scholz_2001_24rod_full_energy_deck(
             ),
         ),
     )
+
+
+_PF1000_SAME_SCOPE_REVIEWED_GEOMETRY_MASK_BLOCKER = (
+    "PF1000-BLK-WS3-same-scope-reviewed-geometry-mask-"
+    "no-reviewed-transfer-rule-sprint8"
+)
 
 
 def _pf1000_scholz_2001_24rod_blocked_fields() -> dict[str, str]:
@@ -1292,10 +1339,51 @@ def _pf1000_scholz_2001_24rod_blocked_fields() -> dict[str, str]:
             geom_packet.get_field("backplate_axial_thickness_m").blocker_id or ""
         ),
         "same_scope_reviewed_geometry_mask": (
-            "PF1000-BLK-WS3-same-scope-reviewed-geometry-mask-"
-            "no-reviewed-transfer-rule-sprint8"
+            _PF1000_SAME_SCOPE_REVIEWED_GEOMETRY_MASK_BLOCKER
         ),
     }
+
+
+def _pf1000_scholz_2001_24rod_blocked_geometry_fields() -> tuple[
+    BlockedGeometryField, ...
+]:
+    """Return the five blocked geometry fields as typed boundary-policy entries.
+
+    SS10-2 (closes audit A2).  This is the same WS3 blocked-field manifest as
+    :func:`_pf1000_scholz_2001_24rod_blocked_fields`, but typed for the boundary
+    policy so the conductor-mask runtime telemetry and the segmented manifest
+    expose every blocked field with its WP-N3 blocker id and a source/scope
+    reason.  The ``anode_hollow_bore_length_m`` field also carries the missing-
+    inner-radius reason so audit A3's hollow-anode contradiction is traceable.
+    """
+    manifest = _pf1000_scholz_2001_24rod_blocked_fields()
+    reasons = {
+        "anode_hollow_bore_length_m": (
+            "anode_inner_radius_m_and_hollow_bore_length_not_source_supported"
+            "_for_pf1000_full_energy_scope"
+        ),
+        "insulator_wall_thickness_m": (
+            "no_same_scope_kr_source_for_insulator_wall_thickness"
+        ),
+        "backplate_radial_extent_m": (
+            "no_same_scope_kr_source_for_backplate_radial_extent"
+        ),
+        "backplate_axial_thickness_m": (
+            "no_same_scope_kr_source_for_backplate_axial_thickness"
+        ),
+        "same_scope_reviewed_geometry_mask": (
+            "no_reviewed_same_scope_geometry_mask_transfer_rule"
+        ),
+    }
+    return tuple(
+        BlockedGeometryField(
+            field_name=field_name,
+            blocker_id=blocker_id,
+            blocked=True,
+            source_scope_reason=reasons[field_name],
+        )
+        for field_name, blocker_id in manifest.items()
+    )
 
 
 def ir_mpf_100_engineering_deck(

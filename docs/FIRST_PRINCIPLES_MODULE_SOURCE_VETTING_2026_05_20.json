@@ -4502,6 +4502,8 @@
       "imports": [
         "__future__",
         "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
         "dataclasses",
         "dataclasses.asdict",
         "dataclasses.dataclass",

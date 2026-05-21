@@ -653,6 +653,13 @@ def run_segmented_whole_shot(
         segment_records=segment_records,
     )
 
+    # SS10-3 (closes audit A4): four compact, stable audit summary blocks so a
+    # reviewer can audit the engineering probe without rerunning the
+    # first-principles runner.  They are extracted from a genuine runtime result
+    # for the resolved horizon deck (a single-step first-principles run), never
+    # fabricated; every acceptance flag inside them is false.
+    audit_summaries = _first_principles_audit_summaries(horizon_deck)
+
     total_wall_s = time.monotonic() - started_wall_s
     run_manifest = {
         "status": SEGMENTED_WHOLE_SHOT_STATUS,
@@ -687,6 +694,15 @@ def run_segmented_whole_shot(
         "segmented_run": final_summary,
         "restart_equivalence": equivalence,
         "blocker_verdicts": blockers,
+        # SS10-3 (closes audit A4): compact audit summary blocks.  Each block is
+        # a small stable dict (no huge nested arrays) so a reviewer can audit
+        # the engineering probe straight from the manifest.
+        "first_principles_scope_summary": audit_summaries[
+            "first_principles_scope_summary"
+        ],
+        "same_scope_summary": audit_summaries["same_scope_summary"],
+        "power_port_summary": audit_summaries["power_port_summary"],
+        "geometry_blocker_summary": audit_summaries["geometry_blocker_summary"],
         "source_truth_policy": {
             "physics_claim_authority": "local_knowledge_reference_only",
             "segmented_whole_shot_outputs_are_engineering_only": True,
@@ -860,6 +876,162 @@ def _resolve_target_time_s(
         return float(deck.target_time_s)
     # No declared horizon: fall back to n_steps * dt so the planner is total.
     return float(deck.n_steps) * float(deck.dt_s)
+
+
+_AULUCK_SIGMA_P_BLOCKED_TERMS = (
+    "term_ii_motional_magnetic_sigma_p_J",
+    "term_iv_motional_electric_sigma_p_J",
+    "term_v_resistive_sigma_p_J",
+    "term_vi_anomalous_poloidal_sigma_p_J",
+)
+
+
+def _first_principles_audit_summaries(
+    horizon_deck: FirstPrinciples3DDeck,
+) -> dict[str, dict[str, Any]]:
+    """Build the four SS10-3 audit summary blocks from a genuine runtime result.
+
+    Closes audit A4.  A single-step first-principles run of the resolved horizon
+    deck is executed and its telemetry is summarised into four compact, stable
+    blocks: scope, same-scope channels, power-port Sigma-p term status, and the
+    blocked geometry fields.  No huge nested array is embedded; every acceptance
+    flag in the blocks is false (this is engineering-probe evidence only).
+    """
+
+    from dpf.first_principles.runner import run_first_principles_3d_deck
+
+    probe_deck = FirstPrinciples3DDeck.from_deck(horizon_deck, n_steps=1)
+    result = run_first_principles_3d_deck(probe_deck)
+    telemetry = result.telemetry
+    validation_packet = result.validation_packet
+
+    return {
+        "first_principles_scope_summary": _scope_summary_block(
+            telemetry, validation_packet
+        ),
+        "same_scope_summary": _same_scope_summary_block(telemetry),
+        "power_port_summary": _power_port_summary_block(telemetry),
+        "geometry_blocker_summary": _geometry_blocker_summary_block(telemetry),
+    }
+
+
+def _scope_summary_block(
+    telemetry: Mapping[str, Any],
+    validation_packet: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compact validation/source/architecture scope summary (audit A4)."""
+
+    return {
+        "summary_status": "engineering_probe_scope_summary_not_validation",
+        "validation_scope": telemetry.get("same_scope_source", {}).get(
+            "declared_scope"
+        ),
+        "selected_machine_source_scope": validation_packet.get("source_scope"),
+        "architecture_source_scope": validation_packet.get(
+            "architecture_source_scope"
+        ),
+        "architecture_evidence_role": validation_packet.get(
+            "architecture_evidence_role"
+        ),
+        # Both acceptance flags are pinned false: a segmented engineering probe
+        # never promotes first-principles acceptance or a runtime claim.
+        "can_support_first_principles_acceptance": False,
+        "accepted_runtime_claim": False,
+    }
+
+
+def _same_scope_summary_block(
+    telemetry: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compact same-scope declared-scope + channel-state summary (audit A4)."""
+
+    same_scope = telemetry.get("same_scope_source", {})
+    channel_states = same_scope.get("channel_states")
+    channel_states = (
+        dict(channel_states) if isinstance(channel_states, Mapping) else {}
+    )
+    accepted = sorted(
+        name for name, state in channel_states.items() if state == "accepted"
+    )
+    return {
+        "summary_status": "engineering_probe_same_scope_summary_not_validation",
+        "declared_scope": same_scope.get("declared_scope"),
+        "same_scope_source_status": same_scope.get("status"),
+        "channel_states": channel_states,
+        "accepted_channels": accepted,
+        "missing_acceptance_channels": list(
+            same_scope.get("missing_acceptance_channels", ())
+        ),
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _power_port_summary_block(
+    telemetry: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compact Auluck / Sigma-p power-port term-status summary (audit A4)."""
+
+    power_port = telemetry.get("power_port", {})
+    ledger = power_port.get("wp_n1_auluck_power_port_ledger", {})
+    term_status = ledger.get("energy_ledger_term_status")
+    term_status = dict(term_status) if isinstance(term_status, Mapping) else {}
+    blocked_terms = ledger.get("blocked_terms")
+    blocked_terms = (
+        dict(blocked_terms) if isinstance(blocked_terms, Mapping) else {}
+    )
+    sigma_p_terms_blocked = {
+        term: term_status.get(term) == "blocked"
+        for term in _AULUCK_SIGMA_P_BLOCKED_TERMS
+    }
+    return {
+        "summary_status": "engineering_probe_power_port_summary_not_validation",
+        "power_port_status": power_port.get("status"),
+        "auluck_eq6_term_status": term_status,
+        "sigma_p_surface_packet_status": ledger.get(
+            "sigma_p_surface_packet_status"
+        ),
+        # Auluck terms II / IV / V / VI are the Sigma-p surface-integral terms;
+        # all four are blocked until a reviewed Sigma-p face set exists.
+        "sigma_p_terms_ii_iv_v_vi_blocked": sigma_p_terms_blocked,
+        "all_sigma_p_terms_blocked": all(sigma_p_terms_blocked.values()),
+        "blocked_term_reasons": blocked_terms,
+        "all_six_terms_computed_independently": ledger.get(
+            "all_six_terms_computed_independently", False
+        ),
+        "ledger_blocked": ledger.get("ledger_blocked"),
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _geometry_blocker_summary_block(
+    telemetry: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Compact blocked-geometry-field summary (audit A4)."""
+
+    boundary_policy = telemetry.get("boundary_policy", {})
+    conductor_mask = boundary_policy.get("conductor_mask", {})
+    blocked_fields = conductor_mask.get("blocked_geometry_fields")
+    blocked_fields = (
+        list(blocked_fields) if isinstance(blocked_fields, list) else []
+    )
+    return {
+        "summary_status": (
+            "engineering_probe_geometry_blocker_summary_not_validation"
+        ),
+        "blocked_geometry_field_count": len(blocked_fields),
+        "blocked_geometry_fields": blocked_fields,
+        "blocked_geometry_field_names": [
+            str(entry.get("field_name"))
+            for entry in blocked_fields
+            if isinstance(entry, Mapping)
+        ],
+        "hollow_anode_declared_by_source": (
+            conductor_mask.get("pf1000_geometry_features", {}).get(
+                "hollow_anode_declared_by_source"
+            )
+        ),
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def _command_payload(

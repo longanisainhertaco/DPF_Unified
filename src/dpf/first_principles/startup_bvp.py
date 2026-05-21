@@ -113,8 +113,18 @@ STARTUP_BVP_SOURCE_REFS = (
 )
 
 ACCEPTED_STARTUP_MODES = (
-    "imported_pic_sheath_state",
     "surface_breakdown_bvp",
+)
+
+# SS10-4 (A5): imported-PIC startup payloads are context-only — they are an
+# import, not a same-scope measured diagnostic, and cannot close a startup BVP
+# packet or satisfy ``mode_is_accepted``.  Members of this tuple must never
+# appear in ``ACCEPTED_STARTUP_MODES``.  If imported PIC is ever reintroduced
+# as an acceptance path it needs a new source-reviewed policy packet
+# (unit/hash/source/scope checks + explicit same-scope justification) — that
+# is future-sprint work.
+CONTEXT_ONLY_STARTUP_MODES = (
+    "imported_pic_sheath_state",
 )
 
 ENGINEERING_ONLY_STARTUP_MODES = (
@@ -302,6 +312,7 @@ def build_startup_bvp_packet(
         ),
         "startup_mode_class": _mode_class(mode),
         "accepted_modes": list(ACCEPTED_STARTUP_MODES),
+        "context_only_modes": list(CONTEXT_ONLY_STARTUP_MODES),
         "engineering_only_modes": list(ENGINEERING_ONLY_STARTUP_MODES),
         "rejected_modes": list(REJECTED_STARTUP_MODES),
         "required_channels": list(REQUIRED_STARTUP_CHANNELS),
@@ -332,8 +343,10 @@ def build_startup_bvp_packet(
             "candidate_inputs_can_seed_engineering_runs": True,
             "candidate_inputs_can_support_whole_shot_acceptance": False,
             "required_promotion_path": (
-                "reviewed_imported_pic_sheath_state_or_source_backed_"
-                "surface_breakdown_bvp"
+                "source_backed_surface_breakdown_bvp_payload_channels_hashes_"
+                "consistency_tests_and_review_pass; imported_pic_sheath_state_"
+                "is_context_only_and_requires_new_source_reviewed_policy_packet_"
+                "before_it_can_become_an_acceptance_path"
             ),
         },
         "mode_required_payload": list(MODE_REQUIRED_PAYLOADS.get(mode, ())),
@@ -344,10 +357,10 @@ def build_startup_bvp_packet(
         ),
         "source_references": list(STARTUP_BVP_SOURCE_REFS),
         "acceptance_gate": (
-            "engineering_end_rundown_seeded_or_text_startup_cannot_support_"
-            "whole_shot_first_principles_until_reviewed_imported_pic_state_or_"
-            "source_backed_surface_breakdown_bvp_payload_channels_hashes_"
-            "consistency_tests_and_review_pass"
+            "engineering_end_rundown_seeded_context_only_or_text_startup_cannot_"
+            "support_whole_shot_first_principles_until_source_backed_"
+            "surface_breakdown_bvp_payload_channels_hashes_consistency_tests_"
+            "and_review_pass; imported_pic_sheath_state_is_context_only"
         ),
         "negative_test_policy": {
             "seeded_layer_rejection_required": True,
@@ -449,8 +462,13 @@ def _startup_payload_review(
     )
     payload_can_support = bool(payload.get("can_support_whole_shot_acceptance"))
     mode_matches = payload_mode == mode
+    # SS10-4 (A5): context-only modes must never be channel_acceptance_eligible
+    # regardless of how complete or well-reviewed the payload is.
+    mode_accepted_not_context_only = (
+        mode in ACCEPTED_STARTUP_MODES and mode not in CONTEXT_ONLY_STARTUP_MODES
+    )
     eligible = (
-        mode in ACCEPTED_STARTUP_MODES
+        mode_accepted_not_context_only
         and mode_matches
         and reviewed
         and scope_matches
@@ -460,6 +478,10 @@ def _startup_payload_review(
     )
     if eligible:
         status = "reviewed_startup_payload_complete"
+    elif mode in CONTEXT_ONLY_STARTUP_MODES:
+        # SS10-4 (A5): even a fully reviewed complete payload cannot make a
+        # context-only mode channel_acceptance_eligible.
+        status = "startup_payload_for_context_only_mode_not_promoting"
     elif mode not in ACCEPTED_STARTUP_MODES:
         status = "startup_payload_for_nonaccepted_mode_not_promoting"
     elif not reviewed:
@@ -527,6 +549,7 @@ def _startup_mode_statuses(
 ) -> dict[str, dict[str, Any]]:
     all_modes = (
         ACCEPTED_STARTUP_MODES
+        + CONTEXT_ONLY_STARTUP_MODES
         + ENGINEERING_ONLY_STARTUP_MODES
         + REJECTED_STARTUP_MODES
     )
@@ -538,12 +561,20 @@ def _startup_mode_statuses(
         elif mode in ENGINEERING_ONLY_STARTUP_MODES:
             status = "engineering_candidate_not_whole_shot"
             decision = "usable_for_engineering_or_narrowed_handoff_only"
+        elif mode in CONTEXT_ONLY_STARTUP_MODES:
+            # SS10-4 (A5): context-only modes can never satisfy mode_is_accepted.
+            # A future sprint must create a new source-reviewed policy packet
+            # before this mode can become an acceptance path.
+            status = "context_only_not_an_acceptance_path"
+            decision = (
+                "context_only_engineering_import_cannot_satisfy_mode_is_accepted"
+            )
         elif mode == "surface_breakdown_bvp":
             status = "accepted_only_after_complete_source_bvp_payload_and_review"
             decision = "blocked_until_payload_channels_and_review_pass"
         else:
-            status = "accepted_only_after_complete_reviewed_imported_state"
-            decision = "blocked_until_particles_fields_currents_hashes_and_review_pass"
+            status = "accepted_only_after_complete_reviewed_payload"
+            decision = "blocked_until_payload_channels_and_review_pass"
         if mode == current_mode and can_support:
             status = "accepted_startup_bvp_packet"
             decision = "can_support_whole_shot_startup_claim"
@@ -666,6 +697,8 @@ def _blocked_status_for_mode(mode: str) -> str:
 def _mode_class(mode: str) -> str:
     if mode in ACCEPTED_STARTUP_MODES:
         return "accepted_only_with_complete_reviewed_payload"
+    if mode in CONTEXT_ONLY_STARTUP_MODES:
+        return "context_only"
     if mode in ENGINEERING_ONLY_STARTUP_MODES:
         return "engineering_only"
     if mode in REJECTED_STARTUP_MODES:

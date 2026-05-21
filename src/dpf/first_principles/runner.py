@@ -190,6 +190,11 @@ class FirstPrinciples3DDeck:
     conductor_cells: Any | None = None
     conductor_mask_status: str = "not_supplied"
     conductor_mask_mode: str = "none"
+    # SS10-2 (closes audit A2): blocked geometry fields carried from the package
+    # deck's boundary policy.  Each entry is a plain mapping with field_name,
+    # blocker_id, blocked, and source_scope_reason so the conductor-mask runtime
+    # telemetry and the segmented manifest can expose every blocked field.
+    blocked_geometry_fields: tuple[dict[str, Any], ...] = ()
     device_anode_radius_m: float | None = None
     device_cathode_radius_m: float | None = None
     device_anode_length_m: float | None = None
@@ -2066,8 +2071,13 @@ def _candidate_evidence(
         "true_3d_dimensionality": hybrid_simulator_candidate_evidence(
             simulation.telemetry
         ),
-        "same_scope_3d_validation_packet": source_geometry_candidate_evidence(
-            geometry
+        # SS10-1 (closes audit A1): the LLNL-like hybrid-PIC 3-D geometry packet
+        # carries ``architecture_source_scope=llnl_like_180ka_axisymmetric_
+        # hybrid_pic``.  It is architecture / equation-method evidence only, so
+        # it is emitted under an architecture-only key.  A ``same_scope``-named
+        # key must NEVER carry the LLNL-like architecture scope.
+        "architecture_3d_geometry_candidate_packet": (
+            source_geometry_candidate_evidence(geometry)
         ),
         "conservation_telemetry": conservation,
         "field_particle_boundary_policy": _candidate_record(
@@ -2495,7 +2505,55 @@ def _boundary_values_from_policy(value: Mapping[str, Any] | object) -> dict[str,
         "conductor_cells": _get(value, "conductor_cells", None),
         "conductor_mask_status": str(_get(value, "conductor_mask_status", "not_supplied")),
         "conductor_mask_mode": str(_get(value, "conductor_mask_mode", "none")),
+        # SS10-2 (closes audit A2): carry the blocked geometry fields onto the
+        # 3-D deck so conductor-mask telemetry can expose every blocked field.
+        "blocked_geometry_fields": _blocked_geometry_fields_to_mappings(
+            _get(value, "blocked_geometry_fields", ())
+        ),
     }
+
+
+def _blocked_geometry_fields_to_mappings(
+    value: Any,
+) -> tuple[dict[str, Any], ...]:
+    """Normalize blocked geometry fields to plain mappings.
+
+    Accepts ``BlockedGeometryField`` dataclasses, plain mappings, or the
+    ``asdict`` round-trip output, and returns a stable tuple of plain dicts so
+    the 3-D deck and its telemetry never depend on the deck-module type.
+    SS10-2 (closes audit A2).
+    """
+
+    mappings: list[dict[str, Any]] = []
+    for item in value or ():
+        if isinstance(item, Mapping):
+            field_name = item.get("field_name")
+            blocker_id = item.get("blocker_id", "")
+            blocked = item.get("blocked", True)
+            reason = item.get(
+                "source_scope_reason",
+                "no_same_scope_kr_source_for_selected_scope",
+            )
+        else:
+            field_name = getattr(item, "field_name", None)
+            blocker_id = getattr(item, "blocker_id", "")
+            blocked = getattr(item, "blocked", True)
+            reason = getattr(
+                item,
+                "source_scope_reason",
+                "no_same_scope_kr_source_for_selected_scope",
+            )
+        if field_name is None:
+            continue
+        mappings.append(
+            {
+                "field_name": str(field_name),
+                "blocker_id": str(blocker_id or ""),
+                "blocked": bool(blocked),
+                "source_scope_reason": str(reason),
+            }
+        )
+    return tuple(mappings)
 
 
 def _plasmapy_reference_state(deck: FirstPrinciples3DDeck) -> dict[str, float | str]:
@@ -2821,6 +2879,51 @@ def _conductor_mask_mesh_resolution_warning(
     }
 
 
+def _blocked_geometry_field_entries(
+    deck: FirstPrinciples3DDeck,
+) -> tuple[dict[str, Any], ...]:
+    """Return the deck's blocked geometry fields as stable telemetry entries.
+
+    SS10-2 (closes audit A2).  Each entry carries the blocker id, blocked
+    status, and source/scope reason.  A deck that does not declare blocked
+    geometry fields yields an empty tuple (engineering-smoke decks).
+    """
+
+    entries: list[dict[str, Any]] = []
+    for item in deck.blocked_geometry_fields or ():
+        if not isinstance(item, Mapping):
+            continue
+        field_name = item.get("field_name")
+        if field_name is None:
+            continue
+        entries.append(
+            {
+                "field_name": str(field_name),
+                "blocker_id": str(item.get("blocker_id", "") or ""),
+                "blocked": bool(item.get("blocked", True)),
+                "source_scope_reason": str(
+                    item.get(
+                        "source_scope_reason",
+                        "no_same_scope_kr_source_for_selected_scope",
+                    )
+                ),
+            }
+        )
+    return tuple(entries)
+
+
+def _has_blocked_geometry_field(
+    deck: FirstPrinciples3DDeck,
+    field_name: str,
+) -> bool:
+    """Return True when ``field_name`` is a blocked geometry field on the deck."""
+
+    return any(
+        entry["field_name"] == field_name and entry["blocked"] is True
+        for entry in _blocked_geometry_field_entries(deck)
+    )
+
+
 def _conductor_mask_packet(
     *,
     deck: FirstPrinciples3DDeck,
@@ -2891,9 +2994,21 @@ def _conductor_mask_packet(
                 else None
             ),
             "cathode_rods_resolution_reviewed": False,
-            "hollow_anode_declared_by_source": bool(pf1000_rod_projection),
+            # SS10-2 / A3: the anode is "declared hollow by source" ONLY when a
+            # KR-supported inner radius (or hollow-bore geometry field) is
+            # actually present for the selected scope.  The PF-1000 full-energy
+            # deck deliberately leaves ``anode_inner_radius_m=None`` — the
+            # hollow bore is BLOCKED (PF1000-BLK-009/010) — so this is False,
+            # never ``bool(pf1000_rod_projection)``.  A blocked-field entry for
+            # the missing bore length/radius is carried below.
+            "hollow_anode_declared_by_source": (
+                deck.device_anode_inner_radius_m is not None
+            ),
             "hollow_anode_inner_radius_supplied": (
                 deck.device_anode_inner_radius_m is not None
+            ),
+            "hollow_anode_bore_blocked": _has_blocked_geometry_field(
+                deck, "anode_hollow_bore_length_m"
             ),
             "insulator_material_surface_declared": bool(deck.device_insulator_material),
             "insulator_material_surface_resolved": False,
@@ -2901,6 +3016,11 @@ def _conductor_mask_packet(
                 deck.conductor_mask_status == "reviewed_same_scope_geometry_mask"
             ),
         },
+        # SS10-2 (closes audit A2): the deck blocked-field manifest threaded
+        # into conductor-mask telemetry.  Each entry carries its blocker id,
+        # blocked status, and source/scope reason so a reviewer sees every
+        # blocked PF-1000 geometry field without re-reading the deck helper.
+        "blocked_geometry_fields": list(_blocked_geometry_field_entries(deck)),
         "projection_error": projection_error,
         "resolution_review": {
             "status": "candidate_resolution_review_not_validation",
@@ -2970,6 +3090,12 @@ def _boundary_policy_telemetry(
         "conductor_mask_status": deck.conductor_mask_status,
         "conductor_mask_mode": deck.conductor_mask_mode,
         "conductor_mask": dict(conductor_mask),
+        # SS10-2 (closes audit A2): also surface the blocked geometry fields at
+        # the boundary-policy top level so a reviewer does not have to descend
+        # into ``conductor_mask`` to enumerate them.
+        "blocked_geometry_fields": list(
+            conductor_mask.get("blocked_geometry_fields", ())
+        ),
         "conductor_cells_active": (
             0 if conductor_cells is None else int(np.count_nonzero(conductor_cells))
         ),
@@ -3116,6 +3242,10 @@ def _coerce_deck_values(values: dict[str, Any]) -> dict[str, Any]:
         coerced["conductor_mask_status"] = str(coerced["conductor_mask_status"])
     if coerced.get("conductor_mask_mode") is not None:
         coerced["conductor_mask_mode"] = str(coerced["conductor_mask_mode"])
+    if coerced.get("blocked_geometry_fields") is not None:
+        coerced["blocked_geometry_fields"] = _blocked_geometry_fields_to_mappings(
+            coerced["blocked_geometry_fields"]
+        )
     if coerced.get("device_cathode_rod_count") is not None:
         coerced["device_cathode_rod_count"] = int(coerced["device_cathode_rod_count"])
     for key in (
@@ -3313,6 +3443,12 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         ),
         "conductor_mask_mode": str(
             _get(boundaries, "conductor_mask_mode", "none")
+        ),
+        # SS10-2 (closes audit A2): the package deck boundary policy carries the
+        # blocked geometry fields; thread them onto the 3-D deck so the
+        # conductor-mask telemetry exposes every blocked field with its blocker.
+        "blocked_geometry_fields": _blocked_geometry_fields_to_mappings(
+            _get(boundaries, "blocked_geometry_fields", ())
         ),
         "circuit_capacitance_F": circuit.capacitance_F,
         "circuit_voltage_V": circuit.voltage_V,

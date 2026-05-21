@@ -290,22 +290,37 @@ def public_omega_domain_packet(
 def source_geometry_candidate_evidence(
     geometry: HybridPICSourceGeometry,
 ) -> dict[str, Any]:
-    """Build non-promoting evidence for source geometry extraction."""
+    """Build non-promoting ARCHITECTURE 3-D geometry evidence.
+
+    This packet carries the LLNL-like hybrid-PIC ``architecture_source_scope``.
+    It is architecture / equation-method evidence ONLY: a ``same_scope``-named
+    key must never carry this scope, so the capability is reported as
+    ``architecture_3d_geometry_candidate_packet`` (Super-Sprint 10 SS10-1,
+    closes audit A1).
+    """
     return {
         "passed": True,
         "status": "candidate",
-        "capability": "same_scope_3d_validation_packet",
+        "capability": "architecture_3d_geometry_candidate_packet",
+        "evidence_role": "architecture_and_equation_method_geometry_only",
         "source": geometry.source,
         "source_lines": geometry.source_lines,
         "implementation": "src/dpf/fields/source_geometry.py",
-        "evidence_type": "engineering_source_geometry_packet",
+        "evidence_type": "engineering_architecture_geometry_packet",
+        # This is the architecture/equation-method scope, never a selected-
+        # machine same-scope validation scope.  ``source_scope`` is retained
+        # for back-compat but it equals ``architecture_source_scope``.
+        "architecture_source_scope": geometry.architecture_source_scope,
+        "architecture_evidence_role": geometry.architecture_evidence_role,
         "source_scope": geometry.source_scope,
         "coordinate_system": geometry.coordinate_system,
+        "is_same_scope_validation_evidence": False,
         "can_support_first_principles_acceptance": False,
         "limitations": [
             "The extracted source setup is 2-D axisymmetric, not an accepted true-3D geometry packet.",
             "The smoke grid is a Cartesian engineering projection for code exercise only.",
-            "No same-scope PF-1000/Akel or LLNL-like experimental validation packet is attached.",
+            "LLNL-like architecture geometry is NOT selected-machine same-scope validation evidence.",
+            "No same-scope PF-1000/Akel experimental validation packet is attached.",
         ],
     }
 

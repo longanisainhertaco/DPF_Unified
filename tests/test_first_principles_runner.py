@@ -1575,7 +1575,7 @@ def test_first_principles_runner_rejects_seeded_startup_for_acceptance() -> None
         "must_fail_acceptance_gate"
     )
     assert startup["acceptance_gate"].startswith(
-        "engineering_end_rundown_seeded_or_text_startup_cannot_support"
+        "engineering_end_rundown_seeded_context_only_or_text_startup_cannot_support"
     )
     assert startup["negative_test_policy"]["seeded_layer_rejection_required"] is True
     assert startup["whole_shot_startup_blocked"] is True

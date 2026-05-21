@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 from dpf.server.readiness import api_readiness_payload
+from dpf.validation.first_principles_mhd import (
+    PF1000_AKEL_SOURCE_SCOPE,
+    PF1000_AKEL_VALIDATION_SCOPE,
+)
 
 FIRST_PRINCIPLES_MHD_MODE = "first_principles_mhd"
-PF1000_AKEL_SOURCE_SCOPE = "pf1000_akel_16kv_1p2torr_shot_12581"
-PF1000_AKEL_VALIDATION_SCOPE = "pf1000_akel_16kv_1p2torr_shot_12581"
 
 
 def test_api_readiness_payload_exposes_fail_closed_authority_and_blockers() -> None:
@@ -78,7 +80,7 @@ def test_api_readiness_payload_exports_first_principles_blockers() -> None:
         "engineering_candidate_conservation_telemetry_not_validation"
     )
     assert payload["first_principles_startup_initialization"]["status"] == (
-        "blocked_startup_bvp_packet_not_available"
+        "rejected_startup_mode_for_first_principles"
     )
     assert payload["first_principles_neutron_yield_authority"]["status"] == (
         "blocked_mechanism_separated_neutron_authority_not_available"

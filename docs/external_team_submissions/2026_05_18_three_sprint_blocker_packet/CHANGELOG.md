@@ -1116,6 +1116,52 @@ recorded in the §6 addendum of
 `00d7016` the periodic audit passes **10/10** — `git_status_clean` PASS with the
 approved 146-line exception note, every other gate green.
 
+### Super-Sprint 10 — Sprint 9 audit corrections, Phase 1 (2026-05-21)
+
+`a4c28b9` — Super-Sprint 9 final commit (above section).
+
+Controlling doc:
+`docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`
+— the Codex audit of Super-Sprint 9 accepted the P0 scope/source repair but
+rejected the completion claim, raising findings A1-A7. The Super-Sprint 10
+Phase 1 commit (hash assigned at commit time) lands the runtime/startup/server
+corrections:
+
+- **SS10-1 (A1):** the LLNL-like hybrid-PIC 3-D geometry evidence is moved off
+  the `same_scope_3d_validation_packet` key onto an architecture-only key
+  `architecture_3d_geometry_candidate_packet`. No PF-1000 full-energy runtime
+  packet with a `same_scope`-named key carries the LLNL-like architecture
+  scope; no `same_scope_3d_validation_packet` is emitted for the preset
+  (fail-closed — there is no genuine same-scope 3-D evidence yet).
+- **SS10-2 (A2 + A3):** the deck's five blocked geometry fields
+  (`anode_hollow_bore_length_m`, `insulator_wall_thickness_m`,
+  `backplate_radial_extent_m`, `backplate_axial_thickness_m`,
+  `same_scope_reviewed_geometry_mask`) are threaded into runtime
+  `boundary_policy.conductor_mask.blocked_geometry_fields` with blocker IDs,
+  status, and source/scope reason. Hollow-anode telemetry now matches the deck:
+  `hollow_anode_declared_by_source=false` and
+  `hollow_anode_inner_radius_supplied=false` for the PF-1000 full-energy preset
+  (the deck leaves `anode_inner_radius_m=None`).
+- **SS10-3 (A4):** the `experimental-segmented-whole-shot` manifest gains four
+  compact summary blocks — `first_principles_scope_summary`,
+  `same_scope_summary`, `power_port_summary`, `geometry_blocker_summary`.
+- **SS10-4 (A5):** `imported_pic_sheath_state` is removed from
+  `ACCEPTED_STARTUP_MODES` and placed in a new `CONTEXT_ONLY_STARTUP_MODES`
+  class that can never satisfy `mode_is_accepted`; a forced accepting typed
+  startup packet still cannot promote imported-PIC.
+- **SS10-6:** `tests/test_server_readiness.py` scope drift repaired — stale
+  test expectations corrected to the current fail-closed contract
+  (`rejected_startup_mode_for_first_principles`) and stale Akel scope
+  constants replaced with canonical imports; no Akel 16 kV label for the
+  PF-1000 full-energy demonstrator.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. 800 focused tests pass; ruff `src tests` clean;
+module-source vetting `strict_passed` (297 modules); RTM export and
+source-truth `--check` verified no-ops. SS10-0 (handoff narrative), SS10-5
+(artifact truthfulness), SS10-7 (report-only acceptance-gate dry run), and
+SS10-8 (periodic audit) follow in Phase 2.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally
