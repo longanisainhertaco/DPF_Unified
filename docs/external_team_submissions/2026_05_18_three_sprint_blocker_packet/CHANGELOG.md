@@ -943,8 +943,8 @@ tests pass; ruff clean.
 
 `bd5be3a` — Sprint 8 Phase A P0 foundation (above section).
 
-The Sprint 8 Phase B+C commit (hash assigned at commit time) delivers the four
-P1 and two P2 workstreams of
+Sprint 8 Phase B+C commit `b270cb5` delivers the four P1 and two P2
+workstreams of
 `docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md`:
 
 - **WS3 PF-1000 Geometry Source-To-Runtime:** new engineering-candidate deck
@@ -997,6 +997,22 @@ P1 and two P2 workstreams of
 `false` everywhere. Bennett startup and Braginskii Z=1 transport advanced from
 blocked to source-backed runtime candidate — engineering evidence only, no
 acceptance. 724 focused tests pass; ruff `src/ tests/` clean.
+
+### Sprint 8 — Phase B+C audit follow-up (2026-05-20)
+
+`b270cb5` — Sprint 8 Phase B+C P1/P2 (above section).
+
+The Codex periodic audit auto-detects the latest dated baseline. Phase B
+regenerated the `2026_05_18`-stamped source-truth artifacts, but the audited
+latest stamp is `2026_05_20`. This follow-up commit regenerates
+`FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_20.{json,md}`
+(`exhausted=true`, `open_issue_count=0`) and corrects the
+`FIRST_PRINCIPLES_SOURCE_TRUTH_INDEX.{json,md}` `Generated` date stamp to
+`2026_05_20` (index records byte-identical). After this commit the audit's
+`source_truth_exhaustion` and `module_source_vetting` `--check` gates pass at
+baseline `2026_05_20`. The only remaining audit failure is `git_status_clean`,
+caused solely by 145 pre-existing PDF symlink type-changes unrelated to any
+Sprint 8 work.
 
 ## Notes on CHANGELOG conventions
 

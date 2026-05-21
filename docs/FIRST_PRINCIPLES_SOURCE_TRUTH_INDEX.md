@@ -1,6 +1,6 @@
 # First-Principles Source Truth Index
 
-Generated: 2026_05_18
+Generated: 2026_05_20
 
 ## Boundary
 
