@@ -23,6 +23,29 @@ from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
 ELEMENTARY_CHARGE = dpf_constants.e
 K_B = dpf_constants.k_B
 
+# Default validation scope for a package-native deck that does not declare a
+# selected runtime-demonstrator scope.  Engineering-smoke decks keep this; the
+# string must never be promoted to an accepted validation scope.
+UNDECLARED_VALIDATION_SCOPE = "not_declared_engineering_smoke"
+
+# Default selected-machine source scope for a package-native deck that does not
+# declare one.  This is NOT the architecture/equation-method source (the
+# hybrid-PIC paper); it is the device-and-operating-point source scope.  A deck
+# that does not pin a machine keeps this engineering-only placeholder.
+UNDECLARED_SELECTED_MACHINE_SOURCE_SCOPE = (
+    "not_declared_engineering_smoke_machine_source"
+)
+
+# Selected-machine source scope for the PF-1000 Scholz 2000/2001 24-rod
+# large-electrode full-energy deck.  Derived from the deck's KR geometry
+# citations (Scholz 2001 24-rod large-electrode + Scholz 2000 facility) — see
+# ``pf1000_scholz_2001_24rod_full_energy_deck``.  It is a device/operating-point
+# source scope, NOT ``llnl_like_180ka_axisymmetric_hybrid_pic`` (that paper is
+# architecture evidence only).  Super-Sprint 9 WS9-2 (fixes audit P0-2).
+PF1000_SCHOLZ_2001_24ROD_SOURCE_SCOPE = (
+    "pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source"
+)
+
 FIRST_PRINCIPLES_CIRCUIT_UDPF_MODES = (
     "input_sequence",
     "lagged_volume_j_dot_e",
@@ -621,6 +644,17 @@ class FirstPrinciplesInputDeck:
     source_references: tuple[SourceReference, ...] = ()
     validation_targets: tuple[ValidationTargetReference, ...] = ()
     scientific_status: str = "engineering_candidate_not_validation"
+    # Explicit selected validation scope for the package-native runtime.  A
+    # deck id is NOT a validation scope and must never be substituted for one
+    # (Super-Sprint 9 WS9-1, fixes audit P0-1).  Engineering-smoke decks keep
+    # ``UNDECLARED_VALIDATION_SCOPE``; a runtime-demonstrator deck pins the
+    # selected scope label (e.g. ``SELECTED_SCOPE_LABEL``).
+    validation_scope: str = UNDECLARED_VALIDATION_SCOPE
+    # Selected-machine source scope: the device-and-operating-point source
+    # scope derived from this deck's KR geometry/circuit citations.  Distinct
+    # from architecture/equation-method evidence (the hybrid-PIC paper).
+    # Super-Sprint 9 WS9-2 (fixes audit P0-2).
+    selected_machine_source_scope: str = UNDECLARED_SELECTED_MACHINE_SOURCE_SCOPE
     schema_version: str = "dpf.first_principles.input_deck.v1"
 
     @property
@@ -661,6 +695,15 @@ class FirstPrinciplesInputDeck:
                 ),
                 scientific_status=str(
                     value.get("scientific_status", "engineering_candidate_not_validation")
+                ),
+                validation_scope=str(
+                    value.get("validation_scope", UNDECLARED_VALIDATION_SCOPE)
+                ),
+                selected_machine_source_scope=str(
+                    value.get(
+                        "selected_machine_source_scope",
+                        UNDECLARED_SELECTED_MACHINE_SOURCE_SCOPE,
+                    )
                 ),
                 schema_version=str(
                     value.get(
@@ -1198,6 +1241,14 @@ def pf1000_scholz_2001_24rod_full_energy_deck(
         diagnostics=DiagnosticPolicy(n_steps=n_steps, dt_s=dt_s),
         source_references=(scholz2001_ref, scholz2000_ref),
         scientific_status="engineering_candidate_not_validation",
+        # WS9-1: the package-native runtime must emit the SELECTED runtime-
+        # demonstrator scope, never this deck id, as the declared validation
+        # scope.  This is the Sprint 8 Option B selected scope label.
+        validation_scope=SELECTED_SCOPE_LABEL,
+        # WS9-2: the selected-machine source scope is derived from this deck's
+        # KR geometry citations (Scholz 2001 24-rod large-electrode + Scholz
+        # 2000 facility).  The hybrid-PIC paper stays architecture-only.
+        selected_machine_source_scope=PF1000_SCHOLZ_2001_24ROD_SOURCE_SCOPE,
         validation_targets=(
             ValidationTargetReference(
                 name=(

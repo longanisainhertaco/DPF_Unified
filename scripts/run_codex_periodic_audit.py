@@ -22,6 +22,62 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_LOG_ROOT = Path("/private/tmp/dpf-unified-audit-logs")
 
+# ---------------------------------------------------------------------------
+# Sprint 9 WS9-0 — narrow PDF-symlink typechange exception
+# See docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md for rationale.
+#
+# EXCEPTION SCOPE (narrow, intentional):
+#   Only ` T ` (typechange) lines whose path starts with one of these
+#   well-known PDF reference directories are excused from git_status_clean.
+#   All other status codes ( M, D, ??, A, R, C, U, X) and any ` T ` line
+#   whose path falls outside these directories still fail the gate.
+# ---------------------------------------------------------------------------
+_PDF_SYMLINK_DIRS: tuple[str, ...] = (
+    "downloaded_books_papers/",
+    "tmp/pdfs/",
+)
+_PDF_SYMLINK_DIRS_REPR = ", ".join(f"`{d}`" for d in _PDF_SYMLINK_DIRS)
+
+# The two-char git porcelain XY field for typechange is " T" (unstaged) or
+# "T " (staged). We only excuse the *unstaged* form because the corpus files
+# are never staged intentionally.
+_TYPECHANGE_PREFIX = " T "
+
+
+def _is_excused_pdf_typechange(line: str) -> bool:
+    """Return True iff *line* is a ` T ` typechange inside a known PDF dir.
+
+    The narrow exception: the XY code must be exactly ` T ` (space-T-space,
+    unstaged typechange) and the path must begin with one of the known PDF
+    reference directories. Everything else returns False.
+    """
+    if not line.startswith(_TYPECHANGE_PREFIX):
+        return False
+    # Strip the three-char XY+space prefix; unquote if git quoted the path.
+    raw_path = line[len(_TYPECHANGE_PREFIX):]
+    if raw_path.startswith('"') and raw_path.endswith('"'):
+        raw_path = raw_path[1:-1]
+    return any(raw_path.startswith(d) for d in _PDF_SYMLINK_DIRS)
+
+
+def _classify_git_status_lines(
+    dirty_lines: list[str],
+) -> tuple[list[str], list[str]]:
+    """Split *dirty_lines* into (excused, real_dirty) based on the PDF exception.
+
+    Returns:
+        excused    — lines matched by the narrow PDF-symlink exception.
+        real_dirty — all other dirty lines; these still fail the gate.
+    """
+    excused: list[str] = []
+    real_dirty: list[str] = []
+    for line in dirty_lines:
+        if _is_excused_pdf_typechange(line):
+            excused.append(line)
+        else:
+            real_dirty.append(line)
+    return excused, real_dirty
+
 
 @dataclass(frozen=True)
 class Gate:
@@ -162,8 +218,19 @@ def _run_gate(gate: Gate, cycle_dir: Path, timeout_s: int) -> dict[str, object]:
     if ok and gate.require_clean_status:
         dirty_lines = [line for line in stdout.splitlines() if line and not line.startswith("##")]
         if dirty_lines:
-            ok = False
-            note = "git status reported worktree changes"
+            excused, real_dirty = _classify_git_status_lines(dirty_lines)
+            if real_dirty:
+                ok = False
+                note = "git status reported worktree changes"
+            elif excused:
+                # Gate passes; report excused churn explicitly so the audit is
+                # not silently calling the tree clean. See:
+                # docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md
+                note = (
+                    f"APPROVED EXCEPTION: {len(excused)} PDF-symlink typechange(s) in "
+                    f"known external-storage dirs excused (Sprint 9 WS9-0 decision). "
+                    f"Dirs: {_PDF_SYMLINK_DIRS_REPR}"
+                )
     return {
         "name": gate.name,
         "command": list(gate.command),

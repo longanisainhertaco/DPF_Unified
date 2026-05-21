@@ -78,7 +78,23 @@ def test_startup_bvp_packet_treats_breakdown_audit_as_candidate_only() -> None:
     )
 
 
-def test_reviewed_imported_pic_startup_payload_can_close_packet() -> None:
+def test_reviewed_imported_pic_startup_payload_is_context_only_not_acceptance() -> None:
+    """Imported reviewed-PIC startup payloads are CONTEXT-ONLY, not an acceptance path.
+
+    Sprint 9 WS9-5 lead decision (resolves audit P2-1): an imported PIC sheath
+    state is an import, not a same-scope measured diagnostic. Per the project's
+    fail-closed posture it cannot close a startup BVP packet. ``startup_bvp.py``
+    binds acceptance to the typed ``StartupPacket``, which has zero ``computed``
+    channels (WP-N2) — so even a fully populated reviewed imported-PIC payload
+    leaves the packet blocked. The ``same_scope_pic_import_fixture`` scope name is
+    literally a synthetic fixture, not a real same-scope measurement.
+
+    This test was previously
+    ``test_reviewed_imported_pic_startup_payload_can_close_packet`` and asserted
+    acceptance. That expectation predates Sprint 8 and was never satisfied by the
+    fail-closed runtime; it is replaced here with the context-only assertion so
+    the gate cannot be misread as an imported-PIC acceptance path.
+    """
     payload = {
         "mode": "imported_pic_sheath_state",
         "evidence_status": "reviewed",
@@ -113,12 +129,31 @@ def test_reviewed_imported_pic_startup_payload_can_close_packet() -> None:
         }
     )
 
-    assert packet["status"] == "accepted_startup_bvp_packet"
-    assert packet["whole_shot_startup_blocked"] is False
+    # Fail-closed: imported-PIC payloads cannot close a startup BVP packet.
+    assert packet["status"] == "blocked_startup_bvp_packet_not_available"
+    assert packet["whole_shot_startup_blocked"] is True
+    assert packet["can_support_first_principles_acceptance"] is False
+    assert packet["can_support_whole_shot_acceptance"] is False
+    # The payload is preserved as engineering-candidate context only: the
+    # per-channel payload review can mark the payload "complete", but completeness
+    # is engineering telemetry and does NOT promote the headline packet status.
     assert packet["startup_payload_review"]["status"] == (
         "reviewed_startup_payload_complete"
     )
-    assert packet["can_support_first_principles_acceptance"] is True
+    # The typed StartupPacket — the single acceptance authority — stays blocked
+    # because no startup channel reaches "computed" status.
+    assert packet["startup_channel_packet"]["status"] == (
+        "blocked_startup_channel_packet_no_computed_channel"
+    )
+    assert (
+        packet["startup_channel_packet"]["can_support_first_principles_acceptance"]
+        is False
+    )
+    # Imported PIC sheath state stays an accepted-only-after-complete-reviewed
+    # mode at the registry level; it is not promoted by the import.
+    assert packet["startup_mode_status"]["imported_pic_sheath_state"]["status"] == (
+        "accepted_only_after_complete_reviewed_imported_state"
+    )
 
 
 def test_incomplete_imported_pic_startup_payload_stays_blocked() -> None:

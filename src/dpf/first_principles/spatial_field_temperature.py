@@ -5,6 +5,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from dpf.first_principles.channel_state import (
+    AKEL_16KV_SHOT_MARKERS,
+    looks_like_pf1000_akel_16kv_scope,
+)
+
 SPATIAL_FIELD_TEMPERATURE_SOURCE_REFS = (
     {
         "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
@@ -136,9 +141,14 @@ def build_spatial_field_temperature_packet(
         device_name=device_name,
     )
     accepted.update(target_channels)
-    if _looks_like_pf1000_akel_scope(declared_scope, device_name):
+    if looks_like_pf1000_akel_16kv_scope(declared_scope, device_name):
+        # Akel 16 kV / shot-12581 revision: Akel Lee-output text scalars are
+        # non-acceptance engineering reference only.
         text_supported = set(PF1000_AKEL_TEXT_SUPPORTED_CHANNELS)
     else:
+        # Codex S9 P1-1: every other scope -- including the full-energy scope
+        # pf1000_full_energy_27_to_40_kv -- receives no Akel reference
+        # channels (fail-closed; selected-scope-only until KR supplies records).
         text_supported = set()
 
     missing = set(REQUIRED_SPATIAL_FIELD_TEMPERATURE_CHANNELS) - accepted
@@ -282,21 +292,12 @@ def _target_scope_matches(
             str(source_reference.get(key, ""))
             for key in ("record_id", "role", "path")
         ).lower()
-        if _looks_like_pf1000_akel_scope(declared_scope, device_name):
-            return (
-                "akel" in haystack
-                and ("12581" in haystack or "16kv" in haystack or "16_kv" in haystack)
+        if looks_like_pf1000_akel_16kv_scope(declared_scope, device_name):
+            return "akel" in haystack and any(
+                marker in haystack for marker in AKEL_16KV_SHOT_MARKERS
             )
     return False
 
 
 def _normalized_scope(value: str) -> str:
     return "".join(ch for ch in value.lower() if ch.isalnum())
-
-
-def _looks_like_pf1000_akel_scope(
-    declared_scope: str,
-    device_name: str | None,
-) -> bool:
-    haystack = f"{declared_scope} {device_name or ''}".lower()
-    return "pf1000" in haystack or "pf-1000" in haystack or "akel" in haystack

@@ -7,6 +7,7 @@ from typing import Any
 
 from dpf.first_principles.channel_state import (
     ACCEPTED,
+    AKEL_16KV_SHOT_MARKERS,
     BLOCKED_MISSING_SOURCE,
     BLOCKED_WRONG_SCOPE,
     EXCLUDED_NOT_VALIDATED,
@@ -14,6 +15,7 @@ from dpf.first_principles.channel_state import (
     ChannelState,
     channel_state_map,
     channel_state_summary,
+    looks_like_pf1000_akel_16kv_scope,
 )
 
 SAME_SCOPE_SOURCE_REFS = (
@@ -120,6 +122,25 @@ TRANSFER_RULE_REQUIRED_CHANNELS = (
     "negative_test_cross_scope_promotion",
 )
 
+# Acceptance-gate labels.  The Akel 16 kV / shot-12581 revision carries an
+# Akel-named gate label because its text-supported scalars are Akel scalars.
+# Every other scope -- including the full-energy scope
+# pf1000_full_energy_27_to_40_kv -- must NOT carry Akel-named wording
+# (Codex S9 P1-1): a full-energy packet has no Akel evidence, so an Akel-named
+# gate label would be a scope-classification defect.
+_AKEL_16KV_ACCEPTANCE_GATE = (
+    "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_"
+    "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
+    "current_startup_density_fields_temperatures_neutrons_detector_uq_"
+    "review_and_cross_scope_rejection_tests_pass"
+)
+_SAME_SCOPE_ACCEPTANCE_GATE = (
+    "text_supported_scalars_and_other_scope_diagnostics_"
+    "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
+    "current_startup_density_fields_temperatures_neutrons_detector_uq_"
+    "review_and_cross_scope_rejection_tests_pass"
+)
+
 OTHER_SCOPE_SOURCE_GROUPS = (
     {
         "name": "pf1000_interferometry_density_other_campaign",
@@ -206,9 +227,17 @@ def build_same_scope_source_packet(
     if declared:
         accepted.add("declared_validation_scope")
 
-    if _looks_like_pf1000_akel_scope(declared_scope, device_name):
+    is_akel_16kv_scope = looks_like_pf1000_akel_16kv_scope(declared_scope, device_name)
+    if is_akel_16kv_scope:
+        # Akel 16 kV / shot-12581 revision: text scalars are non-acceptance
+        # engineering reference only (channels stay excluded_not_validated).
         text_supported = set(PF1000_AKEL_TEXT_SUPPORTED_CHANNELS)
     else:
+        # Codex S9 P1-1: every other scope -- including the full-energy
+        # scope pf1000_full_energy_27_to_40_kv -- gets no Akel reference
+        # channels.  A full-energy text-supported set is added only once KR
+        # target-extraction supplies selected-scope records; until then this
+        # is empty (fail-closed, selected-scope-only).
         text_supported = set()
 
     # Canonical per-channel states (Codex S7-A7).  A channel is in exactly one
@@ -264,10 +293,9 @@ def build_same_scope_source_packet(
             "can_use_other_scope_for_acceptance": False,
         },
         "acceptance_gate": (
-            "text_supported_pf1000_akel_scalars_and_other_scope_diagnostics_"
-            "cannot_support_whole_shot_acceptance_until_all_same_scope_targets_"
-            "current_startup_density_fields_temperatures_neutrons_detector_uq_"
-            "review_and_cross_scope_rejection_tests_pass"
+            _AKEL_16KV_ACCEPTANCE_GATE
+            if is_akel_16kv_scope
+            else _SAME_SCOPE_ACCEPTANCE_GATE
         ),
         "negative_test_policy": {
             "text_reference_promotion_rejection_required": True,
@@ -449,21 +477,12 @@ def _target_scope_matches(
             str(source_reference.get(key, ""))
             for key in ("record_id", "role", "path")
         ).lower()
-        if _looks_like_pf1000_akel_scope(declared_scope, device_name):
-            return (
-                "akel" in haystack
-                and ("12581" in haystack or "16kv" in haystack or "16_kv" in haystack)
+        if looks_like_pf1000_akel_16kv_scope(declared_scope, device_name):
+            return "akel" in haystack and any(
+                marker in haystack for marker in AKEL_16KV_SHOT_MARKERS
             )
     return False
 
 
 def _normalized_scope(value: str) -> str:
     return "".join(ch for ch in value.lower() if ch.isalnum())
-
-
-def _looks_like_pf1000_akel_scope(
-    declared_scope: str,
-    device_name: str | None,
-) -> bool:
-    haystack = f"{declared_scope} {device_name or ''}".lower()
-    return "pf1000" in haystack or "pf-1000" in haystack or "akel" in haystack

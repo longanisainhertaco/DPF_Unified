@@ -47,6 +47,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from dpf.first_principles.channel_state import (
+    AKEL_16KV_SHOT_MARKERS,
+    looks_like_pf1000_akel_16kv_scope,
+)
+
 NEUTRON_AUTHORITY_SOURCE_REFS = (
     {
         "path": "KnowledgeReference/radiation-physics-and-chemistry-188-2021-109633.md",
@@ -545,9 +550,14 @@ def build_mechanism_separated_neutron_packet(
         device_name=device_name,
     )
     accepted.update(target_channels)
+    # Codex S9 P1-1: only the Akel 16 kV / shot-12581 revision receives the
+    # Akel neutron text-supported channels (non-acceptance reference).  Every
+    # other scope -- including the full-energy scope
+    # pf1000_full_energy_27_to_40_kv -- gets an empty set (fail-closed;
+    # selected-scope-only until KR supplies selected-scope records).
     text_supported = (
         set(PF1000_AKEL_TEXT_SUPPORTED_CHANNELS)
-        if _looks_like_pf1000_akel_scope(declared_scope, device_name)
+        if looks_like_pf1000_akel_16kv_scope(declared_scope, device_name)
         else set()
     )
 
@@ -1252,10 +1262,9 @@ def _target_scope_matches(
             str(source_reference.get(key, ""))
             for key in ("record_id", "role", "path")
         ).lower()
-        if _looks_like_pf1000_akel_scope(declared_scope, device_name):
-            return (
-                "akel" in haystack
-                and ("12581" in haystack or "16kv" in haystack or "16_kv" in haystack)
+        if looks_like_pf1000_akel_16kv_scope(declared_scope, device_name):
+            return "akel" in haystack and any(
+                marker in haystack for marker in AKEL_16KV_SHOT_MARKERS
             )
     return False
 
@@ -1274,11 +1283,3 @@ def _beam_target_closure_status(physics_closure: Mapping[str, Any] | None) -> st
     if not isinstance(beam_target, Mapping):
         return None
     return None if beam_target.get("status") is None else str(beam_target["status"])
-
-
-def _looks_like_pf1000_akel_scope(
-    declared_scope: str,
-    device_name: str | None,
-) -> bool:
-    haystack = f"{declared_scope} {device_name or ''}".lower()
-    return "pf1000" in haystack or "pf-1000" in haystack or "akel" in haystack

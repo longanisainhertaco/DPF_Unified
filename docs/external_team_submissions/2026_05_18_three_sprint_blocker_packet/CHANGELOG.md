@@ -1014,6 +1014,59 @@ baseline `2026_05_20`. The only remaining audit failure is `git_status_clean`,
 caused solely by 145 pre-existing PDF symlink type-changes unrelated to any
 Sprint 8 work.
 
+### Super-Sprint 9 — runtime scope/source coherence, Phase 1 (2026-05-20)
+
+`814ab10` — Sprint 8 Phase B+C audit follow-up (above section).
+
+Controlling doc:
+`docs/CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md`
+— the Codex audit accepted the Sprint 8 candidate packets with corrections
+(P0-1, P0-2, P1-1, P1-2, P1-3, P2-1). The Super-Sprint 9 Phase 1 commit (hash
+assigned at commit time) lands workstreams WS9-0 through WS9-6:
+
+- **WS9-0 audit gate cleanup (P1-3):** `scripts/run_codex_periodic_audit.py`
+  gains a narrow, documented `git_status_clean` exception that classifies only
+  ` T ` symlink typechanges under the known PDF reference directories as known
+  external storage churn — every other dirty state (` M `, ` D `, `??`, a
+  ` T ` outside those dirs) still fails the gate. Decision recorded in
+  `docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md`.
+- **WS9-1 runtime scope propagation (P0-1):** an explicit `validation_scope`
+  field is threaded through the package-native deck path; the PF-1000
+  full-energy preset emits `pf1000_full_energy_27_to_40_kv` into every
+  declared-scope sink. `_validation_scope_from_package_deck()` no longer
+  substitutes the deck id.
+- **WS9-2 runtime source evidence separation (P0-2):** `architecture_source`
+  is split from `selected_machine_source_scope`. The hybrid-PIC paper stays as
+  architecture / equation-method evidence; the PF-1000 preset's
+  `validation_packet.source_scope` now carries a PF-1000 source scope and
+  never `llnl_like_180ka_axisymmetric_hybrid_pic`.
+- **WS9-3 same-scope full-energy packet repair (P1-1):** the buggy
+  `_looks_like_pf1000_akel_scope` (matched any `pf1000`/`akel` string) is
+  replaced by an exact `looks_like_pf1000_akel_16kv_scope` classifier hoisted
+  into `channel_state.py`. The defect was duplicated across five modules
+  (`same_scope`, `waveform_phase`, `spatial_field_temperature`,
+  `comparator_uq`, `neutron_authority`) — all five now use the single shared
+  helper; full-energy packets receive no Akel reference channels or
+  Akel-named gate labels.
+- **WS9-4 Bennett startup runtime context (P1-2):** the Sprint 8 Bennett
+  target-extraction packet is wired into `startup_bvp.py` as wrong-scope
+  candidate context (`blocked_wrong_scope` for the full-energy demonstrator);
+  the runner passes `include_bennett_wrong_scope_context` gated on the
+  selected scope. Acceptance flags untouched.
+- **WS9-5 imported-PIC decision (P2-1):** imported reviewed-PIC startup
+  payloads are decided context-only, not an acceptance path; the stale
+  `test_reviewed_imported_pic_startup_payload_can_close_packet` is rewritten as
+  `..._is_context_only_not_acceptance`.
+- **WS9-6 PF-1000 geometry mask integrity:** the five blocked geometry fields
+  stay blocked; the conductor mask references the selected deck geometry and
+  PF-1000 source refs, not the old LLNL geometry; an explicit mesh-resolution
+  warning fires when the cathode rod diameter is under-resolved.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. 825 focused tests pass; ruff `src tests` clean;
+module-source vetting `strict_passed` (297 modules); RTM regenerated.
+WS9-7 (engineering probe) and WS9-8 (handoff memo) follow in Phase 2.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

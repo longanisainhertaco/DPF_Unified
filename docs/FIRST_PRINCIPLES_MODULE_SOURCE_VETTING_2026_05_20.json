@@ -4387,6 +4387,9 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.AKEL_16KV_SHOT_MARKERS",
+        "dpf.first_principles.channel_state.looks_like_pf1000_akel_16kv_scope",
         "typing",
         "typing.Any"
       ],
@@ -5066,6 +5069,9 @@
         "collections.abc.Mapping",
         "dataclasses",
         "dataclasses.dataclass",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.AKEL_16KV_SHOT_MARKERS",
+        "dpf.first_principles.channel_state.looks_like_pf1000_akel_16kv_scope",
         "typing",
         "typing.Any"
       ],
@@ -5379,6 +5385,8 @@
         "dpf.first_principles.plasmapy_audit.build_plasmapy_formulary_audit_packet",
         "dpf.first_principles.power_port",
         "dpf.first_principles.power_port.build_engineering_power_port_packet",
+        "dpf.first_principles.runtime_demonstrator_scope",
+        "dpf.first_principles.runtime_demonstrator_scope.SELECTED_SCOPE_LABEL",
         "dpf.first_principles.same_scope",
         "dpf.first_principles.same_scope.build_same_scope_source_packet",
         "dpf.first_principles.spatial_field_temperature",
@@ -5472,6 +5480,7 @@
         "collections.abc.Mapping",
         "dpf.first_principles.channel_state",
         "dpf.first_principles.channel_state.ACCEPTED",
+        "dpf.first_principles.channel_state.AKEL_16KV_SHOT_MARKERS",
         "dpf.first_principles.channel_state.BLOCKED_MISSING_SOURCE",
         "dpf.first_principles.channel_state.BLOCKED_WRONG_SCOPE",
         "dpf.first_principles.channel_state.ChannelState",
@@ -5479,6 +5488,7 @@
         "dpf.first_principles.channel_state.NOT_CLAIMED",
         "dpf.first_principles.channel_state.channel_state_map",
         "dpf.first_principles.channel_state.channel_state_summary",
+        "dpf.first_principles.channel_state.looks_like_pf1000_akel_16kv_scope",
         "typing",
         "typing.Any"
       ],
@@ -5698,6 +5708,9 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.AKEL_16KV_SHOT_MARKERS",
+        "dpf.first_principles.channel_state.looks_like_pf1000_akel_16kv_scope",
         "typing",
         "typing.Any"
       ],
@@ -5895,7 +5908,7 @@
       "status": "baseline_only_nonpromoting"
     },
     {
-      "active_first_principles_closure": false,
+      "active_first_principles_closure": true,
       "can_support_first_principles_acceptance": false,
       "capability_tags": [
         "dpf_device",
@@ -5909,7 +5922,7 @@
         "validation_target"
       ],
       "claim_without_source": false,
-      "classification": "physics_source_referenced",
+      "classification": "active_physics_source_referenced",
       "docs_reference_paths": [],
       "first_principles_verdicts": [
         "directly_needed"
@@ -5933,7 +5946,7 @@
       "path": "src/dpf/first_principles/sprint8_bennett_startup_target_extraction.py",
       "physics_facing": true,
       "source_reference_count": 1,
-      "status": "module_vetted_nonpromoting"
+      "status": "active_module_vetted_nonpromoting"
     },
     {
       "active_first_principles_closure": true,
@@ -6076,6 +6089,8 @@
         "dataclasses",
         "dataclasses.dataclass",
         "dataclasses.field",
+        "dpf.first_principles.sprint8_bennett_startup_target_extraction",
+        "dpf.first_principles.sprint8_bennett_startup_target_extraction.sprint8_ws4_bennett_startup_packet",
         "typing",
         "typing.Any"
       ],
@@ -6164,6 +6179,9 @@
         "__future__.annotations",
         "collections.abc",
         "collections.abc.Mapping",
+        "dpf.first_principles.channel_state",
+        "dpf.first_principles.channel_state.AKEL_16KV_SHOT_MARKERS",
+        "dpf.first_principles.channel_state.looks_like_pf1000_akel_16kv_scope",
         "typing",
         "typing.Any"
       ],
@@ -11734,16 +11752,16 @@
   },
   "strict_passed": true,
   "summary": {
-    "active_first_principles_closure_count": 60,
+    "active_first_principles_closure_count": 61,
     "active_physics_unvetted_count": 0,
     "classification_counts": {
-      "active_physics_source_referenced": 49,
+      "active_physics_source_referenced": 50,
       "inactive_backend_numerical_utility_not_first_principles_authority": 36,
       "inactive_diagnostic_surface_not_first_principles_authority": 15,
       "inactive_legacy_physics_not_first_principles_authority": 20,
       "nonphysics_infrastructure": 63,
       "package_export_surface": 32,
-      "physics_source_referenced": 6,
+      "physics_source_referenced": 5,
       "reduced_or_baseline_only_not_first_principles_authority": 31,
       "standards_scoped_implementation_constants": 1,
       "validation_workflow_not_active_first_principles": 44
@@ -11754,9 +11772,9 @@
     "physics_facing_count": 184,
     "source_referenced_count": 72,
     "status_counts": {
-      "active_module_vetted_nonpromoting": 50,
+      "active_module_vetted_nonpromoting": 51,
       "baseline_only_nonpromoting": 31,
-      "module_vetted_nonpromoting": 171,
+      "module_vetted_nonpromoting": 170,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
     },

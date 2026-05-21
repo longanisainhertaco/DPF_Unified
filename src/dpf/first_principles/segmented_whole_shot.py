@@ -660,6 +660,10 @@ def run_segmented_whole_shot(
         "run_dir": str(run_path),
         "device_name": horizon_deck.device_name,
         "deck_name": horizon_deck.validation_scope,
+        # WS9-1: carry the resolved deck's explicit validation scope on the run
+        # manifest so the selected runtime-demonstrator scope (never the deck
+        # id) is the declared validation scope.  Fixes audit P0-1.
+        "deck": deck_payload,
         "command": command_payload,
         "plan": plan.to_dict(),
         "resumed_from_checkpoint": plan.resume_from_checkpoint,

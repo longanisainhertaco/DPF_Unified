@@ -65,6 +65,8 @@ __all__ = [
     "accepted_channels",
     "channel_state_summary",
     "all_states_canonical",
+    "AKEL_16KV_SHOT_MARKERS",
+    "looks_like_pf1000_akel_16kv_scope",
 ]
 
 
@@ -278,3 +280,56 @@ def all_states_canonical(values: Iterable[str]) -> bool:
     """
 
     return all(str(value) in CHANNEL_STATE_VALUES for value in values)
+
+
+# ---------------------------------------------------------------------------
+# Shared PF-1000 Akel 16 kV scope classifier
+# ---------------------------------------------------------------------------
+#
+# Codex S9 P1-1: the same-scope, waveform-phase, spatial-field-temperature,
+# comparator-UQ, and neutron-authority packet builders each carried an
+# independent copy of a ``_looks_like_pf1000_akel_scope`` helper that returned
+# true for *any* ``pf1000`` / ``pf-1000`` / ``akel`` string.  That misrouted
+# the *full-energy* scope ``pf1000_full_energy_27_to_40_kv`` -- a SEPARATE
+# 27-40 kV PF-1000 scope -- into Akel-named text-supported reference channels
+# (and, in the same-scope packet, an Akel-named gate label).
+#
+# This classifier is the single source of truth for that scope test.  Like the
+# channel-state vocabulary above, it is pure non-promoting packet bookkeeping:
+# it carries no physics claim and no KnowledgeReference authority, it only
+# keeps per-packet scope routing honest.  Akel et al. 2021 is the 16 kV /
+# shot-12581 PF-1000 neutron-yield revision, so an exact match requires the
+# ``akel`` marker AND a 16 kV / shot-12581 marker.
+
+#: Markers that, together with an ``akel`` marker, identify the Akel 16 kV /
+#: shot-12581 PF-1000 revision.
+AKEL_16KV_SHOT_MARKERS: tuple[str, ...] = ("12581", "16kv", "16_kv")
+
+
+def looks_like_pf1000_akel_16kv_scope(
+    declared_scope: str,
+    device_name: str | None,
+) -> bool:
+    """Return True only for the PF-1000 Akel 16 kV / shot-12581 revision.
+
+    Parameters
+    ----------
+    declared_scope:
+        The declared validation scope string.
+    device_name:
+        Optional device name; folded into the same haystack as the scope.
+
+    Returns
+    -------
+    bool
+        True only when the combined ``declared_scope`` + ``device_name``
+        haystack contains the ``akel`` marker AND at least one 16 kV /
+        shot-12581 marker.  Any other string -- including the full-energy
+        scope ``pf1000_full_energy_27_to_40_kv`` and a bare ``pf1000`` /
+        ``pf-1000`` string -- returns False (fail-closed).
+    """
+
+    haystack = f"{declared_scope} {device_name or ''}".lower()
+    if "akel" not in haystack:
+        return False
+    return any(marker in haystack for marker in AKEL_16KV_SHOT_MARKERS)

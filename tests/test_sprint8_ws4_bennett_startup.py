@@ -649,23 +649,152 @@ def test_all_candidate_channel_values_have_si_and_stated_units() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Group 10: startup_bvp.py source_refs remain unmodified (regression)
+# Group 10: Sprint 9 WS9-4 — Bennett wired into startup runtime as wrong-scope
+# candidate context (replaces the Sprint 8 WS4 "do not modify startup_bvp.py"
+# guard, which the audit P1-2 explicitly retired).
 # ---------------------------------------------------------------------------
+#
+# Audit P1-2 (CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md)
+# asked the lead to apply a startup_bvp.py delta importing the Bennett packet as
+# wrong-scope candidate context. The Sprint 8 guard test
+# (test_startup_bvp_source_refs_do_not_include_bennett_kr) only proved WS4 did
+# not overstep its file boundary; it is now obsolete. These tests assert the
+# wiring IS present and that it is wrong-scope candidate context that cannot
+# lift acceptance.
 
 
-def test_startup_bvp_source_refs_do_not_include_bennett_kr() -> None:
-    """The existing startup_bvp.py source refs must not be modified by WS4.
+def test_startup_bvp_exposes_bennett_wrong_scope_candidate_context() -> None:
+    """startup_bvp must expose Bennett CH03/04/07/08 as wrong-scope candidate context.
 
-    WS4 creates a new module (sprint8_bennett_startup_target_extraction.py) and
-    a new test file. It does NOT modify startup_bvp.py STARTUP_BVP_SOURCE_REFS
-    or any existing channel registry. This test guards against accidental modification.
+    WS9-4: build_startup_bvp_packet, when include_bennett_wrong_scope_context is
+    requested, surfaces the Sprint 8 WS4 Bennett 2017 candidate channels
+    (CH03/CH04/CH07/CH08) as blocked_wrong_scope candidate context for the
+    selected full-energy demonstrator (pf1000_full_energy_27_to_40_kv).
     """
-    from dpf.first_principles.startup_bvp import STARTUP_BVP_SOURCE_REFS
+    from dpf.first_principles.startup_bvp import build_startup_bvp_packet
 
-    # The Bennett KR slug must NOT have been injected into startup_bvp.py refs
-    # (startup_bvp.py wiring is a lead-applied delta, not a WS4 task).
-    for ref in STARTUP_BVP_SOURCE_REFS:
-        assert "bennett-2017-kinetic-dpf-breakdown" not in ref.get("path", ""), (
-            "startup_bvp.py STARTUP_BVP_SOURCE_REFS must not be modified by WS4; "
-            "runtime wiring is a lead-applied delta"
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "surface_breakdown_bvp",
+            "evidence_status": "reviewed",
+            "source_scope": "pf1000_full_energy_27_to_40_kv",
+        },
+        include_bennett_wrong_scope_context=True,
+    )
+    context = packet["bennett_wrong_scope_candidate_context"]
+    assert context["status"] == "bennett_wrong_scope_candidate_context"
+    assert context["source_id"] == "bennett_2017_kinetic_dpf_breakdown"
+    assert "bennett-2017-kinetic-dpf-breakdown" in context["kr_path"]
+    # Exactly the four Bennett candidate channels are surfaced.
+    assert set(context["candidate_channels"].keys()) == {
+        "CH03",
+        "CH04",
+        "CH07",
+        "CH08",
+    }
+    # Each surfaced channel is source-backed AND wrong-scope for the demonstrator.
+    for ch_id, record in context["candidate_channels"].items():
+        assert record["source_backed_candidate"] is True, (
+            f"{ch_id} must be source-backed candidate context"
         )
+        assert record["same_scope_status_for_demonstrator"] == "blocked_wrong_scope", (
+            f"{ch_id} must stay blocked_wrong_scope for the full-energy demonstrator"
+        )
+        assert record["demonstrator_scope"] == "pf1000_full_energy_27_to_40_kv"
+    assert context["demonstrator_same_scope_status"] == "blocked_wrong_scope"
+    assert context["transfer_rule_status"] == "no_reviewed_transfer_rule"
+
+
+def test_bennett_wrong_scope_context_not_present_unless_requested() -> None:
+    """The Bennett context block is opt-in: absent (empty) unless requested.
+
+    Default callers (no include_bennett_wrong_scope_context flag) get an explicit
+    'not_requested' marker with no candidate channels, so the demonstrator
+    startup packet is unchanged unless the runtime asks for the context.
+    """
+    from dpf.first_principles.startup_bvp import build_startup_bvp_packet
+
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "surface_breakdown_bvp",
+            "evidence_status": "reviewed",
+            "source_scope": "pf1000_full_energy_27_to_40_kv",
+        }
+    )
+    context = packet["bennett_wrong_scope_candidate_context"]
+    assert context["status"] == "bennett_wrong_scope_candidate_context_not_requested"
+    assert context["candidate_channels"] == {}
+    assert context["can_close_startup_bvp_packet"] is False
+    assert context["can_support_first_principles_acceptance"] is False
+
+
+def test_bennett_wrong_scope_context_cannot_lift_startup_acceptance() -> None:
+    """Bennett wrong-scope candidate context must NOT produce acceptance.
+
+    WS9-4 non-negotiable: even with the Bennett context requested, all required
+    startup channels declared, and an accepted mode + reviewed evidence, the
+    startup BVP packet stays blocked. The Bennett context carries explicit
+    non-acceptance flags and the typed StartupPacket remains the single
+    acceptance authority (no computed channel).
+    """
+    from dpf.first_principles.startup_bvp import (
+        REQUIRED_STARTUP_CHANNELS,
+        build_startup_bvp_packet,
+    )
+
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "surface_breakdown_bvp",
+            "evidence_status": "accepted_same_scope_source",
+            "source_scope": "pf1000_full_energy_27_to_40_kv",
+            "can_support_whole_shot_acceptance": True,
+            "accepted_channels": list(REQUIRED_STARTUP_CHANNELS),
+        },
+        include_bennett_wrong_scope_context=True,
+    )
+    # Headline packet stays blocked.
+    assert packet["status"] != "accepted_startup_bvp_packet"
+    assert packet["status"] == "blocked_startup_bvp_packet_not_available"
+    assert packet["whole_shot_startup_blocked"] is True
+    assert packet["can_support_first_principles_acceptance"] is False
+    assert packet["can_support_whole_shot_acceptance"] is False
+    # The Bennett context itself is non-acceptance.
+    context = packet["bennett_wrong_scope_candidate_context"]
+    assert context["can_close_startup_bvp_packet"] is False
+    assert context["can_support_whole_shot_acceptance"] is False
+    assert context["can_support_first_principles_acceptance"] is False
+    assert context["whole_shot_startup_blocked"] is True
+    for record in context["candidate_channels"].values():
+        assert record["can_support_startup_bvp_acceptance"] is False
+        assert record["accepted_runtime_claim"] is False
+        assert record["can_support_first_principles_acceptance"] is False
+    # The typed StartupPacket remains blocked (single acceptance authority).
+    assert packet["startup_channel_packet"]["can_support_first_principles_acceptance"] is (
+        False
+    )
+
+
+def test_startup_bvp_still_blocked_until_selected_scope_startup_packet() -> None:
+    """Startup BVP stays blocked: no selected-scope startup packet exists.
+
+    WS9-4 required test: passing the Bennett wrong-scope candidate channels (the
+    only source-backed startup channels available) cannot produce a selected-scope
+    startup packet. Until a same-scope startup packet exists for
+    pf1000_full_energy_27_to_40_kv, the startup BVP remains blocked.
+    """
+    from dpf.first_principles.startup_bvp import build_startup_bvp_packet
+
+    packet = build_startup_bvp_packet(
+        {
+            "mode": "imported_pic_sheath_state",
+            "evidence_status": "reviewed",
+            "source_scope": "pf1000_full_energy_27_to_40_kv",
+            "can_support_whole_shot_acceptance": True,
+        },
+        include_bennett_wrong_scope_context=True,
+    )
+    assert packet["whole_shot_startup_blocked"] is True
+    assert packet["can_support_first_principles_acceptance"] is False
+    # Bennett context is present but wrong-scope for this demonstrator.
+    context = packet["bennett_wrong_scope_candidate_context"]
+    assert context["demonstrator_same_scope_status"] == "blocked_wrong_scope"

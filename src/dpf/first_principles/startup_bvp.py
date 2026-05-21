@@ -39,6 +39,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
+from dpf.first_principles.sprint8_bennett_startup_target_extraction import (
+    sprint8_ws4_bennett_startup_packet,
+)
+
 STARTUP_BVP_SOURCE_REFS = (
     {
         "path": (
@@ -218,6 +222,7 @@ def build_startup_bvp_packet(
     circuit: Mapping[str, Any] | None = None,
     candidate_breakdown_audit: Mapping[str, Any] | None = None,
     accepted_channels: tuple[str, ...] | list[str] = (),
+    include_bennett_wrong_scope_context: bool = False,
 ) -> dict[str, Any]:
     """Return a startup packet that rejects non-source-backed whole-shot starts.
 
@@ -228,6 +233,13 @@ def build_startup_bvp_packet(
     status='accepted_startup_bvp_packet' regardless of caller-declared
     accepted_channels or payload flags.  Caller-supplied channel payloads are
     preserved as engineering telemetry only.
+
+    When ``include_bennett_wrong_scope_context`` is True the packet also exposes
+    the Sprint 8 WS4 Bennett 2017 CH03/CH04/CH07/CH08 target-extraction channels
+    as ``blocked_wrong_scope`` candidate context (audit P1-2 lead-owned startup
+    runtime delta). Bennett 2017 is wrong-scope for the selected full-energy
+    demonstrator; the context is engineering evidence only and cannot lift the
+    startup BVP packet to acceptance.
     """
 
     mode = str(startup.get("mode", "not_declared"))
@@ -305,6 +317,16 @@ def build_startup_bvp_packet(
         "startup_payload_review": startup_payload_review,
         "candidate_breakdown_audit": _candidate_breakdown_audit_packet(
             candidate_breakdown_audit
+        ),
+        "bennett_wrong_scope_candidate_context": (
+            _bennett_wrong_scope_candidate_context()
+            if include_bennett_wrong_scope_context
+            else {
+                "status": "bennett_wrong_scope_candidate_context_not_requested",
+                "candidate_channels": {},
+                "can_close_startup_bvp_packet": False,
+                "can_support_first_principles_acceptance": False,
+            }
         ),
         "candidate_input_policy": {
             "candidate_inputs_can_seed_engineering_runs": True,
@@ -649,6 +671,97 @@ def _mode_class(mode: str) -> str:
     if mode in REJECTED_STARTUP_MODES:
         return "rejected_for_accepted_claims"
     return "unknown"
+
+
+# ===========================================================================
+# Sprint 9 WS9-4 -- Bennett 2017 wrong-scope candidate context
+# ===========================================================================
+#
+# Audit P1-2 (CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md)
+# requires the lead-owned startup runtime delta: expose the Sprint 8 WS4 Bennett
+# 2017 target-extraction packet (CH03/CH04/CH07/CH08) inside the startup runtime
+# telemetry as source-backed, wrong-scope candidate context for the selected
+# full-energy demonstrator (pf1000_full_energy_27_to_40_kv).
+#
+# Bennett 2017 is pf1000_generic kinetic-PIC MA-scale; it is WRONG-SCOPE for the
+# pf1000_full_energy_27_to_40_kv demonstrator. These channels are engineering
+# candidate context only: they cannot satisfy same-scope startup acceptance and
+# cannot lift the startup BVP packet. The startup BVP stays blocked.
+
+#: Demonstrator scope for which Bennett channels are wrong-scope (Phase A WS2 lock).
+BENNETT_STARTUP_DEMONSTRATOR_SCOPE: str = "pf1000_full_energy_27_to_40_kv"
+
+#: Bennett channel IDs surfaced as wrong-scope candidate context.
+BENNETT_WRONG_SCOPE_CANDIDATE_CHANNEL_IDS: tuple[str, ...] = (
+    "CH03",
+    "CH04",
+    "CH07",
+    "CH08",
+)
+
+
+def _bennett_wrong_scope_candidate_context() -> dict[str, Any]:
+    """Return the Bennett 2017 CH03/04/07/08 wrong-scope candidate context block.
+
+    Imports the Sprint 8 WS4 Bennett target-extraction packet
+    (``sprint8_bennett_startup_target_extraction.sprint8_ws4_bennett_startup_packet``)
+    and re-exposes its CH03/CH04/CH07/CH08 candidate channels as
+    ``blocked_wrong_scope`` candidate context for the selected full-energy
+    demonstrator. None of these channels may produce ``accepted_startup_bvp_packet``
+    or satisfy same-scope startup acceptance; they are engineering candidate
+    context only.
+
+    Returns:
+        A telemetry block with ``status='bennett_wrong_scope_candidate_context'``,
+        the per-channel candidate context (channel id, KR path, verbatim source
+        page, ``same_scope_status_for_demonstrator='blocked_wrong_scope'``), and
+        explicit non-acceptance flags.
+    """
+    packet = sprint8_ws4_bennett_startup_packet()
+    candidate_channels = packet.get("candidate_channels", {})
+    channels: dict[str, dict[str, Any]] = {}
+    for channel_key in BENNETT_WRONG_SCOPE_CANDIDATE_CHANNEL_IDS:
+        record = candidate_channels.get(channel_key)
+        if record is None:
+            continue
+        channels[channel_key] = {
+            "channel_id": record.get("channel_id"),
+            "channel_name": record.get("channel_name"),
+            "source_id": record.get("source_id"),
+            "kr_path": record.get("kr_path"),
+            "kr_section": record.get("kr_section"),
+            "scope_tag": record.get("scope_tag"),
+            "source_backed_candidate": bool(record.get("source_backed_candidate")),
+            # Wrong-scope for the selected full-energy demonstrator: this is the
+            # non-negotiable classification from Sprint 8 WS4 / Phase A WS2.
+            "same_scope_status_for_demonstrator": "blocked_wrong_scope",
+            "demonstrator_scope": BENNETT_STARTUP_DEMONSTRATOR_SCOPE,
+            # Non-acceptance: a wrong-scope candidate cannot close a startup BVP.
+            "can_support_startup_bvp_acceptance": False,
+            "accepted_runtime_claim": False,
+            "can_support_first_principles_acceptance": False,
+        }
+    return {
+        "status": "bennett_wrong_scope_candidate_context",
+        "source_id": "bennett_2017_kinetic_dpf_breakdown",
+        "source_packet_id": packet.get("packet_id"),
+        "kr_path": packet.get("kr_path"),
+        "citation": packet.get("citation"),
+        "scope_tag": packet.get("scope_tag"),
+        "demonstrator_scope": BENNETT_STARTUP_DEMONSTRATOR_SCOPE,
+        "demonstrator_same_scope_status": "blocked_wrong_scope",
+        "candidate_channels": channels,
+        "context_role": (
+            "source_backed wrong-scope candidate startup context for the "
+            "selected full-energy demonstrator; engineering evidence only"
+        ),
+        "transfer_rule_status": "no_reviewed_transfer_rule",
+        # The whole point of WS9-4: this context can never lift acceptance.
+        "can_close_startup_bvp_packet": False,
+        "can_support_whole_shot_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+        "whole_shot_startup_blocked": True,
+    }
 
 
 # ===========================================================================

@@ -80,6 +80,7 @@ from dpf.first_principles.neutron_authority import (
 from dpf.first_principles.numerical_fidelity import build_numerical_fidelity_packet
 from dpf.first_principles.plasmapy_audit import build_plasmapy_formulary_audit_packet
 from dpf.first_principles.power_port import build_engineering_power_port_packet
+from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
 from dpf.first_principles.same_scope import build_same_scope_source_packet
 from dpf.first_principles.spatial_field_temperature import (
     build_spatial_field_temperature_packet,
@@ -211,6 +212,18 @@ class FirstPrinciples3DDeck:
     startup_payload: dict[str, Any] = field(default_factory=dict)
     device_name: str = "not_declared"
     validation_scope: str = "not_declared_engineering_smoke"
+    # Selected-machine source scope: device-and-operating-point source scope
+    # derived from the package deck's KR geometry/circuit citations.  Distinct
+    # from architecture/equation-method evidence (the hybrid-PIC paper).  A
+    # deck id is NEVER a source scope.  Super-Sprint 9 WS9-2 (fixes P0-2).
+    selected_machine_source_scope: str = (
+        "not_declared_engineering_smoke_machine_source"
+    )
+    # KR geometry/circuit source-reference paths for the selected machine.
+    # Populated from the package deck's device source references; used by the
+    # candidate packet and conductor-mask telemetry instead of the LLNL-like
+    # architecture geometry.  Super-Sprint 9 WS9-2 / WS9-6.
+    selected_machine_source_references: tuple[str, ...] = ()
     validation_targets: tuple[dict[str, Any], ...] = ()
     limiter_readiness_accepted_channels: tuple[str, ...] = ()
     same_scope_accepted_channels: tuple[str, ...] = ()
@@ -466,6 +479,9 @@ class FirstPrinciples3DDeck:
             circuit=circuit,
             candidate_breakdown_audit=candidate_breakdown_audit,
             accepted_channels=self.startup_accepted_channels,
+            include_bennett_wrong_scope_context=(
+                self.validation_scope == SELECTED_SCOPE_LABEL
+            ),
         )
         packet["declared_startup_required_channels"] = list(
             self.startup_required_channels
@@ -1170,9 +1186,18 @@ class HybridEMPicFluidRun:
                 "hybrid_pic_3d_evidence": evidence,
             }
         )
+        # WS9-2: the candidate packet carries the SELECTED-MACHINE source scope
+        # (device + operating point), never the LLNL-like architecture scope.
+        # The hybrid-PIC paper stays separate architecture/equation-method
+        # evidence under ``architecture_source`` / ``architecture_source_scope``.
         validation_packet = _first_principles_candidate_packet(
             geometry_dimensionality="cartesian_3d",
-            source_scope=geometry.source_scope,
+            source_scope=deck.selected_machine_source_scope,
+            architecture_source=HYBRID_PIC_3D_SOURCE,
+            architecture_source_scope=geometry.architecture_source_scope,
+            selected_machine_source_references=(
+                deck.selected_machine_source_references
+            ),
             hybrid_pic_3d_evidence=evidence,
             hybrid_pic_3d_readiness=hybrid_pic_3d_readiness,
             conservation_evidence=conservation,
@@ -1192,8 +1217,18 @@ class HybridEMPicFluidRun:
         telemetry = {
             "status": ENGINEERING_CANDIDATE_STATUS,
             "run_mode": RUN_MODE,
+            # ``source`` / ``architecture_source*`` are the equation-method
+            # (hybrid-PIC) evidence; ``source_scope`` is the SELECTED-MACHINE
+            # source scope.  They are deliberately separate (WS9-2, P0-2).
             "source": HYBRID_PIC_3D_SOURCE,
-            "source_scope": geometry.source_scope,
+            "architecture_source": HYBRID_PIC_3D_SOURCE,
+            "architecture_source_scope": geometry.architecture_source_scope,
+            "architecture_evidence_role": geometry.architecture_evidence_role,
+            "source_scope": deck.selected_machine_source_scope,
+            "selected_machine_source_scope": deck.selected_machine_source_scope,
+            "selected_machine_source_references": list(
+                deck.selected_machine_source_references
+            ),
             "startup": startup_packet,
             "deck_diff": deck_diff_packet,
             "limiter_readiness": limiter_readiness_packet,
@@ -2109,6 +2144,9 @@ def _first_principles_candidate_packet(
     *,
     geometry_dimensionality: str,
     source_scope: str,
+    architecture_source: str,
+    architecture_source_scope: str,
+    selected_machine_source_references: tuple[str, ...],
     hybrid_pic_3d_evidence: Mapping[str, Any],
     hybrid_pic_3d_readiness: Mapping[str, Any],
     conservation_evidence: Mapping[str, Any],
@@ -2125,7 +2163,13 @@ def _first_principles_candidate_packet(
     certificate_gate: Mapping[str, Any],
     generalization: Mapping[str, Any],
 ) -> dict[str, Any]:
-    """Summarize candidate evidence without invoking the validation workflow."""
+    """Summarize candidate evidence without invoking the validation workflow.
+
+    ``source_scope`` is the SELECTED-MACHINE source scope (device + operating
+    point).  ``architecture_source`` / ``architecture_source_scope`` carry the
+    separate equation-method (hybrid-PIC) evidence and must NOT be conflated
+    with the selected-machine scope.  Super-Sprint 9 WS9-2 (fixes audit P0-2).
+    """
 
     evidence_keys = sorted(str(key) for key in hybrid_pic_3d_evidence)
     return {
@@ -2133,6 +2177,14 @@ def _first_principles_candidate_packet(
         "scientific_status": ENGINEERING_CANDIDATE_STATUS,
         "geometry_dimensionality": geometry_dimensionality,
         "source_scope": source_scope,
+        "architecture_source": architecture_source,
+        "architecture_source_scope": architecture_source_scope,
+        "architecture_evidence_role": (
+            "equation_method_and_architecture_source"
+        ),
+        "selected_machine_source_references": list(
+            selected_machine_source_references
+        ),
         "candidate_evidence_keys": evidence_keys,
         "hybrid_pic_3d_readiness_status": hybrid_pic_3d_readiness.get("status"),
         "hybrid_pic_3d_missing_capabilities": hybrid_pic_3d_readiness.get(
@@ -2723,6 +2775,52 @@ def _conductor_mask_projection_error(
     }
 
 
+def _conductor_mask_mesh_resolution_warning(
+    *,
+    is_pf1000_rod_projection: bool,
+    cells_per_rod_diameter: float | None,
+) -> dict[str, Any]:
+    """Build the explicit cathode-rod mesh-resolution warning packet.
+
+    A discrete circular cathode rod cannot be represented on a Cartesian grid
+    below about :data:`_REVIEWED_MIN_CELLS_PER_ROD_DIAMETER` cells across its
+    diameter.  When a PF-1000 rod projection falls below that, the warning is
+    raised and ``can_support_geometry_acceptance`` is False so an under-
+    resolved rod can never lift geometry acceptance.  Super-Sprint 9 WS9-6.
+    """
+
+    under_resolved = bool(
+        is_pf1000_rod_projection
+        and cells_per_rod_diameter is not None
+        and cells_per_rod_diameter < _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER
+    )
+    if under_resolved:
+        warning = (
+            "cathode rod diameter is under-resolved by the grid: "
+            f"{cells_per_rod_diameter:.3f} cells across a rod diameter is "
+            f"below the declared minimum of "
+            f"{_REVIEWED_MIN_CELLS_PER_ROD_DIAMETER:.1f}; refine the radial "
+            "mesh before any reviewed PF-1000 geometry mask"
+        )
+    else:
+        warning = None
+    return {
+        "status": (
+            "warning_cathode_rod_under_resolved_not_validation"
+            if under_resolved
+            else "candidate_mesh_resolution_check_not_validation"
+        ),
+        "cathode_rod_under_resolved": under_resolved,
+        "cells_per_rod_diameter": cells_per_rod_diameter,
+        "reviewed_min_cells_per_rod_diameter": (
+            _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER
+        ),
+        "warning": warning,
+        "can_support_geometry_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
 def _conductor_mask_packet(
     *,
     deck: FirstPrinciples3DDeck,
@@ -2744,13 +2842,27 @@ def _conductor_mask_packet(
         cells_per_rod is not None
         and cells_per_rod >= _REVIEWED_MIN_CELLS_PER_ROD_DIAMETER
     )
+    # WS9-6: an under-resolved cathode rod cannot support a reviewed geometry
+    # mask.  Emit an explicit mesh-resolution warning whenever a PF-1000 rod
+    # projection places fewer than the declared minimum cells across a rod
+    # diameter, and confirm it cannot lift geometry acceptance.
+    mesh_resolution_warning = _conductor_mask_mesh_resolution_warning(
+        is_pf1000_rod_projection=pf1000_rod_projection,
+        cells_per_rod_diameter=cells_per_rod,
+    )
     return {
         "status": "candidate_engineering_conductor_mask_not_validation",
+        # ``source`` is the mask-PROJECTION algorithm (architecture) source;
+        # the device geometry it projects is cited under
+        # ``selected_machine_source_*`` from the selected deck (WS9-6).
         "source": HYBRID_PIC_3D_SOURCE,
-        "source_lines": (
-            "613-619, 640-641, PF1000 geometry lines 111-117, 262-268, "
-            "Krauz 2012 PF-1000 geometry lines 344-351 and 453-454"
+        "architecture_source": HYBRID_PIC_3D_SOURCE,
+        "source_lines": "613-619, 640-641",
+        "selected_machine_source_scope": deck.selected_machine_source_scope,
+        "selected_machine_source_references": list(
+            deck.selected_machine_source_references
         ),
+        "declared_scope": deck.validation_scope,
         "mask_source": source,
         "conductor_mask_status": deck.conductor_mask_status,
         "conductor_mask_mode": deck.conductor_mask_mode,
@@ -2804,8 +2916,12 @@ def _conductor_mask_packet(
                 rods_resolved
                 and deck.device_anode_inner_radius_m is not None
             ),
+            "cathode_rod_under_resolved": bool(
+                mesh_resolution_warning["cathode_rod_under_resolved"]
+            ),
             "can_support_first_principles_acceptance": False,
         },
+        "mesh_resolution_warning": mesh_resolution_warning,
         "coordinate_interpretation": (
             "centered_cartesian_full_azimuth_projection"
             if pf1000_rod_projection
@@ -3059,6 +3175,13 @@ def _coerce_deck_values(values: dict[str, Any]) -> dict[str, Any]:
         coerced["validation_targets"] = tuple(
             dict(v) for v in coerced["validation_targets"]
         )
+    for key in ("validation_scope", "selected_machine_source_scope"):
+        if coerced.get(key) is not None:
+            coerced[key] = str(coerced[key])
+    if coerced.get("selected_machine_source_references") is not None:
+        coerced["selected_machine_source_references"] = tuple(
+            str(v) for v in coerced["selected_machine_source_references"]
+        )
     return {
         key: value
         for key, value in coerced.items()
@@ -3142,6 +3265,12 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
         ),
         "device_insulator_material": _get(deck.device, "insulator_material", None),
         "validation_scope": _validation_scope_from_package_deck(deck),
+        "selected_machine_source_scope": _selected_machine_source_scope_from_package_deck(
+            deck
+        ),
+        "selected_machine_source_references": (
+            _selected_machine_source_references_from_package_deck(deck)
+        ),
         "validation_targets": tuple(asdict(target) for target in deck.validation_targets),
         "n_steps": diagnostics.n_steps,
         "history_stride": _get(diagnostics, "history_stride", 1),
@@ -3210,7 +3339,71 @@ def _values_from_package_deck(deck: Any) -> dict[str, Any]:
     }
 
 
+_UNDECLARED_PACKAGE_DECK_VALIDATION_SCOPE = "not_declared_engineering_smoke"
+_UNDECLARED_PACKAGE_DECK_SOURCE_SCOPE = (
+    "not_declared_engineering_smoke_machine_source"
+)
+
+
 def _validation_scope_from_package_deck(deck: Any) -> str:
-    if getattr(deck, "validation_targets", ()):
-        return str(getattr(deck, "deck_id", "declared_validation_target_scope"))
-    return str(getattr(deck, "deck_id", getattr(deck.device, "name", "not_declared")))
+    """Resolve the package-native deck's declared validation scope.
+
+    A deck id is a runtime artifact identifier, NOT a validation scope, and is
+    never substituted here.  The deck's explicit ``validation_scope`` field is
+    authoritative; a deck that does not declare one stays at the engineering-
+    smoke placeholder so no downstream packet mistakes the deck id for the
+    selected scope.  Super-Sprint 9 WS9-1 (fixes audit P0-1).
+    """
+
+    declared = str(
+        getattr(deck, "validation_scope", _UNDECLARED_PACKAGE_DECK_VALIDATION_SCOPE)
+    )
+    if declared and declared != _UNDECLARED_PACKAGE_DECK_VALIDATION_SCOPE:
+        return declared
+    return _UNDECLARED_PACKAGE_DECK_VALIDATION_SCOPE
+
+
+def _selected_machine_source_scope_from_package_deck(deck: Any) -> str:
+    """Resolve the package-native deck's selected-machine source scope.
+
+    This is a device/operating-point source scope, distinct from the
+    architecture/equation-method source (the hybrid-PIC paper).  A deck id is
+    never substituted.  Super-Sprint 9 WS9-2 (fixes audit P0-2).
+    """
+
+    declared = str(
+        getattr(
+            deck,
+            "selected_machine_source_scope",
+            _UNDECLARED_PACKAGE_DECK_SOURCE_SCOPE,
+        )
+    )
+    if declared and declared != _UNDECLARED_PACKAGE_DECK_SOURCE_SCOPE:
+        return declared
+    return _UNDECLARED_PACKAGE_DECK_SOURCE_SCOPE
+
+
+def _selected_machine_source_references_from_package_deck(
+    deck: Any,
+) -> tuple[str, ...]:
+    """Collect KR geometry/circuit source-reference paths for the deck machine.
+
+    Pulls the source-reference paths declared on the deck device (and circuit),
+    so the candidate packet and conductor-mask telemetry can cite the selected
+    deck's KR geometry rather than the LLNL-like architecture geometry.
+    Super-Sprint 9 WS9-2 / WS9-6.
+    """
+
+    paths: list[str] = []
+    for holder_name in ("device", "circuit"):
+        holder = getattr(deck, holder_name, None)
+        if holder is None:
+            continue
+        references = getattr(holder, "source_references", ())
+        for reference in references:
+            path = _get(reference, "path", None)
+            if path:
+                text = str(path)
+                if text not in paths:
+                    paths.append(text)
+    return tuple(paths)

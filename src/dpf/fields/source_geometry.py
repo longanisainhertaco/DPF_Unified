@@ -38,11 +38,21 @@ OMEGA_CURRENT_FLOOR_A_M2 = 1.0e-6
 
 @dataclass(frozen=True)
 class HybridPICSourceGeometry:
-    """Typed LLNL-like setup values extracted from the local hybrid PIC source."""
+    """Typed LLNL-like setup values extracted from the local hybrid PIC source.
+
+    The hybrid-PIC paper is ARCHITECTURE / equation-method evidence: it backs
+    the Maxwell + hybrid-PIC-fluid + generalized-Ohm + circuit-coupling method,
+    NOT the selected-machine operating point.  ``architecture_source_scope``
+    names that role explicitly.  ``source_scope`` is retained for back-compat
+    but it is the architecture scope, never a selected-machine validation
+    scope (Super-Sprint 9 WS9-2, fixes audit P0-2).
+    """
 
     source: str = HYBRID_PIC_3D_SOURCE
     source_lines: str = "632-740"
     source_scope: str = "llnl_like_180ka_axisymmetric_hybrid_pic"
+    architecture_source_scope: str = "llnl_like_180ka_axisymmetric_hybrid_pic"
+    architecture_evidence_role: str = "equation_method_and_architecture_source"
     coordinate_system: str = "2d_axisymmetric_rz"
     anode_length_m: float = 0.05
     anode_radius_m: float = 0.01
