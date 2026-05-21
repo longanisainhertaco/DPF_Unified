@@ -333,6 +333,9 @@ PF1000_GEOMETRY_SOURCE_REFS = (
     "KnowledgeReference/auluck-2021-dpf-circuit-element.md:203-223,426-431",
     "KnowledgeReference/anisotropy-of-the-emission-of-dd-fusion-neutrons-"
     "caused-by-the-plasma-focus-vessel-527cc533.md:113-118",
+    "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-"
+    "d3e51f6c.md:90-104",
+    "KnowledgeReference/pf-1000-device-a2d6bc15.md:83-154",
 )
 
 # The 10 source-tagged material/partition mask classes the runtime must emit.
@@ -720,6 +723,68 @@ class PF1000GeometryPacket:
             conflicts=cls._conflicts(),
         )
 
+    @classmethod
+    def scholz_2001_24rod_large_electrode(cls) -> PF1000GeometryPacket:
+        """PF-1000 2000/2001 24-rod large-electrode hardware packet.
+
+        [KR: recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md:90-98]
+        reports 24 stainless-steel rods, 600 mm rod length, 32 mm rod
+        diameter, 400 mm outer-electrode diameter, 244 mm inner-electrode
+        diameter, 62 mm interelectrode gap, and a 229 mm diameter / 113 mm
+        alumina insulator.  [KR: pf-1000-device-a2d6bc15.md:129-154]
+        supplies matching early PF-1000 facility, chamber, and bank context.
+
+        This constructor is revision-scoped source consumption only.  It does
+        not promote the default Akel/Krauz runtime constructors and still fails
+        closed on bore length, insulator wall thickness, backplate dimensions,
+        and same-scope 3-D review.
+        """
+        tag = "pf1000_scholz_2001_24rod_large_electrode"
+        scope = "pf1000_2001_24_rod_large_electrode_hardware"
+        scholz2001 = (
+            "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-"
+            "d3e51f6c.md"
+        )
+        scholz2000 = "KnowledgeReference/pf-1000-device-a2d6bc15.md"
+        return cls(
+            geometry_packet_id="pf1000_geometry_packet_scholz_2001_24rod",
+            geometry_source_tag=tag,
+            scope_tag=scope,
+            source_refs=PF1000_GEOMETRY_SOURCE_REFS,
+            fields=cls._fields_for(
+                scope_tag=scope,
+                anode_radius_m=0.122,
+                anode_radius_ref=f"{scholz2001}:93-94",
+                anode_length_m=0.600,
+                anode_length_ref=f"{scholz2000}:88-90",
+                anode_length_status="source_supported",
+                anode_length_conflict="anode_length_z0",
+                cathode_cage_radius_m=0.200,
+                cathode_cage_radius_ref=f"{scholz2001}:90-93",
+                cathode_cage_radius_status="source_supported",
+                cathode_cage_conflict="cathode_cage_radius_b",
+                cathode_rod_count=24,
+                cathode_rod_count_ref=f"{scholz2001}:90-92",
+                cathode_rod_count_status="source_supported",
+                cathode_rod_count_conflict="cathode_rod_count",
+                cathode_rod_diameter_m=0.032,
+                cathode_rod_diameter_ref=f"{scholz2001}:90-92",
+                cathode_rod_length_m=0.600,
+                cathode_rod_length_ref=f"{scholz2001}:90-92",
+                insulator_exposed_length_m=0.113,
+                insulator_exposed_length_ref=f"{scholz2001}:96-98",
+                insulator_exposed_length_status="source_supported",
+                insulator_exposed_length_conflict="insulator_exposed_length",
+                insulator_outer_radius_m=0.1145,
+                insulator_outer_radius_ref=f"{scholz2001}:96-98",
+                chamber_inner_radius_m=0.700,
+                chamber_inner_radius_ref=f"{scholz2000}:134-136",
+                chamber_length_m=2.500,
+                chamber_length_ref=f"{scholz2000}:134-136",
+            ),
+            conflicts=cls._conflicts(),
+        )
+
     # --- internal field/conflict builders ---------------------------------
 
     @staticmethod
@@ -779,12 +844,12 @@ class PF1000GeometryPacket:
                     "reflects a category mismatch (hardware geometry vs "
                     "Lee-fit parameter) rather than a genuine measurement "
                     "disagreement. The physical hardware cage geometric "
-                    "radius is 200 mm per Krauz. However, no second "
-                    "independent hardware-scope source confirms the 200 mm "
-                    "value, so this conflict is kept and the field "
-                    "cathode_cage_radius_m remains status=conflict in both "
-                    "constructors pending a confirming hardware source. "
-                    "Not averaged."
+                    "radius is 200 mm per Krauz and is now corroborated by "
+                    "the Scholz 2000/2001 PF-1000 hardware papers. The field "
+                    "cathode_cage_radius_m nevertheless remains "
+                    "status=conflict in the active Akel/Krauz constructors "
+                    "until a revision-selection policy maps hardware sources "
+                    "to the requested simulation scope. Not averaged."
                 ),
             ),
             PF1000GeometryConflict(
@@ -847,15 +912,21 @@ class PF1000GeometryPacket:
         chamber_inner_radius_ref: str,
         chamber_length_m: float,
         chamber_length_ref: str,
+        cathode_rod_length_m: float | None = None,
+        cathode_rod_length_ref: str | None = None,
+        insulator_outer_radius_m: float | None = None,
+        insulator_outer_radius_ref: str | None = None,
     ) -> dict[str, PF1000GeometryField]:
         """Build the typed geometry-field map for one source-tagged revision.
 
         Source-supported fields carry a single KR ref. Conflict fields carry
         value `None` and a conflict group (the chosen revision's value is held
         in the conflict record's candidate list). The still-unresolved WP-N3
-        rows (anode bore runtime authority, bore length, insulator outer radius
-        / wall thickness, backplate radial extent / axial thickness, cathode rod
-        length, and end-cap geometry) become typed `blocked` fields.
+        rows (anode bore runtime authority, bore length, insulator wall
+        thickness, backplate radial extent / axial thickness, and end-cap
+        geometry) become typed `blocked` fields.  Revision-specific callers may
+        supply cathode rod length and insulator outer radius only when target
+        extraction has a direct hardware source for the requested scope.
         """
         def conflict(name: str, units: str, group: str) -> PF1000GeometryField:
             return PF1000GeometryField(
@@ -952,11 +1023,20 @@ class PF1000GeometryPacket:
             "cathode_rod_diameter_m", cathode_rod_diameter_m, "m",
             cathode_rod_diameter_ref,
         )
-        # cathode rod length -- WP-N3 row 4: two unequal revisions, no number.
-        fields["cathode_rod_length_m"] = blocked(
-            "cathode_rod_length_m", "m",
-            "PF1000-BLK-004-cathode-rod-length-no-kr-source",
-        )
+        # cathode rod length -- WP-N3 row 4.  Only the revision-specific Scholz
+        # 2000/2001 24-rod constructor supplies this as a source-supported
+        # field.  Akel/Krauz/Scholz-Gribkov constructors keep it blocked until
+        # their scopes are explicitly mapped.
+        if cathode_rod_length_m is not None and cathode_rod_length_ref is not None:
+            fields["cathode_rod_length_m"] = supported(
+                "cathode_rod_length_m", cathode_rod_length_m, "m",
+                cathode_rod_length_ref,
+            )
+        else:
+            fields["cathode_rod_length_m"] = blocked(
+                "cathode_rod_length_m", "m",
+                "PF1000-BLK-004-cathode-rod-length-source_available_scholz2000_2001_revision_not_mapped",
+            )
         # insulator exposed length is a conflict field (WP-N3 row 13).
         if insulator_exposed_length_status == "conflict":
             fields["insulator_exposed_length_m"] = conflict(
@@ -969,17 +1049,28 @@ class PF1000GeometryPacket:
                 insulator_exposed_length_ref,
             )
         # insulator outer radius / wall thickness -- WP-N3 rows 14/15.
-        # Sprint 4 KR search (2026-05-20) confirmed no KR file publishes the
-        # PF-1000 alumina insulator outer radius or wall thickness as a numeric
-        # value.  Krauz 2012 [KR:348-350] names the material (alumina) and gives
-        # the exposed axial length (85 mm) but provides no outer-radius or
-        # wall-thickness figure.  Scholz 2007 [KR:223-224] gives 113 mm exposed
-        # length, again no radial dimensions.  Verdict: BLOCKED with named
-        # missing data.
-        fields["insulator_outer_radius_m"] = blocked(
-            "insulator_outer_radius_m", "m",
-            "PF1000-BLK-015-insulator-outer-radius-no-kr-source",
-        )
+        # Sprint 6 user-supplied source extraction (2026-05-20) found a PF-1000
+        # 2001 24-rod hardware source reporting an alumina-insulator diameter
+        # of 229 mm and length of 113 mm
+        # [KR: recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md:96-98].
+        # This removes the old "no KR source" reason for the outer radius, but
+        # it does not yet close the active Akel/Krauz/Scholz-Gribkov runtime
+        # constructors because the revision mapping has not been added and
+        # wall thickness remains absent.  Verdict: blocked with source
+        # available, revision-specific mapping required.
+        if (
+            insulator_outer_radius_m is not None
+            and insulator_outer_radius_ref is not None
+        ):
+            fields["insulator_outer_radius_m"] = supported(
+                "insulator_outer_radius_m", insulator_outer_radius_m, "m",
+                insulator_outer_radius_ref,
+            )
+        else:
+            fields["insulator_outer_radius_m"] = blocked(
+                "insulator_outer_radius_m", "m",
+                "PF1000-BLK-015-insulator-outer-radius-source_available_scholz2001_revision_not_mapped",
+            )
         fields["insulator_wall_thickness_m"] = blocked(
             "insulator_wall_thickness_m", "m",
             "PF1000-BLK-016-insulator-wall-thickness-no-kr-source",

@@ -23,8 +23,8 @@ KnowledgeReference plus explicitly user-verified staged sources only; this audit
 
 ## Inventory
 
-- Indexed files: 1418
-- Actual files: 1418
+- Indexed files: 1430
+- Actual files: 1430
 - Unindexed files: 0
 - Changed indexed files: 0
 

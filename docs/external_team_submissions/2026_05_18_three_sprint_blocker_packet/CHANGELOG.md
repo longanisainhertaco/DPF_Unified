@@ -844,6 +844,61 @@ extracted) are indexed and the periodic-audit `module_source_vetting` +
 `source_truth_exhaustion` gates pass with `strict_passed=true` and
 `open_issue_count=0` respectively (293 modules total, up from 291).
 
+### Sprint 7 — first-principles runtime contract (2026-05-20)
+
+`b176c47` — Sprint 6 vetting/source-truth regeneration (above section).
+
+The Sprint 7 commit (hash assigned at commit time) delivers, per
+`docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_2026_05_20.md`,
+five workstreams plus the Sprint 6 user-supplied-papers intake baseline
+that Sprint 7 WS-A consumes (the two tracks are interleaved in the same
+runtime files and committed together):
+
+- **Sprint 6 user-supplied intake (WS-A input):** 9 user-supplied PDFs
+  recorded in `docs/USER_SUPPLIED_PAPERS_INTAKE_2026_05_20.{json,md}` (0
+  promoted / 9 skipped-existing / 0 failed) via
+  `scripts/promote_user_supplied_papers_2026_05_20.py`;
+  `src/dpf/first_principles/sprint6_user_target_extractions.py` +
+  `tests/test_sprint6_user_supplied_extractions.py`. Render evidence for
+  Scholz 2000/1999, Herold 1989, Shakya 2015 under `docs/extractions/`.
+- **WS-A Source-Ledger Closure:** all 9 intake records have a matching
+  source-acquisition-ledger row (31 rows, 0 dup `source_id`);
+  `PF1000-BLK-015` blocker status is `existing_kr_source_supported`;
+  Bruzzone/Bernal partial pair split. `tests/test_first_principles_v2_
+  handoff_ledgers.py` strengthened (34 tests).
+- **WS-B Revision-Scoped Geometry:** new
+  `PF1000GeometryPacket.scholz_2001_24rod_large_electrode` constructor —
+  10 source-supported fields cited to
+  `recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md:90-98` and
+  `pf-1000-device-a2d6bc15.md`; bore length / insulator wall thickness /
+  backplate dims stay blocked; Akel + Krauz constructors unchanged and
+  proven not to inherit Scholz 2001 dimensions (7 non-inheritance tests).
+- **WS-C Package-Native 3-D Acceptance Contract:** `hybrid_pic_3d_readiness`
+  is a first-class telemetry packet from `dpf.validation.hybrid_pic_3d`
+  (NOT the cylindrical `first_principles_mhd.py` gate), surfacing in
+  runtime telemetry, manifest candidate evidence, CLI `telemetry_packets`,
+  and `validation_packet`. 4 negative tests prove acceptance cannot be
+  produced by candidate-only records, missing top-level keys, wrong
+  backend labels, or missing same-scope 3-D validation.
+- **WS-D Same-Scope Te/Ti Rejection:** `same_scope.py` accepts
+  `electron_temperature_history` / `ion_temperature_or_distribution_history`
+  only from direct same-scope diagnostics with review + uncertainty;
+  manual `accepted_same_scope_channels` injection rejected; **no generic
+  `caveat_accepted` lane** (Codex Sprint 5 WS2 audit constraint honored).
+  4 dedicated negative controls.
+- **WS-E Next Physics Sources:**
+  `docs/extractions/SPRINT7_WSE_NEXT_PHYSICS_SOURCE_PACKETS_2026_05_20.md`
+  re-audits Braginskii Table 2 (PDF + render SHA-256 re-confirmed) and
+  Bennett 2017 (14 verbatim targets re-verified against the PDF pages);
+  LXCat / SRIM / Munro / PlasmaPy stay `source_equivalence_granted=false`
+  review-queue lanes. NO runtime coefficient wired.
+- **Deliverable audit memo:**
+  `docs/SPRINT7_RUNTIME_CONTRACT_AUDIT_MEMO_2026_05_20.md`.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance`
+remain `false` everywhere. Sprint 7 is not a validation sprint and produces
+no engineering-firm certificate. 233 focused tests pass; ruff clean.
+
 ## Notes on CHANGELOG conventions
 
 The final commit of any pass that updates this `CHANGELOG.md` is structurally

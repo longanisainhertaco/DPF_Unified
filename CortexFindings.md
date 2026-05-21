@@ -147,6 +147,30 @@ same-scope evidence remain open. The user-supplied Bruzzone/Bernal LHI paper is
 an exact SHA duplicate of the already-local anomalous-resistivity KR record and
 was recorded without duplicate promotion.
 
+2026-05-20 Sprint 6 blocker cleanup update: the user-supplied intake is now
+represented as nine fail-closed duplicate/existing-KR records, not just the
+initial Scholz/Bruzzone pair. The source-acquisition ledger explicitly covers
+Scholz 2001, Scholz 2000, Bruzzone/Bernal 2001, Gribkov/Scholz 2007, and the
+five context-only duplicate sources (Herold 1989, Scholz 1999 foam liner,
+Loarer 2007, Shakya 2015, Gribkov/Malaquias 2006). `PF1000-BLK-015` is no
+longer an absent-literature row: it is source-available for the Scholz 2001
+24-rod PF-1000 revision, but runtime acceptance still blocks on source-scope
+mapping, insulator wall thickness, backplate dimensions, full bore authority,
+reviewed dimensionality, and same-scope 3-D evidence. A revision-specific
+`PF1000GeometryPacket.scholz_2001_24rod_large_electrode()` constructor now
+consumes the Scholz 2000/2001 hardware values without mutating Akel/Krauz
+constructors.
+
+2026-05-20 package-native 3-D gate update: the package-native
+`first-principles-3d` runner now exposes the shared `hybrid_pic_3d_readiness`
+packet in runtime telemetry, manifests, and CLI telemetry packets. Candidate
+3-D component telemetry remains useful engineering evidence, but the shared
+readiness packet blocks it until every hybrid-PIC capability is accepted and
+same-scope 3-D validation exists. `same_scope.py` also now rejects
+electron-temperature and ion-temperature / ion-distribution claims from generic
+caveats, manual channel lists, Lee-model output, or text-only sources; direct
+same-scope diagnostic evidence with review and uncertainty is required.
+
 2026-05-20 source-target extraction update: the Sprint 4 extraction pass has
 converted six already-local KR/source-available items into typed, line-referenced
 target records in
@@ -6980,3 +7004,20 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   Claude automation is advisory and no-edit by default. It captures evidence
   and optional Claude critique for Codex review; it does not accept any physics
   claim or whole-shot runtime certificate.
+
+### 2026-05-20: Sprint 7 WS-A Source-Ledger Closure
+
+- Work completed:
+  verified Sprint 7 WS-A source-ledger closure against the user-supplied
+  intake. All 9 non-failed intake records have ledger rows. `PF1000-BLK-015`
+  corrected_status is `existing_kr_source_supported`. Context-only sources are
+  marked `resolves_blockers=context_only`. The Bruzzone 2001 anomalous-
+  resistivity pair is split: one KR-available row and one external companion row.
+  `tests/test_first_principles_v2_handoff_ledgers.py` updated for 31-row counts,
+  9-source intake coverage, and fail-closed status. Both test files pass (34 total).
+- Audit state:
+  31 source-acquisition rows, 0 duplicate source_ids, 12 P1+P2 external rows.
+  31 blocker-resolution rows, 0 duplicate blocker_ids, all fail-closed.
+- Boundary:
+  no runtime or acceptance state changed. Source-ledger closure is a mechanical
+  bookkeeping pass; it does not promote any physics to runtime-accepted status.

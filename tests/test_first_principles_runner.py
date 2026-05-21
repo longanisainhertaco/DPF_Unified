@@ -329,6 +329,17 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
         result.validation_packet["engineering_current_waveform_comparison_status"]
         == "blocked_current_waveform_target_not_bound"
     )
+    assert result.telemetry["hybrid_pic_3d_readiness"]["status"] == "blocked"
+    assert result.telemetry["hybrid_pic_3d_readiness"][
+        "can_support_first_principles_acceptance"
+    ] is False
+    assert "kinetic_ion_pic_push_deposition" in result.telemetry[
+        "hybrid_pic_3d_readiness"
+    ]["missing_capabilities"]
+    assert result.validation_packet["hybrid_pic_3d_readiness_status"] == "blocked"
+    assert "same_scope_3d_validation_packet" in result.validation_packet[
+        "hybrid_pic_3d_missing_capabilities"
+    ]
     assert result.manifest["validation_status"] == "not_validation"
     assert result.manifest["scientific_status"] == ENGINEERING_CANDIDATE_STATUS
     assert result.manifest["reduced_models_used"] is False
@@ -342,6 +353,9 @@ def test_run_first_principles_3d_deck_returns_candidate_manifest_and_telemetry()
     assert result.manifest["candidate_evidence"]["pic_particle_loading_packet"] == (
         result.telemetry["pic_particle_loading"]
     )
+    assert result.manifest["candidate_evidence"][
+        "hybrid_pic_3d_readiness_packet"
+    ] == result.telemetry["hybrid_pic_3d_readiness"]
     assert result.telemetry["startup"]["decision"] == (
         "do_not_promote_startup_to_whole_shot_first_principles"
     )
@@ -2106,3 +2120,99 @@ def test_first_principles_runner_propagates_long_run_history_controls() -> None:
         "history_stride"
     ] == 2
     assert result.conservation_telemetry["n_steps"] == 3
+
+
+# ---------------------------------------------------------------------------
+# WS-C: Package-Native 3-D Acceptance Contract — negative-test suite
+#
+# Spec: docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_2026_05_20.md
+# §Workstream C Audit
+# Gate under test: dpf.validation.hybrid_pic_3d.hybrid_pic_3d_readiness_status
+# ---------------------------------------------------------------------------
+
+def _all_accepted_evidence() -> dict:
+    """Build a minimal fully-accepted evidence dict for every capability."""
+    from dpf.validation.hybrid_pic_3d import HYBRID_PIC_3D_CAPABILITY_IDS
+    return {
+        cap_id: {"passed": True, "status": "accepted"}
+        for cap_id in HYBRID_PIC_3D_CAPABILITY_IDS
+    }
+
+
+def test_wsc_candidate_record_cannot_produce_acceptance() -> None:
+    """WS-C negative: a candidate-only evidence record (passed=True but
+    status='candidate') must never unlock can_support_first_principles_acceptance.
+    Guardrail: candidate telemetry is visible but must be rejected."""
+    from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
+
+    evidence = _all_accepted_evidence()
+    # Downgrade two capabilities to candidate status — not in _ACCEPTED_STATUSES
+    for cap_id in list(evidence)[:2]:
+        evidence[cap_id] = {"passed": True, "status": "candidate"}
+
+    result = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "cartesian_3d",
+        "hybrid_pic_3d_evidence": evidence,
+    })
+
+    assert result["can_support_first_principles_acceptance"] is False
+    assert result["status"] == "blocked"
+    # Both downgraded capabilities must appear in missing_capabilities
+    for cap_id in list(_all_accepted_evidence())[:2]:
+        assert cap_id in result["missing_capabilities"]
+
+
+def test_wsc_missing_top_level_contract_key_cannot_produce_acceptance() -> None:
+    """WS-C negative: a result dict that omits hybrid_pic_3d_evidence entirely
+    must block acceptance — the gate must fail closed, not open."""
+    from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
+
+    # No hybrid_pic_3d_evidence key at all
+    result = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "cartesian_3d",
+    })
+
+    assert result["can_support_first_principles_acceptance"] is False
+    assert result["status"] == "blocked"
+    # With no evidence supplied every capability must be missing
+    from dpf.validation.hybrid_pic_3d import HYBRID_PIC_3D_CAPABILITY_IDS
+    for cap_id in HYBRID_PIC_3D_CAPABILITY_IDS:
+        assert cap_id in result["missing_capabilities"]
+
+
+def test_wsc_wrong_backend_label_cannot_produce_acceptance() -> None:
+    """WS-C negative: geometry_dimensionality='cylindrical_2d' must block
+    acceptance even when every PIC capability record is fully accepted.
+    Guards against a 2-D/cylindrical run masquerading as a 3-D acceptance."""
+    from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
+
+    result = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "cylindrical_2d",
+        "hybrid_pic_3d_evidence": _all_accepted_evidence(),
+    })
+
+    assert result["can_support_first_principles_acceptance"] is False
+    assert result["status"] == "blocked"
+    assert "explicit_3d_geometry" in result["missing_capabilities"]
+    # Dimensionality must be faithfully round-tripped
+    assert result["geometry_dimensionality"] == "cylindrical_2d"
+
+
+def test_wsc_missing_same_scope_3d_validation_cannot_produce_acceptance() -> None:
+    """WS-C negative: omitting the same_scope_3d_validation_packet capability
+    from accepted evidence must block acceptance even when all other 13
+    capabilities are fully accepted — same-scope 3-D validation is not optional."""
+    from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
+
+    evidence = _all_accepted_evidence()
+    # Remove the same-scope 3-D validation capability
+    del evidence["same_scope_3d_validation_packet"]
+
+    result = hybrid_pic_3d_readiness_status({
+        "geometry_dimensionality": "cartesian_3d",
+        "hybrid_pic_3d_evidence": evidence,
+    })
+
+    assert result["can_support_first_principles_acceptance"] is False
+    assert result["status"] == "blocked"
+    assert "same_scope_3d_validation_packet" in result["missing_capabilities"]

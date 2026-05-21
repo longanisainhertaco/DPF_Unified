@@ -1,0 +1,16 @@
+{
+  "source_id": "shakya_2015_pf1000_pf400_lee_model",
+  "source_pdf_sha256": "9094f12f0ead4d443592579eef082808ef91636f3e76e34b6e71de161b639be6",
+  "rendered_pages": [
+    {
+      "artifact": "docs/extractions/shakya_2015_pf1000_pf400_render_evidence/pdf_p004_journal_p058.png",
+      "artifact_sha256": "5edc78a712c3f7e5d985810763b3d88ff13993762a29836daa3f6e9d5705aad0",
+      "pdf_page": 4,
+      "journal_page": 58,
+      "purpose": "Verify Table 1 PF1000/PF400 Lee-model comparison values and prevent OCR-only table drift.",
+      "image_size_px": [1074, 1477]
+    }
+  ],
+  "accepted_runtime_claim": false,
+  "can_support_first_principles_acceptance": false
+}

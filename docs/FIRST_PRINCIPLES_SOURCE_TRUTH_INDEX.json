@@ -1,9 +1,9 @@
 {
   "capability_index": {
     "circuit_coupling": {
-      "direct_record_count": 98,
+      "direct_record_count": 103,
       "label": "Circuit coupling",
-      "record_count": 147,
+      "record_count": 152,
       "representative_records": [
         {
           "id": "kr:2025-double-3mj-dense-plasma-focus-thermonuclear-icf",
@@ -159,9 +159,9 @@
       ]
     },
     "detector_response": {
-      "direct_record_count": 57,
+      "direct_record_count": 62,
       "label": "Detector/diagnostic response",
-      "record_count": 77,
+      "record_count": 82,
       "representative_records": [
         {
           "id": "kr:a-thesis-submitted-to-the-college-of-graduate-and-postdoctoral-studies-in-partial-fulllment-of-the",
@@ -188,9 +188,27 @@
           "verdict": "directly_needed"
         },
         {
+          "id": "kr:comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695",
+          "path": "KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.md",
+          "title": "Comparative analysis of large plasma focus experiments performed at IPF, Stuttgart, and IPJ, Swierk",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f",
+          "path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+          "title": "Comparison of Plasma Dynamics in Plasma Focus Devices PF1000 and PF400",
+          "verdict": "directly_needed"
+        },
+        {
           "id": "kr:comparisons-of-dense-plasma-focus-kinetic-simulations-with-experimental-measurements",
           "path": "KnowledgeReference/comparisons-of-dense-plasma-focus-kinetic-simulations-with-experimental-measurements.md",
           "title": "770386",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9",
+          "path": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.md",
+          "title": "Dense magnetized plasma and its applications: review of the 3-year activity of the IAEA Co-ordinated Research Programme",
           "verdict": "directly_needed"
         },
         {
@@ -216,31 +234,13 @@
           "path": "KnowledgeReference/deuterium-hybrid-x-pinch-driven-by-small-dense-plasma-focus-2.md",
           "title": "Novotny 2026 Hybrid Xpinch Dpf",
           "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88",
-          "path": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
-          "title": "Effect of current sheath initiation on the radial collapse and energetic particle acceleration in 10 kJ Dense Plasma Focus",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:evolution-of-a-pinch-column-during-the-acceleration-of-fast-electrons-and-deuterons-in-a-plasma",
-          "path": "KnowledgeReference/evolution-of-a-pinch-column-during-the-acceleration-of-fast-electrons-and-deuterons-in-a-plasma.md",
-          "title": "Evolution_Of_A_Pinch_Column_During_The_Acceleration_Of_Fast_Electrons_And_Deuterons_In_A_Plasma Focus_Discharge",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:experimental-evidence-of-thermonuclear-neutrons-in-a-modified-plasma-focus-ad181105",
-          "path": "KnowledgeReference/experimental-evidence-of-thermonuclear-neutrons-in-a-modified-plasma-focus-ad181105.md",
-          "title": "Experimental evidence of thermonuclear neutrons in a modified plasma focus",
-          "verdict": "directly_needed"
         }
       ]
     },
     "dpf_device": {
-      "direct_record_count": 161,
+      "direct_record_count": 166,
       "label": "DPF/device scope",
-      "record_count": 168,
+      "record_count": 173,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -317,9 +317,9 @@
       ]
     },
     "electrode_boundary": {
-      "direct_record_count": 150,
+      "direct_record_count": 155,
       "label": "Electrode/conductor/boundaries",
-      "record_count": 371,
+      "record_count": 376,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -554,9 +554,9 @@
       ]
     },
     "ionization_eos": {
-      "direct_record_count": 106,
+      "direct_record_count": 108,
       "label": "Ionization/EOS/transport coefficients",
-      "record_count": 341,
+      "record_count": 343,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -633,9 +633,9 @@
       ]
     },
     "maxwell_fields": {
-      "direct_record_count": 125,
+      "direct_record_count": 127,
       "label": "Maxwell/vacuum EM fields",
-      "record_count": 398,
+      "record_count": 400,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -712,9 +712,9 @@
       ]
     },
     "mhd": {
-      "direct_record_count": 74,
+      "direct_record_count": 77,
       "label": "MHD/fluid dynamics",
-      "record_count": 237,
+      "record_count": 240,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -791,9 +791,9 @@
       ]
     },
     "neutron_beam_target": {
-      "direct_record_count": 106,
+      "direct_record_count": 109,
       "label": "Beam-target neutron production",
-      "record_count": 153,
+      "record_count": 156,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -870,9 +870,9 @@
       ]
     },
     "neutron_thermonuclear": {
-      "direct_record_count": 69,
+      "direct_record_count": 70,
       "label": "Thermonuclear neutron production",
-      "record_count": 140,
+      "record_count": 141,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -949,9 +949,9 @@
       ]
     },
     "numerical_method": {
-      "direct_record_count": 21,
+      "direct_record_count": 23,
       "label": "Numerical method/verification",
-      "record_count": 98,
+      "record_count": 100,
       "representative_records": [
         {
           "id": "kr:a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271",
@@ -990,6 +990,18 @@
           "verdict": "directly_needed"
         },
         {
+          "id": "kr:comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f",
+          "path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+          "title": "Comparison of Plasma Dynamics in Plasma Focus Devices PF1000 and PF400",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9",
+          "path": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.md",
+          "title": "Dense magnetized plasma and its applications: review of the 3-year activity of the IAEA Co-ordinated Research Programme",
+          "verdict": "directly_needed"
+        },
+        {
           "id": "kr:design-and-construction-of-a-dense-plasma-focus-device-12205ba4",
           "path": "KnowledgeReference/design-and-construction-of-a-dense-plasma-focus-device-12205ba4.md",
           "title": "Design and Construction of a Dense Plasma Focus Device",
@@ -1011,18 +1023,6 @@
           "id": "kr:high-power-laser-and-particle-beams-d1758d55",
           "path": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
           "title": "Development of Dense Plasma Focus Device",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging",
-          "path": "KnowledgeReference/ieee-trans-plas-sci-paper-first-experiments-and-radiographs-on-the-megajoule-neutron-imaging.md",
-          "title": "1860821",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:investigation-on-the-dynamics-of-z-pinch-in-discha",
-          "path": "KnowledgeReference/investigation-on-the-dynamics-of-z-pinch-in-discha.md",
-          "title": "Investigation_On_The_Dynamics_Of_Z Pinch_In_Discha",
           "verdict": "directly_needed"
         }
       ]
@@ -1089,9 +1089,9 @@
       ]
     },
     "radiation": {
-      "direct_record_count": 146,
+      "direct_record_count": 151,
       "label": "Radiation/spectroscopy",
-      "record_count": 322,
+      "record_count": 327,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1168,9 +1168,9 @@
       ]
     },
     "startup_breakdown": {
-      "direct_record_count": 114,
+      "direct_record_count": 119,
       "label": "Startup/breakdown/liftoff",
-      "record_count": 218,
+      "record_count": 223,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1247,9 +1247,9 @@
       ]
     },
     "three_d_geometry": {
-      "direct_record_count": 81,
+      "direct_record_count": 84,
       "label": "True 3D geometry/instabilities",
-      "record_count": 276,
+      "record_count": 280,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1328,7 +1328,7 @@
     "two_temperature": {
       "direct_record_count": 61,
       "label": "Separate electron/ion temperature",
-      "record_count": 218,
+      "record_count": 219,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1405,14 +1405,20 @@
       ]
     },
     "uncertainty_uq": {
-      "direct_record_count": 25,
+      "direct_record_count": 26,
       "label": "Uncertainty/UQ",
-      "record_count": 82,
+      "record_count": 84,
       "representative_records": [
         {
           "id": "kr:bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860",
           "path": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
           "title": "Bayesian inference of spectrometric data and validation with numerical simulations of plasma sheath diagnostics of a plasma focus discharge",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f",
+          "path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+          "title": "Comparison of Plasma Dynamics in Plasma Focus Devices PF1000 and PF400",
           "verdict": "directly_needed"
         },
         {
@@ -1474,19 +1480,13 @@
           "path": "KnowledgeReference/mapping-of-azimuthal-b-fields-in-z-pinch-plasmas-using-z-pinch-driven-ion-deflectometry-c041d3f7.md",
           "title": "Mapping of azimuthal B-fields in Z-pinch plasmas using Z-pinch-driven ion deflectometry",
           "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch",
-          "path": "KnowledgeReference/neutron-generation-dynamics-inside-a-ma-class-dense-plasma-focus-z-pinch.md",
-          "title": "Neutron_Generation_Dynamics_Inside_A_Ma Class_Dens",
-          "verdict": "directly_needed"
         }
       ]
     },
     "validation_target": {
-      "direct_record_count": 125,
+      "direct_record_count": 130,
       "label": "Experimental validation target",
-      "record_count": 219,
+      "record_count": 225,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -5054,6 +5054,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.json",
+      "sha256": "0fe576a324a10d6991da13edbd1b8faa5159f79c86ded1397ddde9786f7562db",
+      "size_bytes": 52414
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.md",
+      "sha256": "9a0bb6efc79a62383712a77a1bc619f416f7f3acdc23295beb05998f437539b8",
+      "size_bytes": 48670
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.json",
       "sha256": "9c4b8b9f4b5f931a1e71d1d28ee6065e6f9e2d4e9c371d4de54c89e1b670db52",
       "size_bytes": 403763
@@ -5064,6 +5078,20 @@
       "path": "KnowledgeReference/comparative-study-of-plasma-focus-machines-2c7a8f4b.md",
       "sha256": "eb77f1a9d6fe5fef8f6f6551c068118945a7542ff276823dc736317e2791313b",
       "size_bytes": 2352
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
+      "path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.json",
+      "sha256": "54e1676fdd420968a366a9f1cbea25ff101cec7eb0ed8fec8a8b60a29e491c1d",
+      "size_bytes": 17158
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+      "sha256": "33d8c4dd6994e7ff01cfdf3d6b95d1c791c2e8684e8d655b620dea7cfa191907",
+      "size_bytes": 14849
     },
     {
       "extension": ".json",
@@ -5358,6 +5386,20 @@
       "path": "KnowledgeReference/date-of-current-version-september-26-2019.md",
       "sha256": "16b95e3a6bee71f83b953fb002962cacf927aaca13201703448d89eaa17f7a40",
       "size_bytes": 71559
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
+      "path": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.json",
+      "sha256": "a81e8a46eeaf60d100529d6e201597895eb0e81467a981ea04208689a1ff0d3a",
+      "size_bytes": 41568
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.md",
+      "sha256": "f3d6776c561f4a9560c7bd08031d277e1e25051987a5b8b38680f407570f8086",
+      "size_bytes": 38711
     },
     {
       "extension": ".json",
@@ -6727,6 +6769,20 @@
     {
       "extension": ".json",
       "kind": "source_json_metadata",
+      "path": "KnowledgeReference/foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619.json",
+      "sha256": "9f9e577c6e382f77254fc056f484cfabec3aeb9bee28b7b5b12b27d0eaf2e621",
+      "size_bytes": 14821
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619.md",
+      "sha256": "5b4cbcd5e9b7753c20c72abc18dff3df319457e3abb73f76aa67b30ddd7e0879",
+      "size_bytes": 12425
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
       "path": "KnowledgeReference/focus-fusion-overview-of-progress-towards-p-b11-fusion-with-the-dense-plasma-focus.json",
       "sha256": "8e7b0eac5296fc6f0af5120ec4cde819e24d31fa50e94b40f4f23f6dffe54b94",
       "size_bytes": 164074
@@ -6975,6 +7031,20 @@
       "path": "KnowledgeReference/fusion-science-and-technology.md",
       "sha256": "aa9c46ef3521217ea2b4015fedfbad8b9b457bcc9ea56d864699168e7ede2b57",
       "size_bytes": 10329
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
+      "path": "KnowledgeReference/gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a.json",
+      "sha256": "c16931ff39b159b74418202e725da7cc35caad33a5a2caf980dbb4a96de9a20c",
+      "size_bytes": 53433
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a.md",
+      "sha256": "6113b085b7fc8c5023fdcefaf058710fa351e2ce5a8a68c196ab11f2716eb7d6",
+      "size_bytes": 50114
     },
     {
       "extension": ".json",
@@ -9019,6 +9089,20 @@
       "path": "KnowledgeReference/petrov-2022-mjolnir-high-low-discharges.md",
       "sha256": "4e75da57d35121ac731c2cb25476039cbdc188760499eba3025cdbc149ae8fbd",
       "size_bytes": 47817
+    },
+    {
+      "extension": ".json",
+      "kind": "source_json_metadata",
+      "path": "KnowledgeReference/pf-1000-device-a2d6bc15.json",
+      "sha256": "2b20335c78c7918ea75ceeee8e9dec460114a0eae4379dca5f71be6af462e1a4",
+      "size_bytes": 12880
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+      "sha256": "60e2a29807934e20ce616018b6184bf60ecde5283376984a9b83d293b7949590",
+      "size_bytes": 10825
     },
     {
       "extension": ".json",
@@ -16050,6 +16134,49 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Radiation/spectroscopy.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "0fe576a324a10d6991da13edbd1b8faa5159f79c86ded1397ddde9786f7562db",
+        "markdown_sha256": "9a0bb6efc79a62383712a77a1bc619f416f7f3acdc23295beb05998f437539b8"
+      },
+      "id": "kr:comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 16,
+      "paths": {
+        "json": "KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.json",
+        "markdown": "KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "herold_1989_large_plasma_focus_comparative_analysis.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/herold_1989_large_plasma_focus_comparative_analysis.pdf",
+      "source_pdf_sha256": "51a546954db969c97028db7caec866e49728cef60cb147b16208c2bcc5542a26",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "ionization_eos",
+        "radiation",
+        "neutron_beam_target",
+        "detector_response",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "Comparative analysis of large plasma focus experiments performed at IPF, Stuttgart, and IPJ, Swierk",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Direct source candidate for DPF/device scope; True 3D geometry/instabilities; Experimental validation target.",
       "first_principles_verdict": "directly_needed",
       "hashes": {
@@ -16076,6 +16203,47 @@
         "validation_target"
       ],
       "title": "Comparative Study of Plasma Focus Machines",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; MHD/fluid dynamics; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Radiation/spectroscopy; Detector/diagnostic response; Uncertainty/UQ.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "54e1676fdd420968a366a9f1cbea25ff101cec7eb0ed8fec8a8b60a29e491c1d",
+        "markdown_sha256": "33d8c4dd6994e7ff01cfdf3d6b95d1c791c2e8684e8d655b620dea7cfa191907"
+      },
+      "id": "kr:comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 5,
+      "paths": {
+        "json": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.json",
+        "markdown": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "shakya_2015_comparison_pf1000_pf400_lee_model.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/shakya_2015_comparison_pf1000_pf400_lee_model.pdf",
+      "source_pdf_sha256": "9094f12f0ead4d443592579eef082808ef91636f3e76e34b6e71de161b639be6",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "mhd",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "radiation",
+        "detector_response",
+        "uncertainty_uq",
+        "validation_target",
+        "numerical_method"
+      ],
+      "title": "Comparison of Plasma Dynamics in Plasma Focus Devices PF1000 and PF400",
       "validation_status": "source_available_not_target_extracted",
       "year": null
     },
@@ -16847,6 +17015,50 @@
       ],
       "title": "On_The_Relationship_Between_The_Electromagnetic_Burst_And_Inductive_Sensor_Measurement_Of_A_Pulsed_Plasma_Accelerator 2",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; MHD/fluid dynamics; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Radiation/spectroscopy.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "a81e8a46eeaf60d100529d6e201597895eb0e81467a981ea04208689a1ff0d3a",
+        "markdown_sha256": "f3d6776c561f4a9560c7bd08031d277e1e25051987a5b8b38680f407570f8086"
+      },
+      "id": "kr:dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 9,
+      "paths": {
+        "json": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.json",
+        "markdown": "KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "gribkov_malaquias_2006_dense_magnetized_plasma_applications.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/gribkov_malaquias_2006_dense_magnetized_plasma_applications.pdf",
+      "source_pdf_sha256": "cca325c9ab3bda7dc2f948b2641b86ee391dd8dc51129412227cde1cf0690ef9",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "mhd",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "ionization_eos",
+        "radiation",
+        "neutron_thermonuclear",
+        "neutron_beam_target",
+        "detector_response",
+        "validation_target",
+        "numerical_method"
+      ],
+      "title": "Dense magnetized plasma and its applications: review of the 3-year activity of the IAEA Co-ordinated Research Programme",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -19321,6 +19533,45 @@
       "authors": [],
       "doi": "",
       "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Radiation/spectroscopy; Detector/diagnostic response; True 3D geometry/instabilities; Experimental validation target.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "9f9e577c6e382f77254fc056f484cfabec3aeb9bee28b7b5b12b27d0eaf2e621",
+        "markdown_sha256": "5b4cbcd5e9b7753c20c72abc18dff3df319457e3abb73f76aa67b30ddd7e0879"
+      },
+      "id": "kr:foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 4,
+      "paths": {
+        "json": "KnowledgeReference/foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619.json",
+        "markdown": "KnowledgeReference/foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "scholz_1999_foam_liner_driven_by_plasma_focus_current_sheath.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/scholz_1999_foam_liner_driven_by_plasma_focus_current_sheath.pdf",
+      "source_pdf_sha256": "8324d619499321fffbcbe68e3d300fb4fd2ff176e7f979de485fd59e4558653b",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "radiation",
+        "detector_response",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "Foam liner driven by a plasma focus current sheath",
+      "validation_status": "source_available_not_target_extracted",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
       "first_principles_use": "Direct source candidate for Maxwell/vacuum EM fields; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Separate electron/ion temperature; Ionization/EOS/transport coefficients; Radiation/spectroscopy; Beam-target neutron production; additional tags omitted.",
       "first_principles_verdict": "directly_needed",
       "hashes": {
@@ -20042,6 +20293,41 @@
       ],
       "title": "Direct Measurement Of A Plasma Flow Velocity Using A Mach Probe In Hanbit Magnetic Mirror Device",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Supporting source for Separate electron/ion temperature; Uncertainty/UQ; True 3D geometry/instabilities; Experimental validation target.",
+      "first_principles_verdict": "supporting_method",
+      "hashes": {
+        "json_sha256": "c16931ff39b159b74418202e725da7cc35caad33a5a2caf980dbb4a96de9a20c",
+        "markdown_sha256": "6113b085b7fc8c5023fdcefaf058710fa351e2ce5a8a68c196ab11f2716eb7d6"
+      },
+      "id": "kr:gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 10,
+      "paths": {
+        "json": "KnowledgeReference/gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a.json",
+        "markdown": "KnowledgeReference/gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "loarer_2007_gas_balance_and_fuel_retention_in_fusion_devices.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/loarer_2007_gas_balance_and_fuel_retention_in_fusion_devices.pdf",
+      "source_pdf_sha256": "09d09d6a8ecb8e4ba346fd038db674c492fb673ef1e8947bdaa3405723a8c30f",
+      "source_type": "background_or_adjacent",
+      "table_count": 0,
+      "tags": [
+        "two_temperature",
+        "uncertainty_uq",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "Gas balance and fuel retention in fusion devices",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -25646,6 +25932,46 @@
       ],
       "title": "LLNL-JRNL-831591",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Circuit coupling; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Radiation/spectroscopy; Beam-target neutron production; Detector/diagnostic response; True 3D geometry/instabilities.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "json_sha256": "2b20335c78c7918ea75ceeee8e9dec460114a0eae4379dca5f71be6af462e1a4",
+        "markdown_sha256": "60e2a29807934e20ce616018b6184bf60ecde5283376984a9b83d293b7949590"
+      },
+      "id": "kr:pf-1000-device-a2d6bc15",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 4,
+      "paths": {
+        "json": "KnowledgeReference/pf-1000-device-a2d6bc15.json",
+        "markdown": "KnowledgeReference/pf-1000-device-a2d6bc15.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "scholz_2000_pf1000_device_nukleonika_v45p155.pdf",
+      "source_pdf_relative_path": "downloaded_books_papers/Research Papers/2026-05-20-user-supplied-papers/scholz_2000_pf1000_device_nukleonika_v45p155.pdf",
+      "source_pdf_sha256": "a2d6bc151ee1a3f5681c76ce00b3c60470d0c0386398b5f4033d14669279411c",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "circuit_coupling",
+        "startup_breakdown",
+        "electrode_boundary",
+        "radiation",
+        "neutron_beam_target",
+        "detector_response",
+        "three_d_geometry",
+        "validation_target"
+      ],
+      "title": "PF-1000 device",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -31934,41 +32260,41 @@
     "file_kind_counts": {
       "derived_chunk": 252,
       "figure_or_image": 92,
-      "source_json_metadata": 532,
-      "source_markdown": 535,
+      "source_json_metadata": 538,
+      "source_markdown": 541,
       "system_metadata": 7
     },
-    "json_metadata_count": 532,
-    "knowledge_reference_document_count": 535,
-    "knowledge_reference_file_count": 1418,
-    "markdown_source_count": 535,
+    "json_metadata_count": 538,
+    "knowledge_reference_document_count": 541,
+    "knowledge_reference_file_count": 1430,
+    "markdown_source_count": 541,
     "tag_counts": {
-      "circuit_coupling": 147,
+      "circuit_coupling": 152,
       "collisions": 143,
-      "detector_response": 77,
-      "dpf_device": 168,
-      "electrode_boundary": 371,
+      "detector_response": 82,
+      "dpf_device": 173,
+      "electrode_boundary": 376,
       "generalized_ohm": 61,
       "hybrid_pic_fluid": 97,
-      "ionization_eos": 341,
-      "maxwell_fields": 398,
-      "mhd": 237,
-      "neutron_beam_target": 153,
-      "neutron_thermonuclear": 140,
-      "numerical_method": 98,
+      "ionization_eos": 343,
+      "maxwell_fields": 400,
+      "mhd": 240,
+      "neutron_beam_target": 156,
+      "neutron_thermonuclear": 141,
+      "numerical_method": 100,
       "poynting_power": 42,
-      "radiation": 322,
-      "startup_breakdown": 218,
-      "three_d_geometry": 276,
-      "two_temperature": 218,
-      "uncertainty_uq": 82,
-      "validation_target": 219
+      "radiation": 327,
+      "startup_breakdown": 223,
+      "three_d_geometry": 280,
+      "two_temperature": 219,
+      "uncertainty_uq": 84,
+      "validation_target": 225
     },
     "verdict_counts": {
       "background_only": 16,
-      "directly_needed": 161,
+      "directly_needed": 166,
       "not_relevant": 22,
-      "supporting_method": 336
+      "supporting_method": 337
     }
   }
 }

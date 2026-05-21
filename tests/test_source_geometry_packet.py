@@ -134,14 +134,52 @@ def test_geometry_constructors_pin_one_source_revision() -> None:
     krauz = sg.PF1000GeometryPacket.krauz_2012()
     akel = sg.PF1000GeometryPacket.akel_shot_12581()
     scholz = sg.PF1000GeometryPacket.scholz_gribkov_revision()
+    scholz2001 = sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
 
     assert krauz.geometry_source_tag == "pf1000_krauz2012"
     assert akel.geometry_source_tag == "pf1000_akel_shot12581"
     assert scholz.geometry_source_tag == "pf1000_scholz_gribkov_revision"
+    assert scholz2001.geometry_source_tag == (
+        "pf1000_scholz_2001_24rod_large_electrode"
+    )
     assert akel.scope_tag == "pf1000_akel_16kv_1p2torr_shot_12581"
-    for packet in (krauz, akel, scholz):
+    assert scholz2001.scope_tag == "pf1000_2001_24_rod_large_electrode_hardware"
+    for packet in (krauz, akel, scholz, scholz2001):
         assert packet.can_support_first_principles_acceptance is False
         assert packet.geometry_review_status == "geometry_candidate_not_reviewed"
+
+
+def test_scholz_2001_constructor_consumes_revision_scoped_geometry() -> None:
+    """Sprint 6: Scholz 2001 source availability is consumed in its own scope.
+
+    This closes the source-to-runtime mapping for the 2001 24-rod geometry
+    packet without mutating the active Akel/Krauz constructors or claiming
+    first-principles acceptance.
+    """
+    packet = sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+
+    expected = {
+        "anode_radius_m": 0.122,
+        "anode_length_m": 0.600,
+        "cathode_cage_radius_m": 0.200,
+        "cathode_rod_count": 24,
+        "cathode_rod_diameter_m": 0.032,
+        "cathode_rod_length_m": 0.600,
+        "insulator_exposed_length_m": 0.113,
+        "insulator_outer_radius_m": 0.1145,
+        "chamber_inner_radius_m": 0.700,
+        "chamber_length_m": 2.500,
+    }
+    for name, value in expected.items():
+        fld = packet.get_field(name)
+        assert fld.status == "source_supported", name
+        assert fld.value == pytest.approx(value), name
+        assert fld.source_ref and fld.source_ref.startswith("KnowledgeReference/")
+
+    assert "PF1000-BLK-004" not in " ".join(packet.blocked_field_names())
+    assert packet.get_field("insulator_wall_thickness_m").status == "blocked"
+    assert packet.get_field("backplate_radial_extent_m").status == "blocked"
+    assert packet.can_support_first_principles_acceptance is False
 
 
 def test_conflicting_dimension_kept_explicit_not_averaged() -> None:
@@ -262,6 +300,7 @@ def test_every_field_source_ref_points_at_an_existing_kr_file() -> None:
         sg.PF1000GeometryPacket.krauz_2012,
         sg.PF1000GeometryPacket.akel_shot_12581,
         sg.PF1000GeometryPacket.scholz_gribkov_revision,
+        sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode,
     ):
         packet = ctor()
         for name in packet.source_supported_field_names():
@@ -894,8 +933,9 @@ def test_s4p1a_stepniewski_hollow_bore_stays_blocked_simulation_parameter_only()
 def test_s4p1b_cathode_cage_conflict_documents_category_mismatch() -> None:
     """S4-P1b: cathode_cage_radius_m conflict documents that Krauz 200 mm is a
     hardware geometric measurement while Akel 160 mm is a Lee-fit parameter b.
-    The conflict is kept because no second independent hardware source confirms
-    200 mm, but the reason now documents the category mismatch.
+    Scholz 2000/2001 now corroborate the 200 mm hardware cage value, but the
+    active Akel/Krauz constructors still need an explicit revision-selection
+    policy before this field can be promoted to a source-supported runtime mask.
 
     [KR: experimental-study-of-the-structure-of-the-plasma-current-sheath-
     on-the-pf-1000-facility-705bcc83.md:346-347] 'OE and CE radii are 200 mm
@@ -929,13 +969,15 @@ def test_s4p1b_akel_constructor_cathode_cage_also_stays_conflict() -> None:
     assert cage_field.value is None
 
 
-def test_s4p1c_insulator_outer_radius_blocked_with_named_missing_data() -> None:
-    """S4-P1c: insulator outer radius is blocked. No KR source publishes the
-    PF-1000 alumina insulator outer radius as a numeric value.
+def test_s6_insulator_outer_radius_source_available_but_revision_not_mapped() -> None:
+    """Sprint 6: insulator outer radius is now source-available, but still
+    blocked in the active Akel/Krauz/Scholz-Gribkov runtime constructors.
 
-    KR search 2026-05-20 confirmed: Krauz 2012 [KR:348-350] names the material
-    and axial length only; Scholz 2007 [KR:223-224] gives exposed length only.
-    Verdict: BLOCKED (PF1000-BLK-015-insulator-outer-radius-no-kr-source).
+    Scholz 2001 [KR:90-98] gives a 229 mm alumina-insulator diameter for the
+    PF-1000 2001 24-rod large-electrode configuration. That source has not yet
+    been mapped into these existing revision constructors, and wall thickness
+    remains absent, so the field must not become a source-supported runtime
+    mask input here.
     """
     for ctor in (
         sg.PF1000GeometryPacket.krauz_2012,
@@ -948,7 +990,10 @@ def test_s4p1c_insulator_outer_radius_blocked_with_named_missing_data() -> None:
             f"{ctor.__name__}: insulator_outer_radius_m must be blocked"
         )
         assert fld.value is None
-        assert fld.blocker_id == "PF1000-BLK-015-insulator-outer-radius-no-kr-source"
+        assert fld.blocker_id == (
+            "PF1000-BLK-015-insulator-outer-radius-"
+            "source_available_scholz2001_revision_not_mapped"
+        )
 
 
 def test_s4p1c_insulator_wall_thickness_blocked_with_named_missing_data() -> None:
@@ -1026,3 +1071,144 @@ def test_s4p1d_backplate_axial_thickness_blocked_with_named_missing_data() -> No
         )
         assert fld.value is None
         assert fld.blocker_id == "PF1000-BLK-018-backplate-axial-thickness-no-kr-source"
+
+
+# ===========================================================================
+# Sprint 7 WS-B -- PF-1000 revision-scoped geometry non-inheritance checks.
+#
+# Authority: docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_
+#   2026_05_20.md §Workstream B "Apply" and "Audit" bullets.
+# KR source: KnowledgeReference/recent-progress-in-1-mj-plasma-focus-
+#   research-d3e51f6c.md:90-98 (Scholz 2001 24-rod large-electrode hardware).
+# ===========================================================================
+
+
+def test_s7wsb_akel_does_not_inherit_scholz2001_rod_count() -> None:
+    """WS-B: Akel constructor must not inherit the Scholz 2001 24-rod count.
+
+    Scholz 2001 [KR:recent-progress...d3e51f6c.md:90-92] reports 24 rods.
+    Akel 2021 [KR:radiation-physics...109633.md:112-114] reports 12 rods.
+    The Akel constructor must keep cathode_rod_count as a conflict field
+    (value None), never silently adopting the Scholz 2001 count of 24.
+    """
+    packet = sg.PF1000GeometryPacket.akel_shot_12581()
+    fld = packet.fields["cathode_rod_count"]
+    assert fld.status == "conflict", (
+        "akel_shot_12581: cathode_rod_count must remain conflict, not inherit "
+        "the Scholz 2001 24-rod value"
+    )
+    assert fld.value is None
+    # The Scholz 2001 rod diameter is 32 mm -- Akel reports 80 mm; must stay 80.
+    rod_d = packet.fields["cathode_rod_diameter_m"]
+    assert rod_d.status == "source_supported"
+    assert rod_d.value == pytest.approx(0.080), (
+        "akel_shot_12581: cathode_rod_diameter_m must be 80 mm (Akel 2021 source), "
+        "not 32 mm (Scholz 2001)"
+    )
+
+
+def test_s7wsb_krauz_does_not_inherit_scholz2001_rod_count() -> None:
+    """WS-B: Krauz constructor must not inherit the Scholz 2001 24-rod count.
+
+    Krauz 2012 [KR:experimental-study...705bcc83.md:344-345] reports 12 rods.
+    The Krauz constructor must keep cathode_rod_count as conflict, never
+    silently adopting the Scholz 2001 count of 24.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    fld = packet.fields["cathode_rod_count"]
+    assert fld.status == "conflict", (
+        "krauz_2012: cathode_rod_count must remain conflict, not inherit "
+        "the Scholz 2001 24-rod value"
+    )
+    assert fld.value is None
+    # Krauz rod diameter is 80 mm -- must not become 32 mm (Scholz 2001).
+    rod_d = packet.fields["cathode_rod_diameter_m"]
+    assert rod_d.status == "source_supported"
+    assert rod_d.value == pytest.approx(0.080), (
+        "krauz_2012: cathode_rod_diameter_m must be 80 mm (Krauz 2012), "
+        "not 32 mm (Scholz 2001)"
+    )
+
+
+def test_s7wsb_akel_does_not_inherit_scholz2001_anode_radius() -> None:
+    """WS-B: Akel constructor must not inherit the Scholz 2001 anode radius.
+
+    Scholz 2001 [KR:recent-progress...d3e51f6c.md:93-94] reports 244 mm inner
+    electrode (radius 122 mm). Akel 2021 [KR:radiation-physics...109633.md:264]
+    reports a = 11.55 cm (radius 115.5 mm). The Akel constructor must keep
+    anode_radius_m = 0.1155, not 0.122.
+    """
+    packet = sg.PF1000GeometryPacket.akel_shot_12581()
+    fld = packet.fields["anode_radius_m"]
+    assert fld.status == "source_supported"
+    assert fld.value == pytest.approx(0.1155), (
+        "akel_shot_12581: anode_radius_m must be 0.1155 m (Akel 2021), "
+        "not 0.122 m (Scholz 2001)"
+    )
+
+
+def test_s7wsb_krauz_does_not_inherit_scholz2001_anode_radius() -> None:
+    """WS-B: Krauz constructor must not inherit the Scholz 2001 anode radius.
+
+    Krauz 2012 [KR:experimental-study...705bcc83.md:346-347] reports OE and CE
+    radii as 200 mm and 115.5 mm. The Krauz constructor must keep
+    anode_radius_m = 0.1155, not 0.122 (Scholz 2001).
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    fld = packet.fields["anode_radius_m"]
+    assert fld.status == "source_supported"
+    assert fld.value == pytest.approx(0.1155), (
+        "krauz_2012: anode_radius_m must be 0.1155 m (Krauz 2012), "
+        "not 0.122 m (Scholz 2001)"
+    )
+
+
+def test_s7wsb_akel_cathode_rod_length_stays_blocked_not_scholz2001() -> None:
+    """WS-B: Akel constructor cathode_rod_length_m must stay blocked.
+
+    Scholz 2001 [KR:recent-progress...d3e51f6c.md:90-92] reports 600 mm rod
+    length. This value has not been mapped into the Akel scope; the field must
+    remain blocked (PF1000-BLK-004), not silently promoted to source_supported.
+    """
+    packet = sg.PF1000GeometryPacket.akel_shot_12581()
+    fld = packet.fields["cathode_rod_length_m"]
+    assert fld.status == "blocked", (
+        "akel_shot_12581: cathode_rod_length_m must stay blocked -- Scholz 2001 "
+        "rod length is not mapped to the Akel hardware scope"
+    )
+    assert fld.value is None
+    assert "PF1000-BLK-004" in fld.blocker_id
+
+
+def test_s7wsb_krauz_cathode_rod_length_stays_blocked_not_scholz2001() -> None:
+    """WS-B: Krauz constructor cathode_rod_length_m must stay blocked.
+
+    Scholz 2001 rod length is revision-specific; the Krauz scope has not
+    received an explicit rod-length mapping. The field must remain blocked.
+    """
+    packet = sg.PF1000GeometryPacket.krauz_2012()
+    fld = packet.fields["cathode_rod_length_m"]
+    assert fld.status == "blocked", (
+        "krauz_2012: cathode_rod_length_m must stay blocked -- Scholz 2001 "
+        "rod length is not mapped to the Krauz hardware scope"
+    )
+    assert fld.value is None
+    assert "PF1000-BLK-004" in fld.blocker_id
+
+
+def test_s7wsb_scholz2001_scope_tag_distinct_from_akel_and_krauz() -> None:
+    """WS-B: Scholz 2001 constructor scope_tag is distinct from Akel and Krauz.
+
+    Guardrail 5: the 2001 24-rod scope must remain separated from the Akel
+    16 kV and Krauz full-energy scopes.
+    """
+    scholz2001 = sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+    akel = sg.PF1000GeometryPacket.akel_shot_12581()
+    krauz = sg.PF1000GeometryPacket.krauz_2012()
+
+    assert scholz2001.scope_tag != akel.scope_tag
+    assert scholz2001.scope_tag != krauz.scope_tag
+    assert akel.scope_tag != krauz.scope_tag
+    # Acceptance flags are false on all three.
+    for packet in (scholz2001, akel, krauz):
+        assert packet.can_support_first_principles_acceptance is False

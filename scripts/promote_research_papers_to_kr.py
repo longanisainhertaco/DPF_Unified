@@ -337,6 +337,7 @@ def already_represented(
                 normalized_title == record.title_norm
                 or (
                     len(normalized_title) >= 55
+                    and len(record.title_norm) >= 35
                     and (normalized_title in record.title_norm or record.title_norm in normalized_title)
                 )
             )

@@ -85,6 +85,20 @@ BLOCKING_SAME_SCOPE_CHANNELS = (
     "cross_scope_transfer_rule_or_rejection_tests",
 )
 
+TEMPERATURE_HISTORY_CHANNELS = (
+    "electron_temperature_history",
+    "ion_temperature_or_distribution_history",
+)
+
+_DIRECT_TEMPERATURE_EVIDENCE_TYPES = {
+    "direct_same_scope_temperature_diagnostic",
+    "direct_same_scope_spectroscopic_temperature_history",
+    "direct_same_scope_ion_distribution_measurement",
+}
+
+_ACCEPTED_REVIEW_STATES = {"accepted", "reviewed", "passed"}
+_ACCEPTED_UNCERTAINTY_STATES = {"accepted", "bounded", "quantified", "passed"}
+
 TRANSFER_RULE_REQUIRED_CHANNELS = (
     "source_scope_identity",
     "target_scope_identity",
@@ -123,12 +137,28 @@ def build_same_scope_source_packet(
 ) -> dict[str, Any]:
     """Return a non-promoting packet describing same-scope source availability."""
 
-    accepted = {str(channel) for channel in accepted_same_scope_channels}
+    accepted: set[str] = set()
+    manual_decisions: list[dict[str, Any]] = []
+    for channel in accepted_same_scope_channels:
+        channel_name = str(channel)
+        if channel_name in TEMPERATURE_HISTORY_CHANNELS:
+            manual_decisions.append({
+                "target": f"manual_channel:{channel_name}",
+                "observable": channel_name,
+                "status": "manual_accepted_same_scope_channel",
+                "decision": (
+                    "rejected_temperature_history_requires_direct_same_scope_"
+                    "diagnostic_review_and_uncertainty"
+                ),
+            })
+            continue
+        accepted.add(channel_name)
     target_channels, target_decisions = _accepted_channels_from_targets(
         validation_targets,
         declared_scope=declared_scope,
         device_name=device_name,
     )
+    target_decisions = manual_decisions + target_decisions
     accepted.update(target_channels)
     declared = bool(str(declared_scope).strip()) and declared_scope != "not_declared"
     if declared:
@@ -233,6 +263,21 @@ def _accepted_channels_from_targets(
             continue
         if observable:
             evidence_type = str(target.get("evidence_type", "")).strip()
+            if observable in TEMPERATURE_HISTORY_CHANNELS and not (
+                evidence_type in _DIRECT_TEMPERATURE_EVIDENCE_TYPES
+                and _target_has_review_and_uncertainty(target)
+            ):
+                decisions.append({
+                    "target": name,
+                    "observable": observable,
+                    "status": status,
+                    "decision": (
+                        "rejected_temperature_history_requires_direct_same_scope_"
+                        "diagnostic_review_and_uncertainty"
+                    ),
+                    "evidence_type": evidence_type or "not_declared",
+                })
+                continue
             if evidence_type == "lee_model_output" and observable in BLOCKING_SAME_SCOPE_CHANNELS:
                 # Lee model outputs are NOT independent measurements.
                 # They cannot satisfy blocking same-scope channels.
@@ -253,6 +298,23 @@ def _accepted_channels_from_targets(
                 "decision": "accepted_same_scope_target_channel",
             })
     return accepted, decisions
+
+
+def _target_has_review_and_uncertainty(target: Mapping[str, Any]) -> bool:
+    review_state = str(
+        target.get("review_certificate_status")
+        or target.get("review_status")
+        or ""
+    ).strip().lower()
+    uncertainty_state = str(
+        target.get("uncertainty_status")
+        or target.get("uncertainty_budget_status")
+        or ""
+    ).strip().lower()
+    return (
+        review_state in _ACCEPTED_REVIEW_STATES
+        and uncertainty_state in _ACCEPTED_UNCERTAINTY_STATES
+    )
 
 
 def _channel_statuses(

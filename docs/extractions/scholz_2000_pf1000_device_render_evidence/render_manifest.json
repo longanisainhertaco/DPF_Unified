@@ -1,0 +1,16 @@
+{
+  "source_id": "scholz_2000_pf1000_device",
+  "source_pdf_sha256": "a2d6bc151ee1a3f5681c76ce00b3c60470d0c0386398b5f4033d14669279411c",
+  "rendered_pages": [
+    {
+      "artifact": "docs/extractions/scholz_2000_pf1000_device_render_evidence/pdf_p002_journal_p156.png",
+      "artifact_sha256": "eb6edfe94c7ce02bd0ee2adddd05df5aea353420dc026d642ef75bb457573140",
+      "pdf_page": 2,
+      "journal_page": 156,
+      "purpose": "Verify Fig. 1 PF-1000 electrode schematic labels and the page carrying source geometry text.",
+      "image_size_px": [1488, 2105]
+    }
+  ],
+  "accepted_runtime_claim": false,
+  "can_support_first_principles_acceptance": false
+}

@@ -1,0 +1,24 @@
+{
+  "source_id": "scholz_1999_foam_liner_current_sheath",
+  "source_pdf_sha256": "8324d619499321fffbcbe68e3d300fb4fd2ff176e7f979de485fd59e4558653b",
+  "rendered_pages": [
+    {
+      "artifact": "docs/extractions/scholz_1999_foam_liner_render_evidence/pdf_p002_journal_p454.png",
+      "artifact_sha256": "11630c3126b7ff76b90da4d99ee3ed205d318d950b3c1887f1378692817bbc98",
+      "pdf_page": 2,
+      "journal_page": 454,
+      "purpose": "Verify PF-1000 foam-liner dimensions, modified-electrode geometry, current rise-time glyph, and liner-current-sheath image captions.",
+      "image_size_px": [1240, 1755]
+    },
+    {
+      "artifact": "docs/extractions/scholz_1999_foam_liner_render_evidence/pdf_p003_journal_p455.png",
+      "artifact_sha256": "21ee3413e01053fddf0d5325b7f9d175b3395c1a8acb7170730685c201843842",
+      "pdf_page": 3,
+      "journal_page": 455,
+      "purpose": "Verify no-liner comparison, current-sheath velocity, foam-column, and soft-X-ray captions.",
+      "image_size_px": [1240, 1755]
+    }
+  ],
+  "accepted_runtime_claim": false,
+  "can_support_first_principles_acceptance": false
+}

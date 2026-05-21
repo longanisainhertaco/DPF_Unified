@@ -89,6 +89,7 @@ from dpf.first_principles.startup_breakdown import (
 )
 from dpf.first_principles.startup_bvp import build_startup_bvp_packet
 from dpf.first_principles.waveform_phase import build_waveform_phase_packet
+from dpf.validation.hybrid_pic_3d import hybrid_pic_3d_readiness_status
 
 ENGINEERING_CANDIDATE_STATUS = "engineering_candidate_not_validation"
 RUN_MODE = "first_principles_3d_hybrid_em_pic_fluid"
@@ -1163,10 +1164,17 @@ class HybridEMPicFluidRun:
                 dt_s=deck.dt_s,
             )
         )
+        hybrid_pic_3d_readiness = hybrid_pic_3d_readiness_status(
+            {
+                "geometry_dimensionality": "cartesian_3d",
+                "hybrid_pic_3d_evidence": evidence,
+            }
+        )
         validation_packet = _first_principles_candidate_packet(
             geometry_dimensionality="cartesian_3d",
             source_scope=geometry.source_scope,
             hybrid_pic_3d_evidence=evidence,
+            hybrid_pic_3d_readiness=hybrid_pic_3d_readiness,
             conservation_evidence=conservation,
             startup_bvp=startup_packet,
             limiter_readiness=limiter_readiness_packet,
@@ -1218,6 +1226,7 @@ class HybridEMPicFluidRun:
             "target_time_s": deck.target_time_s,
             "simulation": simulation.telemetry.to_dict(),
             "candidate_evidence": evidence,
+            "hybrid_pic_3d_readiness": hybrid_pic_3d_readiness,
             "reduced_models_used": False,
             "can_support_first_principles_acceptance": False,
         }
@@ -2101,6 +2110,7 @@ def _first_principles_candidate_packet(
     geometry_dimensionality: str,
     source_scope: str,
     hybrid_pic_3d_evidence: Mapping[str, Any],
+    hybrid_pic_3d_readiness: Mapping[str, Any],
     conservation_evidence: Mapping[str, Any],
     startup_bvp: Mapping[str, Any],
     limiter_readiness: Mapping[str, Any],
@@ -2124,6 +2134,15 @@ def _first_principles_candidate_packet(
         "geometry_dimensionality": geometry_dimensionality,
         "source_scope": source_scope,
         "candidate_evidence_keys": evidence_keys,
+        "hybrid_pic_3d_readiness_status": hybrid_pic_3d_readiness.get("status"),
+        "hybrid_pic_3d_missing_capabilities": hybrid_pic_3d_readiness.get(
+            "missing_capabilities",
+            (),
+        ),
+        "hybrid_pic_3d_satisfied_capabilities": hybrid_pic_3d_readiness.get(
+            "satisfied_capabilities",
+            (),
+        ),
         "conservation_status": conservation_evidence.get("status"),
         "startup_bvp_status": startup_bvp.get("status"),
         "startup_bvp_missing_acceptance_channels": startup_bvp.get(
@@ -2945,6 +2964,7 @@ def _build_manifest(
         "experimental_numerical_runtime_audit_packet": telemetry[
             "experimental_numerics"
         ],
+        "hybrid_pic_3d_readiness_packet": telemetry["hybrid_pic_3d_readiness"],
         "hybrid_pic_3d": telemetry["candidate_evidence"],
     }
     payload["first_principles_manifest"] = package_manifest

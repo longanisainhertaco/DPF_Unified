@@ -8,6 +8,38 @@ Plan note 2026-05-05:
 
 - The detailed forward plan requested as `CortexFindings.md` has been created in the repository. `CodexFindings.md` remains the running findings and ratchet log, while `CortexFindings.md` records the reviewed plan sequence from target authority through end-to-end high-fidelity demonstration.
 
+Ratchet update 2026-05-20, Sprint 6 blocker cleanup and package-native gate:
+
+- Expanded the user-supplied paper intake from the initial Scholz/Bruzzone pair
+  to all nine supplied PDFs. The final intake report is idempotent:
+  `files_scanned=9`, `promoted_count=0`, `skipped_existing_count=9`,
+  `failed_count=0`; all runtime and first-principles acceptance flags remain
+  false.
+- Added explicit source-ledger coverage for the five context-only duplicate
+  sources (Herold 1989, Scholz 1999 foam liner, Loarer 2007, Shakya 2015, and
+  Gribkov/Malaquias 2006) and split the Bruzzone anomalous-resistivity row into
+  the available Bruzzone/Bernal KR source plus the still-external companion.
+- Corrected `PF1000-BLK-015`: Scholz 2001 now supports the 2001 24-rod
+  insulator outer radius as source-available, so it is no longer
+  `absent_from_literature`. Insulator wall thickness and backplate dimensions
+  remain true facility/source blockers.
+- Added `PF1000GeometryPacket.scholz_2001_24rod_large_electrode()` so the
+  Scholz 2000/2001 revision can consume 24-rod, 600 mm rod-length,
+  0.1145 m insulator-outer-radius, chamber, and bank source context without
+  mutating Akel/Krauz runtime scopes. The packet remains non-accepting.
+- Surfaced `hybrid_pic_3d_readiness` in the package-native 3-D runner,
+  manifest, and CLI telemetry packets. Candidate component telemetry is now
+  explicitly rejected by the shared hybrid-PIC 3-D readiness gate instead of
+  being visible only as ad hoc `not_validation` runner metadata.
+- Tightened `same_scope.py` so electron-temperature and ion-temperature /
+  ion-distribution channels cannot be accepted by generic caveats, manual
+  channel lists, Lee-model outputs, or text-only sources. Direct same-scope
+  diagnostic evidence with review and uncertainty is required.
+- Boundary: this closes mechanical/source-ledger and structural gate mismatch
+  issues only. It does not accept first-principles runtime physics, whole-shot
+  startup, power-port closure, transport closure, kinetic neutron authority,
+  same-scope comparison, or a validation certificate.
+
 Ratchet update 2026-05-20, user-supplied Scholz/Bruzzone papers:
 
 - Reviewed `/Users/anthonyzamora/Downloads/scholz_Recent progress.pdf` and
@@ -6458,3 +6490,29 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   the dual-agent runner writes evidence packets and can invoke Claude as a
   no-edit advisory reviewer. It does not promote physics, modify acceptance
   ledgers, or replace Codex source-grounded audit.
+
+### 2026-05-20: Sprint 7 WS-A Source-Ledger Closure
+
+- Work completed:
+  verified and closed the Sprint 7 WS-A source-ledger against the
+  `docs/USER_SUPPLIED_PAPERS_INTAKE_2026_05_20.json` intake (9 records,
+  0 failed, all skipped_existing). Confirmed all 9 non-failed intake records
+  have matching rows in `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`.
+  Confirmed `PF1000-BLK-015` in `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`
+  carries `corrected_status=existing_kr_source_supported`, not `absent_from_literature`.
+  Context-only sources (Herold 1989, Scholz 1999, Loarer 2007, Shakya 2015,
+  Gribkov/Malaquias 2006) are marked `resolves_blockers=context_only` and
+  `external_required=false`. The Bruzzone/Bernal 2001 partial pair is split
+  across two rows: `bruzzone_bernal_2001_lhi_interface` (KR-available,
+  `external_required=false`) and `bruzzone_2001_lhi_companion` (still
+  external, `external_required=true`).
+- Audit state:
+  independent CSV parse confirms source-acquisition ledger has 31 rows, no
+  duplicate source_ids, 12 P1+P2 external rows. Blocker-resolution ledger has
+  31 rows, no duplicate blocker_ids, all `accepted_runtime_claim=false` and
+  `can_support_first_principles_acceptance=false`. Tests pass:
+  `test_first_principles_v2_handoff_ledgers.py` (5 passed) and
+  `test_external_team_submission_package.py` (29 passed), 34 total.
+- Boundary:
+  no physics acceptance state changed. Source availability does not unlock
+  runtime acceptance. All fail-closed guards remain in force.

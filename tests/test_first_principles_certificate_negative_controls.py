@@ -515,6 +515,221 @@ def test_n7_neg10_lee_model_outputs_not_density_spatial_history() -> None:
     assert packet["can_support_first_principles_acceptance"] is False
 
 
+def test_same_scope_rejects_temperature_channels_without_direct_reviewed_diagnostics() -> None:
+    """Te/Ti cannot be accepted by caveat, model output, or manual channel input."""
+    targets = (
+        {
+            "name": "generic_te_caveat",
+            "observable": "electron_temperature_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "caveat_accepted",
+        },
+        {
+            "name": "model_ti_history",
+            "observable": "ion_temperature_or_distribution_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "lee_model_output",
+        },
+    )
+    packet = build_same_scope_source_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        validation_targets=targets,
+        accepted_same_scope_channels=(
+            "electron_temperature_history",
+            "ion_temperature_or_distribution_history",
+        ),
+    )
+
+    assert "electron_temperature_history" not in packet[
+        "accepted_same_scope_channels"
+    ]
+    assert "ion_temperature_or_distribution_history" not in packet[
+        "accepted_same_scope_channels"
+    ]
+    assert packet["same_scope_channel_status"]["electron_temperature_history"] == (
+        "missing_or_blocked"
+    )
+    assert packet["same_scope_channel_status"][
+        "ion_temperature_or_distribution_history"
+    ] == "missing_or_blocked"
+    assert any(
+        item["decision"]
+        == (
+            "rejected_temperature_history_requires_direct_same_scope_"
+            "diagnostic_review_and_uncertainty"
+        )
+        for item in packet["validation_target_scope_decisions"]
+    )
+    assert packet["can_support_first_principles_acceptance"] is False
+
+
+def test_wsd_neg01_caveat_accepted_te_ti_rejected() -> None:
+    """WS-D NEG-01: caveat_accepted evidence_type must not satisfy Te/Ti channels.
+
+    Sprint 7 WS-D Apply: no generic caveat_accepted lane for Te/Ti.
+    Codex Sprint 5 WS2 audit constraint respected.
+    """
+    targets = (
+        {
+            "name": "caveat_te",
+            "observable": "electron_temperature_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "caveat_accepted",
+            "review_certificate_status": "accepted",
+            "uncertainty_status": "accepted",
+        },
+        {
+            "name": "caveat_ti",
+            "observable": "ion_temperature_or_distribution_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "caveat_accepted",
+            "review_certificate_status": "accepted",
+            "uncertainty_status": "accepted",
+        },
+    )
+    packet = build_same_scope_source_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        validation_targets=targets,
+    )
+    assert "electron_temperature_history" not in packet["accepted_same_scope_channels"]
+    assert "ion_temperature_or_distribution_history" not in packet["accepted_same_scope_channels"]
+    assert packet["can_support_first_principles_acceptance"] is False
+    rejected_decisions = [
+        d for d in packet["validation_target_scope_decisions"]
+        if d.get("decision") == (
+            "rejected_temperature_history_requires_direct_same_scope_"
+            "diagnostic_review_and_uncertainty"
+        )
+    ]
+    assert len(rejected_decisions) == 2
+
+
+def test_wsd_neg02_lee_model_derived_te_ti_rejected() -> None:
+    """WS-D NEG-02: Lee/model-derived Te/Ti must not satisfy Te/Ti channels.
+
+    Sprint 7 WS-D Apply: Lee model outputs are NOT independent measurements
+    and cannot satisfy Te/Ti blocking channels even with review + uncertainty.
+    """
+    targets = (
+        {
+            "name": "lee_te_history",
+            "observable": "electron_temperature_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "lee_model_output",
+            "review_certificate_status": "accepted",
+            "uncertainty_status": "accepted",
+        },
+        {
+            "name": "lee_ti_history",
+            "observable": "ion_temperature_or_distribution_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "lee_model_output",
+            "review_certificate_status": "accepted",
+            "uncertainty_status": "accepted",
+        },
+    )
+    packet = build_same_scope_source_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        validation_targets=targets,
+    )
+    assert "electron_temperature_history" not in packet["accepted_same_scope_channels"]
+    assert "ion_temperature_or_distribution_history" not in packet["accepted_same_scope_channels"]
+    assert packet["can_support_first_principles_acceptance"] is False
+    rejected_decisions = [
+        d for d in packet["validation_target_scope_decisions"]
+        if d.get("decision") == (
+            "rejected_temperature_history_requires_direct_same_scope_"
+            "diagnostic_review_and_uncertainty"
+        )
+    ]
+    assert len(rejected_decisions) == 2
+
+
+def test_wsd_neg03_text_only_scalar_temperature_rejected() -> None:
+    """WS-D NEG-03: text-only scalar temperature must not satisfy Te/Ti channels.
+
+    Sprint 7 WS-D Apply: text-only references are not direct same-scope
+    diagnostics and cannot satisfy electron_temperature_history or
+    ion_temperature_or_distribution_history.
+    """
+    targets = (
+        {
+            "name": "text_te_scalar",
+            "observable": "electron_temperature_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "text_supported_scalar_only",
+        },
+        {
+            "name": "text_ti_scalar",
+            "observable": "ion_temperature_or_distribution_history",
+            "status": "accepted_same_scope_source",
+            "declared_scope": PF1000_SCOPE,
+            "evidence_type": "text_supported_scalar_only",
+        },
+    )
+    packet = build_same_scope_source_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        validation_targets=targets,
+    )
+    assert "electron_temperature_history" not in packet["accepted_same_scope_channels"]
+    assert "ion_temperature_or_distribution_history" not in packet["accepted_same_scope_channels"]
+    assert packet["same_scope_channel_status"]["electron_temperature_history"] == "missing_or_blocked"
+    assert packet["same_scope_channel_status"]["ion_temperature_or_distribution_history"] == "missing_or_blocked"
+    assert packet["can_support_first_principles_acceptance"] is False
+    rejected_decisions = [
+        d for d in packet["validation_target_scope_decisions"]
+        if d.get("decision") == (
+            "rejected_temperature_history_requires_direct_same_scope_"
+            "diagnostic_review_and_uncertainty"
+        )
+    ]
+    assert len(rejected_decisions) == 2
+
+
+def test_wsd_neg04_manual_accepted_channel_te_ti_injection_rejected() -> None:
+    """WS-D NEG-04: manual accepted_same_scope_channels entries for Te/Ti are rejected.
+
+    Sprint 7 WS-D Solve: manual accepted_same_scope_channels entries for
+    electron_temperature_history and ion_temperature_or_distribution_history
+    must be rejected unless direct evidence requirements are met.
+    Passing them via accepted_same_scope_channels without a matching direct-
+    evidence validation target must not unlock Te/Ti in the packet.
+    """
+    packet = build_same_scope_source_packet(
+        declared_scope=PF1000_SCOPE,
+        device_name=PF1000_DEVICE,
+        validation_targets=(),
+        accepted_same_scope_channels=(
+            "electron_temperature_history",
+            "ion_temperature_or_distribution_history",
+        ),
+    )
+    assert "electron_temperature_history" not in packet["accepted_same_scope_channels"]
+    assert "ion_temperature_or_distribution_history" not in packet["accepted_same_scope_channels"]
+    assert packet["same_scope_channel_status"]["electron_temperature_history"] == "missing_or_blocked"
+    assert packet["same_scope_channel_status"]["ion_temperature_or_distribution_history"] == "missing_or_blocked"
+    assert packet["can_support_first_principles_acceptance"] is False
+    rejected_decisions = [
+        d for d in packet["validation_target_scope_decisions"]
+        if d.get("decision") == (
+            "rejected_temperature_history_requires_direct_same_scope_"
+            "diagnostic_review_and_uncertainty"
+        )
+    ]
+    assert len(rejected_decisions) == 2
+
+
 def test_n7_s38_pf1000_akel_source_packet_hashes_are_candidate_only() -> None:
     """S3.8: pf1000_akel_source_packet_hashes must label all channels as
     candidate_comparator_only and must not claim acceptance.

@@ -59,6 +59,16 @@ def test_first_principles_3d_default_deck_writes_json(tmp_path) -> None:
     assert payload["validation_packet"]["same_scope_source_status"] == (
         "blocked_same_scope_source_packet_not_available"
     )
+    assert payload["validation_packet"]["hybrid_pic_3d_readiness_status"] == "blocked"
+    assert payload["telemetry_packets"]["hybrid_pic_3d_readiness"]["status"] == (
+        "blocked"
+    )
+    assert payload["telemetry_packets"]["hybrid_pic_3d_readiness"][
+        "can_support_first_principles_acceptance"
+    ] is False
+    assert "kinetic_ion_pic_push_deposition" in payload["telemetry_packets"][
+        "hybrid_pic_3d_readiness"
+    ]["missing_capabilities"]
     assert payload["simulation"]["status"] == (
         "candidate_engineering_3d_hybrid_pic_simulation"
     )

@@ -36,7 +36,7 @@ are applied as follows.
 | # | Audit correction | V2 fix |
 | ---: | --- | --- |
 | 1 | Reconcile HEAD narrative | §1 lists every HEAD reference and which supersedes which. |
-| 2 | Fix category counts | §3 separates `blocker_count = 31 named items` from `source-acquisition_row_count = 23 visible table rows`; normalized ledgers are now the automation source. |
+| 2 | Fix category counts | §3 separates `blocker_count = 31 named items` from `source-acquisition_row_count = 31 visible table rows`; normalized ledgers are now the automation source. |
 | 3 | Reclassify Talebitaher | `NEUTRON-BLK-001` keeps primary `corrected_status = existing_kr_target_extraction_pending`; Talebitaher is recorded only as already-target-extracted child context, not counted as a blocker-row status. |
 | 4 | Reclassify Bernard 1977 | `Thermonuclear 1/4 prefactor` and `NEUTRON-BLK-001` (historical context) rows in §4 use `existing_kr_target_extraction_pending`. |
 | 5 | Reclassify Gribkov Part II | `NEUTRON-BLK-001` (PF-1000 fast-ion) row uses `existing_kr_target_extraction_pending` citing `KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md`. |
@@ -49,19 +49,19 @@ are applied as follows.
 ## 3. Executive Summary — corrected counts
 
 - **Blockers (named-ID items)**: 31. Counted by domain: 6 geometry + 13 startup-BVP channels + 5 transport/closures + 6 neutron/mechanism rows including the thermonuclear prefactor + 1 same-scope-comparator decision. Each appears once in the normalized ledger.
-- **Source-acquisition rows**: 23 visible rows. Counted in §5 and normalized in `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`. Each row maps to one or more blockers. Multiple blockers may share a source (e.g., Bennett 2017 closes source-availability for three startup channels).
+- **Source-acquisition rows**: 31 visible rows. Counted in §5 and normalized in `docs/FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv`. Each row maps to one or more blockers or an explicit context-only intake source. Multiple blockers may share a source (e.g., Bennett 2017 closes source-availability for three startup channels).
 - **Normative implementation ledger**: `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv`. The Markdown tables below are human-readable summaries; automation and Sprint 5 implementation should consume the CSV ledger.
 - **Primary status distribution across the 31 normalized blocker rows**:
 
   | corrected_status | count |
   | --- | ---: |
-  | `existing_kr_source_supported` | 3 |
+  | `existing_kr_source_supported` | 4 |
   | `existing_kr_target_extraction_pending` | 4 |
   | `kr_promotion_recommended` | 4 |
   | `pdf_present_needs_rendered_page_or_ocr_verification` | 1 |
   | `external_acquisition_required` | 13 |
   | `dependency_blocked` | 1 |
-  | `absent_from_literature` | 5 |
+  | `absent_from_literature` | 4 |
 
   Sum = 31. `accepted_runtime_claim = false` on every row.
 
@@ -95,7 +95,7 @@ row has the same schema and explicit `runtime_claim_allowed=false`,
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `PF1000-BLK-009` anode hollow-bore radius | blocked (sim-parameter) | `existing_kr_target_extraction_pending` (Stepniewski review) + `external_acquisition_required` (hardware-scope confirmation) | KR: Stepniewski 2004; KR: Krauz 2012 (bore existence + r≥12 mm probe access); external: Miklaszewski 2001 OR Schmidt 2002 | `KnowledgeReference/doi-10-1016-j-vacuum-2004-05-019-f931cb0b.md`; `KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md`; Miklaszewski et al. 2001 *Nukleonika* 46:S61-S64 OR Schmidt et al. 2002 *Physica Scripta* 66:168-172 | Stepniewski: `:310-314`; Krauz 2012: `:373` | `pf1000_generic` | false | Complete hardware-scope review of Stepniewski 0.015 m value OR acquire external hardware paper |
 | Cathode-cage radius (200 mm) | conflict (Krauz 200 vs Akel 160) | `existing_kr_source_supported` for 200 mm hardware; 160 mm = Lee-fit category | 3 independent KR hardware sources | `KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md`; `KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md`; `KnowledgeReference/chunks/update-on-the-scientific-status-of-the-plasma-focus-1385adeb/pages-0026-0050.md` | `:344-349`; `:392-400`; `:822-849` | `pf1000_full_energy` (multi-config — runtime must select Krauz 200 mm explicitly) | false | Runtime constructor must annotate selected configuration explicitly |
-| `PF1000-BLK-015` insulator outer radius | blocked (no KR) | `absent_from_literature` | IPPLM facility request | (none on disk) — request via Paduch / Miklaszewski; or IAEA CRP 11940/11941; or ICDMP workshop reports | n/a | `absent` | false | Facility outreach |
+| `PF1000-BLK-015` insulator outer radius | blocked source-available revision not mapped | `existing_kr_source_supported` | Scholz 2001 PF-1000 2001 24-rod hardware source | `KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md` | `:96-98` | `pf1000_2001_24_rod` | false | Add revision-specific runtime mapping; do not mix into Akel/Krauz scopes |
 | `PF1000-BLK-016` insulator wall thickness | blocked (no KR) | `absent_from_literature` | IPPLM facility request | (none on disk) | n/a | `absent` | false | Facility outreach |
 | `PF1000-BLK-017` backplate radial extent | blocked (no KR) | `absent_from_literature` | IPPLM facility request | (none on disk) | n/a | `absent` | false | Facility outreach |
 | `PF1000-BLK-018` backplate axial thickness | blocked (no KR) | `absent_from_literature` | IPPLM facility request | (none on disk) | n/a | `absent` | false | Facility outreach |
@@ -161,7 +161,8 @@ Columns: `priority` · `source` · `resolves_blockers` · `already_in_kr` · `on
 | **P1** | Brysk, H. (1973) *Plasma Phys.* 15:1282 | `NEUTRON-BLK-004` | no | (none) | yes | Foundational Doppler-broadening derivation |
 | **P1** | ICRU Report 49 (1993) | `NEUTRON-BLK-002` | no | (none) | yes | Stopping powers for p and α; deuteron interpolation |
 | **P1** | Davidson, R. C. & Gladd, N. T. (1975) *Phys. Fluids* 18:1327 DOI 10.1063/1.861021 | `CLOSURE-BLK-ANOM-001` (quantitative) | no | (none) | yes | LHDI anomalous transport derivation |
-| **P1** | Bruzzone, H. & Bernal, L. (2001) *Nukleonika* 46:59-61 AND Bruzzone, H. (2001) *Nukleonika* 46:S3-S7 | `CLOSURE-BLK-ANOM-001` (DPF-scope) | no | (none) | yes | Direct DPF LHI anomalous resistivity treatment |
+| **P1** | Bruzzone, H. & Bernal, L. (2001) *Nukleonika* 46:59-61 | `CLOSURE-BLK-ANOM-001` (DPF-scope) | **yes** | `KnowledgeReference/the-need-of-using-anomalous-resistivity-due-to-lower-hybrid-instabilities-in-plasma-magnet-73668d0e.md` | no | User-supplied duplicate confirmed 2026-05-20; target extraction/review still required before quantitative closure |
+| **P1** | Bruzzone, H. (2001) *Nukleonika* 46:S3-S7 | `CLOSURE-BLK-ANOM-001` companion | no | (none) | yes | Companion source still external/not located; do not accept quantitative anomalous-resistivity closure from one paper alone |
 | **P2** | Scholz / Gribkov 2007 Part II (already in KR) | `NEUTRON-BLK-001` (PF-1000 fast-ion); `NEUTRON-BLK-005` adjacent (anisotropy at full energy, not 16 kV) | **yes** | `KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md` (also `archive_reference_OLD/references/papers/core-dpf/scholz-2007-pf1000-part2-jphysd.pdf`) | no | **Reclassified from external (V1) to existing KR target-extraction (V2) per audit row 5.** J. Phys. D 40:3592 DOI 10.1088/0022-3727/40/12/008. Targets: `:318-323`, `:445-460`, `:1138-1168` |
 | **P2** | Voronov, G. S. (1997) *At. Data Nucl. Data Tables* 65:1 DOI 10.1006/adnd.1997.0732 | CH10, `CLOSURE-BLK-ION-001` | no | (none) | yes | Hydrogen ionization rate fit |
 | **P2** | Janev, R. K. & Smith, J. J. (1993) IAEA-TECDOC-697 | CH10, `CLOSURE-BLK-ION-001` | no | (none) | yes | Cross sections + rates for H |
@@ -169,6 +170,13 @@ Columns: `priority` · `source` · `resolves_blockers` · `already_in_kr` · `on
 | **P2** | Schmidt et al. (2012) *Phys. Rev. Lett.* 109:205003 | `NEUTRON-BLK-001` (kinetic PIC benchmark) | no | (none) | yes | Fully kinetic PIC reference |
 | **P2** | Hagstrum, H. D. (1956) *Phys. Rev.* 104:317 | CH05 (Cu γ) | no | (none) | yes | + Vaughan formula + CRC Handbook for ceramics |
 | **P2** | Miklaszewski et al. (2001) *Nukleonika* 46:S61-S64 OR Schmidt et al. (2002) *Physica Scripta* 66:168-172 | `PF1000-BLK-009` (hardware-scope hollow bore) | no | (none) | yes | PF-1000 commissioning / overview papers |
+| **P1** | Scholz et al. 2001 *Nukleonika* 46:35-39 | `PF1000-BLK-004`, `PF1000-BLK-015` | **yes** | `KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md` | no | User-supplied duplicate confirmed 2026-05-20; existing KR source reused and target-extracted for 24-rod rod length and insulator outer radius; runtime revision mapping still required |
+| **P1** | Scholz et al. 2000 *Nukleonika* 45:155-158 | `PF1000-BLK-004` | **yes** | `KnowledgeReference/pf-1000-device-a2d6bc15.md` | no | User-supplied duplicate confirmed 2026-05-20; corroborates early 24-rod PF-1000 hardware and bank/chamber context; runtime revision mapping still required |
+| **P2** | Herold et al. 1989 *Nuclear Fusion* 29:1255-1269 | context only | **yes** | `KnowledgeReference/comparative-analysis-of-large-plasma-focus-experiments-performed-at-ipf-stuttgart-and-ipj-51a54695.md` | no | Cross-machine POSEIDON/PF-360 context only; no PF-1000 same-scope acceptance |
+| **P2** | Scholz et al. 1999 *Physics Letters A* 262:453-456 | context only | **yes** | `KnowledgeReference/foam-liner-driven-by-a-plasma-focus-current-sheath-8324d619.md` | no | Modified PF-1000 foam-liner load context only; not standard whole-shot geometry |
+| **P3** | Loarer et al. 2007 *Nuclear Fusion* 47:1112-1120 | context only | **yes** | `KnowledgeReference/gas-balance-and-fuel-retention-in-fusion-devices-09d09d6a.md` | no | Tokamak plasma-wall fuel-retention context only; not a DPF authority source |
+| **P2** | Shakya et al. 2015 *Journal of Nepal Physical Society* 3:55-62 | context only | **yes** | `KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md` | no | Reduced Lee-model PF1000/PF400 comparison context only; baseline/comparator only |
+| **P2** | Gribkov & Malaquias 2006 *Nukleonika* 51:5-13 | context only | **yes** | `KnowledgeReference/dense-magnetized-plasma-and-its-applications-review-of-the-3-year-activity-of-the-iaea-co-cca325c9.md` | no | Dense magnetized plasma applications review context only; no direct PF-1000 runtime blocker closure |
 | **P2** | Bernard 1977 (Limeil/Jülich Mather DPF review) | `NEUTRON-BLK-001` historical context; Thermonuclear 1/4 prefactor (potential) | **yes** | `KnowledgeReference/the-dense-plasma-focus-a-high-intensity-neutron-source-f0a3910d.md` (also `downloaded_books_papers/Research Papers/2026-05-20-corpus-rescan/bernard1977.pdf`) | no | **Reclassified from external (V1) to existing KR target-extraction (V2) per audit row 4.** First direct Thomson Ti=700 eV (filament phase, ~500 kA Mather; historical wrong-scope but unique in corpus). Target lines: `:455-461`, `:976-1033`, `:1185-1193`, `:1546-1547` |
 | **P2** | Talebitaher 2012 PhD thesis (NX2 CAI) | `NEUTRON-BLK-001` (NX2 cone model) | **yes** | `downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/PhD2012AlirezaTalebitaher.pdf`; already target-extracted in `src/dpf/first_principles/source_targets.py` as `target_extracted_nx2_detector_anisotropy_context` | no | **Reclassified from KR-promotion-recommended (V1) to already-target-extracted (V2) per audit row 3.** No further promotion needed; only `nx2_wrong_scope` use permitted |
 | **P3** | Barbaglia et al. (2010) *Plasma Phys. Control. Fusion* 52:032001 | `CLOSURE-BLK-REST-001` (proxy) | no | (none) | yes | Multiple-pinch ≠ restrike strictly; closest available |
@@ -176,11 +184,11 @@ Columns: `priority` · `source` · `resolves_blockers` · `already_in_kr` · `on
 | **P3** | Yordanov et al. (2003) *Vacuum* 76:365 | CH06 (photoemission) | no | (none) | yes | Bennett 2017 Ref. 21 |
 | **P3** | Glasstone & Lovberg (1960) *Controlled Thermonuclear Reactions* Ch. 1 | Thermonuclear 1/4 prefactor (if Bernard 1977 target-extraction doesn't yield it) | no | (none) | yes | Identical-particle pair-counting derivation |
 | **P3** | Sagdeev & Galeev (1969) *Nonlinear Plasma Theory* Benjamin | `CLOSURE-BLK-ANOM-001`, `CLOSURE-BLK-REST-001` foundational | no | (none) | yes | Optional foundational reference |
-| **P4** | IPPLM facility engineering drawings | `PF1000-BLK-015`, `-016`, `-017`, `-018` | no | (none — not in any literature) | yes (facility) | Acquisition via M. Paduch / R. Miklaszewski; or IAEA CRP 11940/11941; or ICDMP workshop reports |
+| **P4** | IPPLM facility engineering drawings | `PF1000-BLK-016`, `-017`, `-018` | no | (none — not in any literature) | yes (facility) | Acquisition via M. Paduch / R. Miklaszewski; or IAEA CRP 11940/11941; or ICDMP workshop reports |
 
-(Source-acquisition rows counted: 23 visible table rows. Some rows group closely
-related papers, such as the two Bruzzone 2001 sources and the
-Miklaszewski/Schmidt hardware-source alternatives.)
+(Source-acquisition rows counted: 31 visible table rows. Context-only
+user-supplied duplicate sources are included so intake coverage is explicit;
+Miklaszewski/Schmidt remains a grouped hardware-source alternative.)
 
 ## 6. Reclassification Appendix — V1 → V2
 
@@ -194,7 +202,7 @@ Miklaszewski/Schmidt hardware-source alternatives.)
 | Braginskii 1965 Table 2 + Eqs. 4.30-4.45 | `KR_PROMOTION_RECOMMENDED` (V1) | `pdf_present_needs_rendered_page_or_ocr_verification` (V2) | `pdftotext` failed to expose Table 2 or Eqs. 4.30-4.45 (audit row 8). Page rendering or OCR required before target extraction. |
 | Generic language "promotion resolves blocker" | (used in V1 prose) | replaced by "closes source-availability and target-extraction blockers" or "creates KR text source" | Promotion creates a KR text source; target extraction creates typed source evidence; runtime acceptance requires code + tests + certificate gate (audit row 10). |
 | Shorthand KR citations (`experimental-study-...-705bcc83.md`) | partial shorthand (V1) | full `KnowledgeReference/...` paths on first mention (V2) | Audit row 9. |
-| Category counts (V1: 21 blockers vs 23 in category table vs ~20 acquisition rows) | inconsistent (V1) | 31 normalized blocker rows and 23 visible source-acquisition rows, with separate CSV ledgers as the automation source | Audit row 2. |
+| Category counts (V1: 21 blockers vs 23 in category table vs ~20 acquisition rows) | inconsistent (V1) | 31 normalized blocker rows and 31 visible source-acquisition rows, with separate CSV ledgers as the automation source | Audit row 2. |
 | HEAD references (V1: `022b774` / `da97ed2` mixed) | inconsistent (V1) | `022b774` → `da97ed2` → `8f6a0ae` → `7999265` → V2 HEAD; supersession explicit (V2) | Audit row 1. |
 
 ## 7. Audit-team Verification Checklist
@@ -218,7 +226,7 @@ Sprint 5 may proceed if and only if:
 - The 12 true external P1+P2 acquisition rows have been triaged into MUST / SHOULD / DEFER for Sprint 5.
 - The 1 KR promotion (Bennett 2017) and 1 KR-promotion-pending-OCR-verification (Braginskii 1965) are scheduled.
 - The 5 existing-KR target extractions (Scholz/Gribkov Part II, Bernard 1977, Plasma Focus Update Te filter-ratio, UCSD/Beg `:597-601`+`:631-660`, Stepniewski hardware-scope review) are scheduled.
-- The 4 `absent_from_literature` items (PF-1000 insulator outer radius, insulator wall thickness, backplate radial extent, backplate axial thickness) have an explicit decision: IPPLM facility outreach OR accept as structural gaps.
+- The 4 `absent_from_literature` items (PF-1000 insulator wall thickness, PF-1000 backplate radial extent, PF-1000 backplate axial thickness, and the DPF restrike-equation gap) have an explicit decision: source acquisition/facility outreach OR accept as structural gaps.
 - The comparator-scope decision (Option B PF-1000 full-energy) is locked or replaced.
 
 `can_support_first_principles_acceptance` remains `false` everywhere. No

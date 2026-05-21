@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -13,6 +14,7 @@ BLOCKER_LEDGER = (
 SOURCE_LEDGER = (
     DOCS / "FIRST_PRINCIPLES_SOURCE_ACQUISITION_LEDGER_2026_05_20.csv"
 )
+USER_SUPPLIED_INTAKE = DOCS / "USER_SUPPLIED_PAPERS_INTAKE_2026_05_20.json"
 V2_HANDOFF = (
     DOCS / "FIRST_PRINCIPLES_BLOCKER_RESOLUTION_AUDIT_HANDOFF_V2_2026_05_20.md"
 )
@@ -47,13 +49,13 @@ SOURCE_HEADER = [
 ]
 
 EXPECTED_BLOCKER_STATUS_COUNTS = {
-    "existing_kr_source_supported": 3,
+    "existing_kr_source_supported": 4,
     "existing_kr_target_extraction_pending": 4,
     "kr_promotion_recommended": 4,
     "pdf_present_needs_rendered_page_or_ocr_verification": 1,
     "external_acquisition_required": 13,
     "dependency_blocked": 1,
-    "absent_from_literature": 5,
+    "absent_from_literature": 4,
 }
 
 
@@ -98,8 +100,8 @@ def test_source_acquisition_ledger_has_expected_rows_and_external_gate() -> None
     header, _, records = _read_csv(SOURCE_LEDGER)
 
     assert header == SOURCE_HEADER
-    assert len(records) == 23
-    assert len({row["source_id"] for row in records}) == 23
+    assert len(records) == 31
+    assert len({row["source_id"] for row in records}) == 31
 
     true_external_p1_p2 = [
         row
@@ -114,6 +116,69 @@ def test_source_acquisition_ledger_has_expected_rows_and_external_gate() -> None
         assert row["external_required"] in {"true", "false"}
 
 
+def test_sprint6_pf1000_geometry_source_transitions_are_not_absent() -> None:
+    _, _, blocker_records = _read_csv(BLOCKER_LEDGER)
+    blockers = {row["blocker_id"]: row for row in blocker_records}
+
+    insulator = blockers["PF1000-BLK-015"]
+    assert insulator["corrected_status"] == "existing_kr_source_supported"
+    assert insulator["accepted_runtime_claim"] == "false"
+    assert insulator["can_support_first_principles_acceptance"] == "false"
+    assert "source_available_revision_not_mapped" in insulator["current_repo_status"]
+    assert "recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md" in (
+        insulator["exact_path_or_full_citation"]
+    )
+
+    _, _, source_records = _read_csv(SOURCE_LEDGER)
+    sources = {row["source_id"]: row for row in source_records}
+    assert sources["scholz_2001_recent_progress_pf1000_hardware"][
+        "already_in_kr"
+    ] == "true"
+    assert sources["scholz_2000_pf1000_device"]["already_in_kr"] == "true"
+    assert sources["scholz_2000_pf1000_device"]["external_required"] == "false"
+
+
+def test_user_supplied_intake_sources_are_represented_in_source_ledger() -> None:
+    _, _, source_records = _read_csv(SOURCE_LEDGER)
+    source_ids = {row["source_id"] for row in source_records}
+    intake = json.loads(USER_SUPPLIED_INTAKE.read_text())
+
+    assert not intake["failed"]
+    assert {
+        "scholz_2001_recent_progress_pf1000_hardware",
+        "bruzzone_bernal_2001_lhi_interface",
+        "scholz_2000_pf1000_device",
+        "herold_1989_poseidon_pf360_context",
+        "scholz_1999_foam_liner_context",
+        "loarer_2007_gas_balance_context",
+        "shakya_2015_pf1000_pf400_lee_context",
+        "scholz_gribkov_2007_part2",
+        "gribkov_malaquias_2006_dmp_applications_context",
+    } <= source_ids
+
+    non_failed_count = len(intake["promoted"]) + len(intake["skipped_existing"])
+    sprint6_rows = [
+        row
+        for row in source_records
+        if row["source_id"]
+        in {
+            "scholz_2001_recent_progress_pf1000_hardware",
+            "bruzzone_bernal_2001_lhi_interface",
+            "scholz_2000_pf1000_device",
+            "herold_1989_poseidon_pf360_context",
+            "scholz_1999_foam_liner_context",
+            "loarer_2007_gas_balance_context",
+            "shakya_2015_pf1000_pf400_lee_context",
+            "scholz_gribkov_2007_part2",
+            "gribkov_malaquias_2006_dmp_applications_context",
+        }
+    ]
+    assert len(sprint6_rows) == non_failed_count
+    for row in sprint6_rows:
+        assert row["already_in_kr"] == "true"
+        assert row["external_required"] == "false"
+
+
 def test_v2_handoff_no_longer_contains_superseded_count_claims() -> None:
     text = V2_HANDOFF.read_text(encoding="utf-8")
 
@@ -124,6 +189,8 @@ def test_v2_handoff_no_longer_contains_superseded_count_claims() -> None:
         "The 11 P1+P2 external acquisitions",
         "existing_kr_review_pending",
         "31 blockers, 19 sources",
+        "source-acquisition_row_count = 23",
+        "23 visible source-acquisition rows",
     ]
     for phrase in forbidden:
         assert phrase not in text

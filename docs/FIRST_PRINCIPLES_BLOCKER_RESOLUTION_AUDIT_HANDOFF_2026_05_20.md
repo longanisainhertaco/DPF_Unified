@@ -6,6 +6,14 @@
 - Research method: 7 parallel sub-agent fan-out across KR + on-disk corpus + legacy DB
 - Audience: the audit team verifying that every Sprint 4 named blocker has a definite resolution path (existing KR, KR promotion, existing-KR target extraction, or external acquisition with full citation)
 
+> Supersession note 2026-05-20: this V1 handoff is retained as historical
+> triage. Sprint 6 user-supplied Scholz 2001 target extraction supersedes the
+> V1 `PF1000-BLK-015` verdict: insulator outer radius is now source-available
+> for the 2001 24-rod PF-1000 revision and remains blocked only for runtime
+> revision mapping/acceptance. Use
+> `docs/FIRST_PRINCIPLES_BLOCKER_RESOLUTION_LEDGER_2026_05_20.csv` as the
+> normalized current ledger.
+
 This handoff converts every Sprint 4 named blocker into one of four resolution categories. The goal is **not** to assert physics — every recommendation is documented with the exact local path or full external citation so the audit team can verify independently. Nothing in this document promotes a first-principles, validation, or whole-shot acceptance claim.
 
 ## Resolution Category Glossary

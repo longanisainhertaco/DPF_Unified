@@ -2444,6 +2444,7 @@ def _first_principles_telemetry_packets(
         "startup",
         "pic_particle_loading",
         "boundary_policy",
+        "hybrid_pic_3d_readiness",
         "limiter_readiness",
         "experimental_limiter_zero_probe",
         "power_port",

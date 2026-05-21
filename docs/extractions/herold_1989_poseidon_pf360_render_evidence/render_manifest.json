@@ -1,0 +1,16 @@
+{
+  "source_id": "herold_1989_poseidon_pf360_comparative",
+  "source_pdf_sha256": "51a546954db969c97028db7caec866e49728cef60cb147b16208c2bcc5542a26",
+  "rendered_pages": [
+    {
+      "artifact": "docs/extractions/herold_1989_poseidon_pf360_render_evidence/pdf_p004_journal_p1257.png",
+      "artifact_sha256": "27b95374f8e0e6d43f90c7eaf4951bec40093148fcdd0debae462e9f971b867f",
+      "pdf_page": 4,
+      "journal_page": 1257,
+      "purpose": "Verify the POSEIDON/PF-360 electrode and selected-characteristics tables.",
+      "image_size_px": [1440, 2016]
+    }
+  ],
+  "accepted_runtime_claim": false,
+  "can_support_first_principles_acceptance": false
+}
