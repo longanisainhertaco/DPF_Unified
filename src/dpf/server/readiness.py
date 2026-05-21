@@ -110,15 +110,137 @@ def api_readiness_payload(
     }
 
 
+# Declared-scope -> runtime deck resolution.
+#
+# S10-A2 (closes the Akel/full-energy API mixing path): the readiness layer
+# previously ALWAYS ran the Akel 16 kV seed-layer deck and then stamped the
+# caller-supplied validation/source scope onto the resulting payload.  A
+# PF-1000 full-energy request could therefore be labelled full-energy while the
+# startup packet came from the Akel deck.  The map below pins each declared
+# scope to its own runtime deck.  A scope that is not in this map (including
+# ``not_declared``/unknown) MUST NOT silently default to any deck — it maps to
+# a fail-closed blocked readiness.
+
+# Akel PF-1000 16 kV shot-12581 engineering scope labels.
+_AKEL_VALIDATION_SCOPE = "pf1000_16kv_2021_akel"
+_AKEL_SOURCE_SCOPE = "pf1000_16kv_2021_akel_shot12581"
+
+# PF-1000 Scholz 2000/2001 24-rod large-electrode full-energy scope labels.
+_FULL_ENERGY_VALIDATION_SCOPE = "pf1000_full_energy_27_to_40_kv"
+_FULL_ENERGY_SOURCE_SCOPE = (
+    "pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source"
+)
+
+
+def _resolve_runtime_deck_scope(
+    *,
+    validation_scope: str,
+    source_scope: str,
+) -> str | None:
+    """Resolve a declared scope/source to a runtime deck identity.
+
+    Returns ``"akel"`` for an Akel 16 kV request, ``"full_energy"`` for a
+    PF-1000 full-energy request, or ``None`` when the declared scope/source is
+    not recognised.  ``None`` MUST map to a fail-closed blocked readiness — the
+    readiness layer never defaults an unrecognised scope onto a deck whose own
+    scope would contradict the request.
+    """
+
+    akel_tokens = {
+        _AKEL_VALIDATION_SCOPE,
+        _AKEL_SOURCE_SCOPE,
+    }
+    full_energy_tokens = {
+        _FULL_ENERGY_VALIDATION_SCOPE,
+        _FULL_ENERGY_SOURCE_SCOPE,
+    }
+    requested = {str(validation_scope), str(source_scope)}
+    matches_akel = bool(requested & akel_tokens)
+    matches_full_energy = bool(requested & full_energy_tokens)
+    if matches_akel and matches_full_energy:
+        # A request that names both scopes is contradictory; fail closed.
+        return None
+    if matches_akel:
+        return "akel"
+    if matches_full_energy:
+        return "full_energy"
+    return None
+
+
+def _scope_blocked_first_principles_readiness(
+    *,
+    validation_scope: str,
+    source_scope: str,
+    reason: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Return a fail-closed blocked readiness with no runtime deck executed.
+
+    Used when the declared scope/source cannot be resolved to a runtime deck.
+    No deck is run, so no deck's scope can be mis-stamped onto the request.
+    """
+
+    from dpf.first_principles.runner import RUN_MODE
+
+    readiness = {
+        "ready": False,
+        "status": "blocked",
+        "run_mode": FIRST_PRINCIPLES_MHD_MODE,
+        "execution_mode": RUN_MODE,
+        "requested_validation_scope": validation_scope,
+        "requested_source_scope": source_scope,
+        "actual_runtime_validation_scope": "not_run",
+        "actual_runtime_source_scope": "not_run",
+        "runtime_deck_id": "not_run",
+        "scope_match": False,
+        # Legacy keys retained for payload-shape stability; they echo the
+        # request and never a runtime deck's own scope.
+        "source_scope": source_scope,
+        "validation_scope": validation_scope,
+        "package_native_runner": RUN_MODE,
+        "scientific_status": "blocked_unresolved_runtime_scope",
+        "missing_evidence": ["resolved_runtime_deck_scope"],
+        "blockers": [reason],
+        "can_support_first_principles_acceptance": False,
+    }
+    return readiness, {}, {}, {}
+
+
 def _package_native_first_principles_readiness(
     *,
     validation_scope: str,
     source_scope: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
-    from dpf.first_principles import pf1000_akel_16kv_engineering_deck
+    from dpf.first_principles import (
+        pf1000_akel_16kv_engineering_deck,
+        pf1000_scholz_2001_24rod_full_energy_deck,
+    )
     from dpf.first_principles.runner import RUN_MODE, run_first_principles_3d_deck
 
-    deck = pf1000_akel_16kv_engineering_deck(n_steps=1)
+    resolved = _resolve_runtime_deck_scope(
+        validation_scope=validation_scope,
+        source_scope=source_scope,
+    )
+    if resolved is None:
+        return _scope_blocked_first_principles_readiness(
+            validation_scope=validation_scope,
+            source_scope=source_scope,
+            reason=(
+                "first-principles readiness blocked: declared validation/"
+                f"source scope ('{validation_scope}'/'{source_scope}') does "
+                "not resolve to a known runtime deck; readiness fails closed "
+                "rather than run a deck whose scope contradicts the request"
+            ),
+        )
+
+    # Resolve the runtime deck strictly from the declared scope.  A PF-1000
+    # full-energy request runs the full-energy deck; an Akel request runs the
+    # Akel deck.  ``n_steps=1`` — readiness needs only the validation_packet /
+    # telemetry structure, not a physics run.
+    if resolved == "full_energy":
+        deck = pf1000_scholz_2001_24rod_full_energy_deck(n_steps=1)
+    else:
+        deck = pf1000_akel_16kv_engineering_deck(n_steps=1)
+
     run = run_first_principles_3d_deck(deck)
     validation_packet = dict(run.validation_packet)
     telemetry = run.telemetry
@@ -144,11 +266,55 @@ def _package_native_first_principles_readiness(
         )
         if validation_packet.get(f"{key}_status")
     ]
+
+    # ``actual_runtime_*`` report the runtime DECK FAMILY identity — the deck
+    # that was actually executed (Akel vs full-energy), derived from
+    # ``resolved``, never from the caller-supplied request.  ``resolved`` pinned
+    # the deck to the request, so for any request that reaches this point the
+    # runtime family equals the requested family: ``scope_match`` is True.  The
+    # genuine requested-vs-runtime mismatch — a request naming a different deck
+    # than the one that runs — is impossible here because a request that names
+    # two contradictory scopes already failed closed via ``resolved is None``
+    # above and never reaches this deck-execution path.
+    actual_runtime_validation_scope = (
+        _FULL_ENERGY_VALIDATION_SCOPE
+        if resolved == "full_energy"
+        else _AKEL_VALIDATION_SCOPE
+    )
+    actual_runtime_source_scope = (
+        _FULL_ENERGY_SOURCE_SCOPE
+        if resolved == "full_energy"
+        else _AKEL_SOURCE_SCOPE
+    )
+    # The deck-internal runtime scope as the runner reports it — surfaced for
+    # traceability so a reviewer can confirm which deck telemetry was consumed.
+    runtime_deck_internal_source_scope = str(
+        validation_packet.get("source_scope")
+        or startup.get("source_scope")
+        or "unknown_runtime_source_scope"
+    )
+
     readiness = {
         "ready": False,
         "status": "blocked",
         "run_mode": FIRST_PRINCIPLES_MHD_MODE,
         "execution_mode": RUN_MODE,
+        # Both the requested scope and the actual runtime deck scope are
+        # exposed (S10-A2): a reviewer can always see which deck ran versus
+        # what the caller asked for.
+        "requested_validation_scope": validation_scope,
+        "requested_source_scope": source_scope,
+        "actual_runtime_validation_scope": actual_runtime_validation_scope,
+        "actual_runtime_source_scope": actual_runtime_source_scope,
+        "runtime_deck_id": deck.deck_id,
+        "runtime_deck_internal_source_scope": runtime_deck_internal_source_scope,
+        # ``resolved`` pinned the deck to the requested scope, so the runtime
+        # family always matches the request that reaches this path.
+        "scope_match": True,
+        # Legacy keys preserved for the existing Akel readiness contract.  They
+        # echo the requested scope, which is now SAFE because the runtime deck
+        # was selected from that same request — a requested label can no longer
+        # ride a different runtime deck.
         "source_scope": source_scope,
         "validation_scope": validation_scope,
         "package_native_runner": RUN_MODE,

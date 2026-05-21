@@ -7201,3 +7201,78 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   sprint, and closed no physics blocker. Completion memo:
   `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`; gate dry run:
   `docs/SPRINT10_ACCEPTANCE_GATE_DRY_RUN_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 10 Audit
+
+- Verdict:
+  Super-Sprint 10 is not accepted as complete. It closes the geometry/manifest
+  corrections and adds useful fail-closed gate instrumentation, but leaves
+  startup deck policy, server readiness scope coupling, same-scope namespace
+  purity, active artifact hygiene, and dry-run pass semantics unfinished.
+- Confirmed:
+  PF-1000 geometry blockers and hollow-anode state are correct in runtime and
+  segmented manifest; imported-PIC startup is fail-closed at the BVP layer; the
+  current dry-run ledger reports all eight gates blocked; no acceptance flag was
+  promoted.
+- Corrections required:
+  enforce imported-PIC context-only policy in `deck.py` and runtime conversion;
+  make server readiness run the deck matching the requested scope or fail on a
+  mismatch; remove hybrid-PIC architecture/source material from `same_scope`
+  named structures; archive/regenerate stale active `results/` artifacts with
+  old LLNL-like selected/same-scope emissions; harden dry-run gate pass
+  semantics; quote full SS10-5/SS10-8 evidence in the memo.
+- Controlling packet:
+  `docs/CODEX_SUPER_SPRINT10_AUDIT_AND_SUPER_SPRINT11_INSTRUCTIONS_2026_05_21.md`.
+
+### 2026-05-21: Super-Sprint 11 — Codex S10-A1..A6 closure
+
+- What SS11 did:
+  Closed six Codex SS10 audit findings (S10-A1..A6) as a policy and
+  artifact-integrity sprint. No physics acceptance work started, no acceptance
+  flag promoted, no physics blocker closed.
+- SS11-1 (closes S10-A1, imported-PIC deck-level enforcement):
+  `deck.py` now has a module-level `CONTEXT_ONLY_STARTUP_MODES` constant and
+  `StartupPolicy.__post_init__` forces `can_support_whole_shot_acceptance=False`
+  unconditionally for all context-only modes. The deck-to-3D-deck conversion
+  path can no longer return `startup_can_support_whole_shot_acceptance=True` for
+  imported PIC even with a complete reviewed payload. 4 new tests,
+  72 passed in focused slice.
+- SS11-2 (closes S10-A2, scope-safe server readiness):
+  `readiness.py` now resolves the requested scope to an actual runtime deck before
+  running; full-energy requests get the full-energy deck, Akel requests get the
+  Akel deck, unknown/contradictory scope fails closed. Payload exposes both
+  requested and actual scopes plus `scope_match`. 6 new tests, 16 passed.
+- SS11-3 (closes S10-A3, same-scope namespace purity):
+  Hybrid-PIC architecture ref relocated from `SAME_SCOPE_SOURCE_REFS` to
+  `ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES`. The `same_scope_3d_validation_packet`
+  capability in `hybrid_pic_3d.py` now reports a "missing, no accepted source"
+  capability_source instead of attaching the LLNL source. Runner emits a sibling
+  `architecture_or_schema_context_sources` key. Recursive runtime scan confirms
+  zero `same_scope` keys contain the three forbidden hybrid-PIC strings. 3 new
+  tests, 102 passed.
+- SS11-4 (closes S10-A4, active results artifact hygiene):
+  6 stale top-level `results/*.json` files (2026_05_16 vintage) moved to
+  `results/archive_stale_pre_ss11_2026_05_21/` — contents untouched, provenance
+  intact. New `scripts/verify_active_results_artifact_hygiene.py` enforces the
+  clean state going forward. 6 new tests, all passed. Active results directory
+  now clean of the two forbidden patterns.
+- SS11-5 (closes S10-A5, dry-run predicate hardening):
+  Pass predicate in `acceptance_gate_dry_run.py` changed from `is not False` to
+  `is True` — a gate requires accepted status + empty missing list + explicit
+  `can_support_first_principles_acceptance=True`. `is_fail_closed` docstring
+  corrected. 4 adversarial tests added; current PF-1000 dry run still reports all
+  8 gates blocked, `report_only=true`, `promotes_acceptance=false`. 14 passed.
+- SS11-6 (closes S10-A6, traceability evidence in memo):
+  `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md` contains verbatim command output
+  for all three required checks at --date 2026_05_21: source-truth exhaustion
+  (`exhausted=true`, `open_issue_count=0`), module-source vetting
+  (`strict_passed=true`, 298 modules), SRS traceability export (`2 passed`).
+  Periodic audit section records post-commit gate per lead's fill-in policy.
+- Integration (SS11-7 unified gate):
+  10 test files, **241 passed** total. Ruff `src tests` clean.
+  Module-source vetting and source-truth baselines regenerated at 2026_05_21
+  because SS11 edited physics modules.
+- Boundary:
+  All acceptance flags remain false. SS11 closed no physics blocker. S10-A7
+  (no acceptance promotion defect) preserved. Completion memo:
+  `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md`.

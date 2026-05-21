@@ -185,7 +185,23 @@ class AcceptanceGateDryRunLedger:
 
     @property
     def is_fail_closed(self) -> bool:
-        """True when no gate passes and every blocked gate names its blockers."""
+        """True when the ledger is report-only and no flag promotes acceptance.
+
+        The dry run is designed to eventually report ``pass`` gates, so a
+        passing gate does NOT by itself break fail-closed.  ``is_fail_closed``
+        is True when ALL of the following hold:
+
+        - no ledger-level flag promotes acceptance
+          (``promotes_acceptance``, ``accepted_runtime_claim``,
+          ``can_support_first_principles_acceptance`` all False);
+        - every gate has a recognized status (``pass`` or ``blocked``);
+        - every ``blocked`` gate names at least one missing input;
+        - no gate-level flag promotes acceptance.
+
+        It does NOT mean "no gate passes" -- a gate may legitimately pass once
+        its backing packet authorizes first-principles acceptance (see
+        ``_build_gate_result``).
+        """
 
         if self.promotes_acceptance or self.accepted_runtime_claim:
             return False
@@ -305,10 +321,13 @@ def _build_gate_result(
     accepted = (
         isinstance(packet, Mapping)
         and _status_is_accepted(packet_status)
-        # Defense in depth: a packet is only ``pass`` if it does not itself
-        # report inability to support first-principles acceptance.
-        and packet.get("can_support_first_principles_acceptance") is not False
         and not missing
+        # Fail-closed (S10-A5): a gate reports ``pass`` ONLY when the backing
+        # packet explicitly authorizes first-principles acceptance.  Strict
+        # identity -- an absent key or ``None`` is NOT authorization; only a
+        # literal ``True`` is.  ``is not False`` was too permissive: it let an
+        # accepted-status packet with the flag missing or ``None`` pass.
+        and packet.get("can_support_first_principles_acceptance") is True
     )
 
     if accepted:

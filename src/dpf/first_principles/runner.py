@@ -81,7 +81,10 @@ from dpf.first_principles.numerical_fidelity import build_numerical_fidelity_pac
 from dpf.first_principles.plasmapy_audit import build_plasmapy_formulary_audit_packet
 from dpf.first_principles.power_port import build_engineering_power_port_packet
 from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
-from dpf.first_principles.same_scope import build_same_scope_source_packet
+from dpf.first_principles.same_scope import (
+    ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES,
+    build_same_scope_source_packet,
+)
 from dpf.first_principles.spatial_field_temperature import (
     build_spatial_field_temperature_packet,
 )
@@ -1244,6 +1247,11 @@ class HybridEMPicFluidRun:
             "dimensionality_handoff": dimensionality_packet,
             "physics_closure": physics_closure_packet,
             "same_scope_source": same_scope_source_packet,
+            # SS11-3 (audit S10-A3): other-scope hybrid-PIC architecture/schema
+            # context lives under this clearly NON-``same_scope``-named sibling
+            # field, never inside ``same_scope_source``.  It is architecture
+            # context only and promotes nothing.
+            "architecture_or_schema_context_sources": _architecture_context_sources(),
             "waveform_phase": waveform_phase_packet,
             "engineering_current_waveform_comparison": (
                 current_waveform_comparison_packet
@@ -2057,6 +2065,24 @@ def _initial_pic_pml_mask(grid: Maxwell3DGrid, pml_cells: int) -> np.ndarray:
         mask[:, :, :p] = True
         mask[:, :, -p:] = True
     return mask
+
+
+def _architecture_context_sources() -> dict[str, Any]:
+    """Return the non-same-scope architecture/schema-context source block.
+
+    SS11-3 (audit S10-A3): the LLNL-like hybrid-PIC paper is other-scope
+    architecture / equation-method / schema-context evidence.  It is emitted
+    here under a clearly NON-``same_scope``-named runtime field so it never
+    blurs selected-machine same-scope source evidence.  It promotes nothing.
+    """
+    return {
+        "status": "architecture_or_schema_context_only_not_same_scope",
+        "role": "other_scope_architecture_and_schema_context_sources",
+        "usable_for": "architecture_and_closure_gap_requirements_or_schema_only",
+        "is_same_scope_validation_evidence": False,
+        "source_references": list(ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES),
+        "can_support_first_principles_acceptance": False,
+    }
 
 
 def _candidate_evidence(
@@ -3195,6 +3221,11 @@ def _build_manifest(
         "dimensionality_handoff_packet": telemetry["dimensionality_handoff"],
         "physics_closure_packet": telemetry["physics_closure"],
         "same_scope_source_packet": telemetry["same_scope_source"],
+        # SS11-3 (audit S10-A3): other-scope architecture/schema context under
+        # a non-``same_scope``-named manifest key.
+        "architecture_or_schema_context_sources": telemetry[
+            "architecture_or_schema_context_sources"
+        ],
         "waveform_phase_packet": telemetry["waveform_phase"],
         "spatial_field_temperature_packet": telemetry["spatial_field_temperature"],
         "neutron_authority_packet": telemetry["neutron_authority"],

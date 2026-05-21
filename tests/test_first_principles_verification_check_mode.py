@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 EXHAUSTION_SCRIPT = ROOT / "scripts" / "verify_first_principles_source_truth_exhaustion.py"
 VETTING_SCRIPT = ROOT / "scripts" / "verify_first_principles_module_source_vetting.py"
-FIXED_DATE = "2026_05_18"
+FIXED_DATE = "2026_05_21"
 MISSING_DATE = "1999_01_01"
 
 

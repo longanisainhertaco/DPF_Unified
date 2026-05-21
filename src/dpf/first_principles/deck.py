@@ -97,6 +97,19 @@ ENGINEERING_ONLY_STARTUP_MODES = {
     "source_backed_profile",
 }
 
+# SS11-1 (closes audit S10-A1): deck-level mirror of
+# ``startup_bvp.CONTEXT_ONLY_STARTUP_MODES``.  An imported-PIC sheath state is
+# an import, not a same-scope measured diagnostic; it is context-only and can
+# never carry runtime whole-shot acceptance authority.  ``StartupPolicy``
+# unconditionally forces ``can_support_whole_shot_acceptance`` to False for
+# every mode in this set — even a fully reviewed, complete payload cannot
+# promote it.  Members of this set must never appear in any accepted-startup
+# taxonomy.  Reintroducing imported PIC as an acceptance path would require a
+# new source-reviewed policy packet (future-sprint work).
+CONTEXT_ONLY_STARTUP_MODES = {
+    "imported_pic_sheath_state",
+}
+
 
 @dataclass(frozen=True)
 class SourceReference:
@@ -343,6 +356,12 @@ class StartupPolicy:
             )
         if self.mode == "surface_breakdown_bvp" and self.missing_channels:
             object.__setattr__(self, "can_support_whole_shot_acceptance", False)
+        # SS11-1 (closes audit S10-A1): the imported-PIC evidence/payload checks
+        # below enforce OTHER invariants (no whole-shot claim on unreviewed
+        # evidence or a missing payload) and are evaluated against the
+        # caller-declared flag.  They run BEFORE the context-only force so a
+        # caller cannot silently declare an accepting imported-PIC policy with
+        # unreviewed evidence or an empty payload.
         if (
             self.mode == "imported_pic_sheath_state"
             and self.evidence_status
@@ -362,6 +381,16 @@ class StartupPolicy:
                 "imported_pic_sheath_state requires a reviewed startup_payload "
                 "before whole-shot startup support can be declared"
             )
+        # SS11-1 (closes audit S10-A1): context-only startup modes can NEVER
+        # carry runtime whole-shot acceptance authority.  Force the flag to
+        # False unconditionally — independent of evidence_status or payload
+        # completeness — so even a fully reviewed, complete imported-PIC payload
+        # cannot be converted into a runtime deck with
+        # startup_can_support_whole_shot_acceptance=True.  Mirrors the
+        # ENGINEERING_ONLY force-branch above; chosen as a force (not a raise)
+        # for consistent, non-breaking construction.
+        if self.mode in CONTEXT_ONLY_STARTUP_MODES:
+            object.__setattr__(self, "can_support_whole_shot_acceptance", False)
 
     @property
     def whole_shot_startup_blocked(self) -> bool:

@@ -157,3 +157,97 @@ def test_blocked_gate_result_requires_named_missing() -> None:
         gates=(bad,),
     )
     assert bad_ledger.is_fail_closed is False
+
+
+def _synthetic_runtime(numerical_fidelity_packet: dict) -> dict:
+    """A PF-1000-shaped synthetic runtime carrying one crafted gate packet.
+
+    Only the ``numerical_fidelity`` gate is backed; every other gate sees an
+    absent packet and stays blocked.  This isolates the acceptance-flag logic
+    of ``_build_gate_result`` for the numerical_fidelity gate.
+    """
+
+    return {
+        "scientific_status": "engineering_candidate_not_validation",
+        "deck": {"source": "built_in:pf1000_scholz_2001_24rod_full_energy"},
+        "can_support_first_principles_acceptance": False,
+        "telemetry_packets": {"numerical_fidelity": numerical_fidelity_packet},
+    }
+
+
+def _numerical_fidelity_gate(
+    ledger: AcceptanceGateDryRunLedger,
+) -> GateDryRunResult:
+    return next(
+        gate for gate in ledger.gates if gate.gate == "numerical_fidelity"
+    )
+
+
+def test_accepted_status_missing_acceptance_flag_stays_blocked() -> None:
+    """S10-A5: accepted status + empty missing, but the acceptance flag is
+    ABSENT -- the gate must stay blocked, never pass."""
+
+    # Packet has an accepted status and no missing inputs, but never sets
+    # ``can_support_first_principles_acceptance``.  ``.get()`` returns None.
+    packet = {"status": "accepted"}
+    ledger = run_acceptance_gate_dry_run(_synthetic_runtime(packet))
+    gate = _numerical_fidelity_gate(ledger)
+    assert gate.status == "blocked"
+    assert gate.missing
+    assert ledger.is_fail_closed
+
+
+def test_accepted_status_none_acceptance_flag_stays_blocked() -> None:
+    """S10-A5: accepted status + empty missing, acceptance flag explicitly
+    ``None`` -- the gate must stay blocked.  ``None is True`` is False."""
+
+    packet = {
+        "status": "accepted",
+        "can_support_first_principles_acceptance": None,
+    }
+    ledger = run_acceptance_gate_dry_run(_synthetic_runtime(packet))
+    gate = _numerical_fidelity_gate(ledger)
+    assert gate.status == "blocked"
+    assert gate.missing
+    assert ledger.is_fail_closed
+
+
+def test_accepted_status_false_acceptance_flag_stays_blocked() -> None:
+    """S10-A5: accepted status + empty missing, acceptance flag ``False`` --
+    the gate must stay blocked."""
+
+    packet = {
+        "status": "accepted",
+        "can_support_first_principles_acceptance": False,
+    }
+    ledger = run_acceptance_gate_dry_run(_synthetic_runtime(packet))
+    gate = _numerical_fidelity_gate(ledger)
+    assert gate.status == "blocked"
+    assert gate.missing
+    assert ledger.is_fail_closed
+
+
+def test_accepted_status_with_true_acceptance_flag_passes() -> None:
+    """Positive control: a gate CAN pass when its backing packet is legitimately
+    authorized -- accepted status, empty missing, and the acceptance flag is
+    the literal ``True``.  This proves the predicate is not unconditionally
+    blocking.  A passing gate does not break ``is_fail_closed`` because the
+    ledger-level flags remain false."""
+
+    packet = {
+        "status": "accepted",
+        "can_support_first_principles_acceptance": True,
+    }
+    ledger = run_acceptance_gate_dry_run(_synthetic_runtime(packet))
+    gate = _numerical_fidelity_gate(ledger)
+    assert gate.status == "pass"
+    assert gate.missing == ()
+    # The other seven gates have absent packets and stay blocked.
+    assert ledger.summary["pass_count"] == 1
+    assert ledger.summary["blocked_count"] == 7
+    # is_fail_closed is report-only + no promoted flags, NOT "no gate passes".
+    assert ledger.is_fail_closed
+    assert ledger.report_only is True
+    assert ledger.promotes_acceptance is False
+    assert ledger.accepted_runtime_claim is False
+    assert ledger.can_support_first_principles_acceptance is False

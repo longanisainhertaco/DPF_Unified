@@ -328,3 +328,127 @@ def test_pf1000_resolved_rod_grid_clears_mesh_resolution_warning() -> None:
     # Resolving rods still does not promote acceptance.
     assert warning["can_support_geometry_acceptance"] is False
     assert conductor_mask["can_support_first_principles_acceptance"] is False
+
+
+# --------------------------------------------------------------------------
+# SS11-3 (audit S10-A3): no ``same_scope``-named runtime key may carry
+# hybrid-PIC / LLNL-like architecture source material.
+# --------------------------------------------------------------------------
+_S10_A3_FORBIDDEN_IN_SAME_SCOPE = (
+    "llnl_like_180ka_axisymmetric_hybrid_pic",
+    "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield",
+    "hybrid_pic_architecture_order_of_magnitude_other_scope",
+)
+
+
+def _same_scope_subtree_strings(node: object) -> list[str]:
+    """Collect every dict key and string value in a runtime subtree."""
+    found: list[str] = []
+    if isinstance(node, dict):
+        for key, value in node.items():
+            found.append(str(key))
+            found.extend(_same_scope_subtree_strings(value))
+    elif isinstance(node, list):
+        for value in node:
+            found.extend(_same_scope_subtree_strings(value))
+    elif isinstance(node, str):
+        found.append(node)
+    return found
+
+
+def _scan_same_scope_keys_for_forbidden(obj: object) -> list[tuple[str, str]]:
+    """Return (key_path, forbidden_string) pairs for any leaking same_scope key.
+
+    Walks every dict/list recursively.  For any dict key whose name contains the
+    substring ``same_scope``, its whole subtree (keys + string values) must
+    contain none of the three S10-A3 forbidden strings.
+    """
+    leaks: list[tuple[str, str]] = []
+
+    def _walk(node: object, path: str) -> None:
+        if isinstance(node, dict):
+            for key, value in node.items():
+                key_path = f"{path}.{key}"
+                if "same_scope" in str(key).lower():
+                    subtree = _same_scope_subtree_strings(value)
+                    subtree.append(str(key))
+                    blob = "\n".join(subtree)
+                    for forbidden in _S10_A3_FORBIDDEN_IN_SAME_SCOPE:
+                        if forbidden in blob:
+                            leaks.append((key_path, forbidden))
+                _walk(value, key_path)
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                _walk(value, f"{path}[{index}]")
+
+    _walk(obj, "")
+    return leaks
+
+
+def test_pf1000_full_energy_no_same_scope_key_carries_hybrid_pic_material() -> None:
+    """No ``same_scope``-named runtime key carries hybrid-PIC/LLNL-like material.
+
+    SS11-3 (audit S10-A3): walk the full PF-1000 full-energy runtime payload
+    (telemetry + segmented manifest).  For every dict key containing the
+    substring ``same_scope``, its subtree must contain none of the three
+    forbidden hybrid-PIC/LLNL-like strings.  The hybrid-PIC architecture
+    reference is relocated to the non-``same_scope`` field
+    ``architecture_or_schema_context_sources``.
+    """
+    result = run_first_principles_3d_deck(
+        pf1000_scholz_2001_24rod_full_energy_deck()
+    )
+
+    telemetry_leaks = _scan_same_scope_keys_for_forbidden(result.telemetry)
+    assert telemetry_leaks == [], (
+        f"telemetry same_scope keys carry hybrid-PIC material: {telemetry_leaks}"
+    )
+
+    manifest_leaks = _scan_same_scope_keys_for_forbidden(result.manifest)
+    assert manifest_leaks == [], (
+        f"manifest same_scope keys carry hybrid-PIC material: {manifest_leaks}"
+    )
+
+    payload_leaks = _scan_same_scope_keys_for_forbidden(result.to_dict())
+    assert payload_leaks == [], (
+        f"runtime payload same_scope keys carry hybrid-PIC material: {payload_leaks}"
+    )
+
+
+def test_pf1000_segmented_manifest_no_same_scope_key_carries_hybrid_pic_material(
+    tmp_path,
+) -> None:
+    """The segmented whole-shot manifest has no leaking ``same_scope`` key."""
+    deck = pf1000_scholz_2001_24rod_full_energy_deck().to_dict()
+    manifest = run_segmented_whole_shot(
+        deck=deck,
+        run_dir=tmp_path / "pf1000_ss11_3_same_scope_scan",
+        segment_steps=2,
+        explicit_total_steps=6,
+        verify_restart_equivalence=False,
+    )
+
+    leaks = _scan_same_scope_keys_for_forbidden(manifest)
+    assert leaks == [], (
+        f"segmented manifest same_scope keys carry hybrid-PIC material: {leaks}"
+    )
+
+
+def test_pf1000_full_energy_relocates_hybrid_pic_ref_to_non_same_scope_field() -> None:
+    """The hybrid-PIC architecture ref is retained under a non-same-scope field.
+
+    SS11-3 (audit S10-A3): relocation, not deletion -- the LLNL-like hybrid-PIC
+    architecture reference must remain available as architecture context.
+    """
+    result = run_first_principles_3d_deck(
+        pf1000_scholz_2001_24rod_full_energy_deck()
+    )
+    context = result.telemetry["architecture_or_schema_context_sources"]
+
+    assert "same_scope" not in "architecture_or_schema_context_sources"
+    assert context["is_same_scope_validation_evidence"] is False
+    assert context["can_support_first_principles_acceptance"] is False
+
+    blob = json.dumps(context, default=str)
+    assert "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield" in blob
+    assert "hybrid_pic_architecture_order_of_magnitude_other_scope" in blob

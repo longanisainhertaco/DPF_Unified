@@ -1,6 +1,8 @@
-"""SS10-4 (A5) regression tests: imported-PIC startup is context-only policy.
+"""SS10-4 (A5) / SS11-1 (S10-A1) regression tests: imported-PIC startup is
+context-only policy.
 
-These tests encode the policy correction required by Super-Sprint 10 finding A5:
+These tests encode the policy correction required by Super-Sprint 10 finding A5
+and Super-Sprint 11 finding S10-A1:
 
 * ``imported_pic_sheath_state`` is NOT in ``ACCEPTED_STARTUP_MODES``; it lives
   in ``CONTEXT_ONLY_STARTUP_MODES`` and must never satisfy ``mode_is_accepted``.
@@ -8,15 +10,30 @@ These tests encode the policy correction required by Super-Sprint 10 finding A5:
   payload-review layer even when the payload is fully reviewed and complete.
 * A forced accepting typed startup packet path still cannot promote an
   imported-PIC payload.
+* SS11-1: ``deck.py`` carries a deck-level ``CONTEXT_ONLY_STARTUP_MODES`` set
+  and ``StartupPolicy.__post_init__`` unconditionally forces
+  ``can_support_whole_shot_acceptance=False`` for imported PIC; a COMPLETE,
+  REVIEWED imported-PIC ``FirstPrinciplesInputDeck`` converted through
+  ``FirstPrinciples3DDeck.from_deck`` can never carry
+  ``startup_can_support_whole_shot_acceptance=True``.
 
 All acceptance flags must remain False (project non-negotiable).
 """
 
 from __future__ import annotations
 
+from dpf.first_principles.deck import (
+    CONTEXT_ONLY_STARTUP_MODES as DECK_CONTEXT_ONLY_STARTUP_MODES,
+)
+from dpf.first_principles.deck import (
+    FirstPrinciplesInputDeck,
+    StartupPolicy,
+)
+from dpf.first_principles.runner import FirstPrinciples3DDeck
 from dpf.first_principles.startup_bvp import (
     ACCEPTED_STARTUP_MODES,
     CONTEXT_ONLY_STARTUP_MODES,
+    MODE_REQUIRED_PAYLOADS,
     REQUIRED_STARTUP_CHANNELS,
     build_startup_bvp_packet,
     build_startup_packet,
@@ -166,3 +183,163 @@ def test_forced_accepting_typed_packet_path_cannot_promote_imported_pic() -> Non
     # --- Typed packet itself is still blocked (WP-N2) ---
     typed = build_startup_packet()
     assert typed.can_support_first_principles_acceptance is False
+
+
+# ---------------------------------------------------------------------------
+# Test 3 (SS11-1 / S10-A1): deck.py StartupPolicy + FirstPrinciples3DDeck
+# conversion clamp imported PIC to non-promoting, unconditionally.
+# ---------------------------------------------------------------------------
+
+
+def _complete_reviewed_imported_pic_startup_payload() -> dict[str, object]:
+    """A fully-populated, reviewed imported-PIC startup_payload.
+
+    Every mode-required payload field for ``imported_pic_sheath_state`` is
+    present as a reviewed non-None value — the most permissive caller input.
+    """
+    payload: dict[str, object] = {
+        field: {"status": "reviewed"}
+        for field in MODE_REQUIRED_PAYLOADS["imported_pic_sheath_state"]
+    }
+    payload["mode"] = "imported_pic_sheath_state"
+    payload["evidence_status"] = "reviewed"
+    return payload
+
+
+def test_deck_context_only_startup_modes_mirror_startup_bvp_taxonomy() -> None:
+    """deck.py must carry a deck-level CONTEXT_ONLY_STARTUP_MODES set that
+    contains imported_pic_sheath_state and mirrors the startup_bvp taxonomy
+    (SS11-1 / S10-A1)."""
+    assert "imported_pic_sheath_state" in DECK_CONTEXT_ONLY_STARTUP_MODES
+    # deck-level set and startup_bvp tuple must agree on membership.
+    assert set(DECK_CONTEXT_ONLY_STARTUP_MODES) == set(CONTEXT_ONLY_STARTUP_MODES)
+
+
+def test_startup_policy_reviewed_complete_imported_pic_payload_forced_nonpromoting() -> (
+    None
+):
+    """A StartupPolicy for imported PIC with REVIEWED evidence and a COMPLETE
+    payload must have can_support_whole_shot_acceptance forced to False — the
+    SS11-1 fix closes the reviewed-payload->True gap (S10-A1)."""
+    policy = StartupPolicy(
+        mode="imported_pic_sheath_state",
+        evidence_status="reviewed",
+        can_support_whole_shot_acceptance=True,
+        startup_payload=_complete_reviewed_imported_pic_startup_payload(),
+    )
+    assert policy.can_support_whole_shot_acceptance is False, (
+        "imported-PIC StartupPolicy with reviewed complete payload must be "
+        "forced non-promoting (SS11-1 / S10-A1)"
+    )
+    assert policy.whole_shot_startup_blocked is True
+
+
+def test_startup_policy_accepted_same_scope_imported_pic_payload_forced_nonpromoting() -> (
+    None
+):
+    """Even accepted_same_scope_source evidence_status cannot lift an
+    imported-PIC StartupPolicy to whole-shot acceptance (SS11-1 / S10-A1)."""
+    policy = StartupPolicy(
+        mode="imported_pic_sheath_state",
+        evidence_status="accepted_same_scope_source",
+        can_support_whole_shot_acceptance=True,
+        startup_payload=_complete_reviewed_imported_pic_startup_payload(),
+    )
+    assert policy.can_support_whole_shot_acceptance is False
+    assert policy.whole_shot_startup_blocked is True
+
+
+def test_imported_pic_input_deck_converts_to_nonpromoting_runtime_deck() -> None:
+    """SS11-1 / S10-A1 required test: a COMPLETE, REVIEWED imported-PIC
+    FirstPrinciplesInputDeck converted through FirstPrinciples3DDeck.from_deck
+    yields a runtime startup policy that is context-only and non-promoting.
+
+    A reviewed complete imported-PIC payload was the S10-A1 gap: it could be
+    converted into a runtime deck with startup_can_support_whole_shot_acceptance
+    =True.  The deck-level CONTEXT_ONLY_STARTUP_MODES force closes that gap.
+    """
+    source_sha = "a" * 64
+    deck_payload: dict[str, object] = {
+        "deck_id": "ss11-1-imported-pic-context-only",
+        "description": "SS11-1 imported-PIC context-only conversion regression",
+        "device_geometry": {
+            "coordinate_system": "cartesian_3d",
+            "anode_radius_m": 0.01,
+            "cathode_radius_m": 0.03,
+            "anode_length_m": 0.05,
+            "cathode_length_m": 0.10,
+            "source_reference_ids": ["pf1000_geometry"],
+        },
+        "circuit": {
+            "capacitance_F": 1.332e-3,
+            "initial_voltage_V": 16_000.0,
+            "static_inductance_H": 25.0e-9,
+            "static_resistance_ohm": 2.3e-3,
+            "source_reference_ids": ["pf1000_geometry"],
+        },
+        "gas": {
+            "fill_pressure_Pa": 466.6,
+            "fill_temperature_K": 300.0,
+            "species": [
+                {
+                    "name": "D2",
+                    "atomic_mass_amu": 2.014,
+                    "charge_state": 0.0,
+                    "number_fraction": 1.0,
+                    "source_reference_ids": ["pf1000_geometry"],
+                }
+            ],
+        },
+        "grid": {
+            "dimensionality": "3d",
+            "coordinate_system": "cartesian",
+            "shape": [4, 4, 8],
+            "spacing_m": [0.001, 0.001, 0.001],
+            "field_layout": "staggered_yee",
+        },
+        # COMPLETE, REVIEWED imported-PIC startup policy with a caller-declared
+        # accepting flag — the most permissive S10-A1 input.
+        "startup_policy": {
+            "mode": "imported_pic_sheath_state",
+            "evidence_status": "reviewed",
+            "can_support_whole_shot_acceptance": True,
+            "startup_payload": _complete_reviewed_imported_pic_startup_payload(),
+            "source_reference_ids": ["pf1000_geometry"],
+        },
+        "source_references": [
+            {
+                "source_id": "pf1000_geometry",
+                "path": "KnowledgeReference/pf1000/geometry.md",
+                "sha256": source_sha,
+                "title": "PF-1000 geometry source packet",
+                "source_scope": "pf1000_16kv_2021_akel",
+            }
+        ],
+    }
+
+    input_deck = FirstPrinciplesInputDeck.from_dict(deck_payload)
+
+    # The package input deck's StartupPolicy is already clamped.
+    assert input_deck.startup.mode == "imported_pic_sheath_state"
+    assert input_deck.startup.can_support_whole_shot_acceptance is False
+    assert input_deck.startup.whole_shot_startup_blocked is True
+
+    # The FirstPrinciplesInputDeck -> FirstPrinciples3DDeck conversion must
+    # never carry startup_can_support_whole_shot_acceptance=True for imported
+    # PIC, even from a reviewed complete payload.
+    runtime_deck = FirstPrinciples3DDeck.from_deck(input_deck)
+    assert runtime_deck.startup_mode == "imported_pic_sheath_state"
+    assert runtime_deck.startup_can_support_whole_shot_acceptance is False, (
+        "FirstPrinciples3DDeck.from_deck carried an accepting whole-shot flag "
+        "for an imported-PIC deck (S10-A1 regression)"
+    )
+
+    # The runtime startup packet must be context-only and non-promoting.
+    runtime_startup = runtime_deck.startup_packet()
+    assert runtime_startup["whole_shot_startup_blocked"] is True
+    assert runtime_startup["can_support_whole_shot_acceptance"] is False
+    assert runtime_startup["can_support_first_principles_acceptance"] is False
+    assert (
+        runtime_startup["startup_mode_status"]["imported_pic_sheath_state"]["status"]
+        == "context_only_not_an_acceptance_path"
+    )

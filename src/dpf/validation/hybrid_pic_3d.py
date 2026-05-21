@@ -173,7 +173,16 @@ HYBRID_PIC_3D_CAPABILITIES: tuple[dict[str, object], ...] = (
             "docs/VALIDATED_PHYSICS_PIPELINE_PLAN.md",
             "src/dpf/validation/kr_targets.py",
         ],
-        "gap": "A typed source-geometry packet now captures the local LLNL-like axisymmetric setup as candidate evidence, but same-scope 3-D validation packets are still missing.",
+        "gap": "A typed architecture geometry packet exists as candidate context, but a same-scope 3-D validation packet is still missing.",
+        # SS11-3 (audit S10-A3): this capability's identity IS the missing
+        # same-scope validation packet.  Its source is the (absent) same-scope
+        # 3-D validation packet -- NOT the other-scope LLNL-like hybrid-PIC
+        # architecture paper.  Attaching HYBRID_PIC_3D_SOURCE here would put an
+        # other-scope architecture source inside a ``same_scope``-named
+        # capability subtree, blurring scope context.
+        "capability_source": (
+            "missing_same_scope_3d_validation_packet_no_accepted_source"
+        ),
     },
 )
 
@@ -210,10 +219,15 @@ def hybrid_pic_3d_readiness_status(
         else:
             missing.append(capability_id)
             state = "missing_or_unaccepted"
+        # SS11-3 (audit S10-A3): a ``same_scope``-named capability subtree must
+        # not carry the LLNL-like hybrid-PIC architecture path as its source.
+        capability_source = str(
+            capability.get("capability_source") or HYBRID_PIC_3D_SOURCE
+        )
         capability_status[capability_id] = {
             "status": state,
             "accepted": accepted,
-            "source": HYBRID_PIC_3D_SOURCE,
+            "source": capability_source,
             "source_lines": capability["source_lines"],
             "required_for": capability["required_for"],
             "current_repo_hooks": capability["current_repo_hooks"],

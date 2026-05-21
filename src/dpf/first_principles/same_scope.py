@@ -40,6 +40,16 @@ SAME_SCOPE_SOURCE_REFS = (
         "lines": "121-137,175-177,269-275",
         "role": "pf1000_neutron_transport_detector_other_scope",
     },
+)
+
+# SS11-3 (audit S10-A3): the LLNL-like hybrid-PIC paper is ARCHITECTURE /
+# equation-method / schema-context evidence -- it is NOT a same-scope PF-1000
+# source.  It MUST NOT live under ``SAME_SCOPE_SOURCE_REFS`` nor be emitted
+# under any ``same_scope``-named runtime field, because that namespace blurs
+# selected-machine same-scope evidence with other-scope architecture context.
+# The reference is retained here in full as architecture context and is emitted
+# under the clearly non-same-scope field ``architecture_or_schema_context_sources``.
+ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES = (
     {
         "path": (
             "KnowledgeReference/"
@@ -47,6 +57,9 @@ SAME_SCOPE_SOURCE_REFS = (
         ),
         "lines": "1220-1266",
         "role": "hybrid_pic_architecture_order_of_magnitude_other_scope",
+        "scope": "other_scope_architecture_or_schema_context_not_same_scope",
+        "usable_for": "architecture_and_closure_gap_requirements_or_schema_only",
+        "can_support_first_principles_acceptance": False,
     },
 )
 
@@ -306,6 +319,13 @@ def build_same_scope_source_packet(
             "cross_scope_without_transfer_rule_rejection_required": True,
         },
         "validation_target_scope_decisions": target_decisions,
+        # SS11-3 (audit S10-A3): ``source_references`` carries only same-device
+        # PF-1000 same-scope references.  The LLNL-like hybrid-PIC architecture
+        # reference is NOT same-scope and is emitted by the runner under the
+        # sibling, non-``same_scope``-named runtime field
+        # ``architecture_or_schema_context_sources``
+        # (see ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES) -- never under this
+        # ``same_scope``-named packet.
         "source_references": list(SAME_SCOPE_SOURCE_REFS),
         "validation_target_count": len(validation_targets),
         "can_support_first_principles_acceptance": False,

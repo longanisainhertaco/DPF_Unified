@@ -6750,3 +6750,100 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   `can_support_first_principles_acceptance` stay `false` everywhere.
   Super-Sprint 10 is correction and gate-instrumentation; it closed no physics
   blocker. Completion memo: `docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 10 Audit
+
+- Verdict:
+  Super-Sprint 10 is **not accepted as complete**. SS10 materially fixed the
+  PF-1000 geometry/manifest path and added a useful report-only dry run, but
+  policy and namespace integrity gaps remain.
+- Accepted:
+  the five blocked PF-1000 geometry fields now flow deck -> runtime telemetry ->
+  segmented manifest; hollow-anode telemetry matches the selected deck;
+  module-source vetting is strict-passed for 298 modules; source-truth
+  exhaustion is clean; the current dry-run reports all eight gates blocked and
+  no acceptance flag is promoted.
+- Blocking audit findings:
+  imported-PIC is context-only in `startup_bvp.py` but still can carry
+  `can_support_whole_shot_acceptance=True` through deck/runtime policy; server
+  readiness still runs the Akel deck while stamping caller-supplied full-energy
+  labels; hybrid-PIC source material still appears under `same_scope` named
+  structures; active `results/` artifacts still contain stale LLNL-like
+  selected/same-scope emissions; the dry-run pass predicate can report `pass`
+  for a packet with `status=accepted` but no explicit acceptance-support flag.
+- Verification:
+  SS10/server/git focused tests passed (`66 passed`); WS9/startup/source-geometry
+  focused tests passed (`152 passed`); ruff passed; source-truth exhaustion and
+  module-source vetting passed; SRS traceability export tests passed; periodic
+  audit passed 10/10 with the 146-line external-churn exception.
+- Next instructions:
+  `docs/CODEX_SUPER_SPRINT10_AUDIT_AND_SUPER_SPRINT11_INSTRUCTIONS_2026_05_21.md`
+  is the controlling Super-Sprint 11 policy/artifact-integrity packet.
+
+### 2026-05-21: Super-Sprint 11 — Codex S10-A1..A6 closure
+
+- Classification:
+  Super-Sprint 11 is a **policy and artifact-integrity closure sprint**. It
+  closed the six Codex Super-Sprint 10 audit findings S10-A1..A6. It did not
+  start new physics acceptance work, did not promote any acceptance flag, and
+  closed no physics blocker.
+- Workstream outcomes:
+  SS11-1 (S10-A1) — `src/dpf/first_principles/deck.py` gained module-level
+  `CONTEXT_ONLY_STARTUP_MODES={"imported_pic_sheath_state"}` (line 100-110) and
+  `StartupPolicy.__post_init__` (lines 392-393) now unconditionally forces
+  `can_support_whole_shot_acceptance=False` for all context-only modes; the
+  `FirstPrinciplesInputDeck->FirstPrinciples3DDeck` conversion path can no longer
+  carry `startup_can_support_whole_shot_acceptance=True` for imported-PIC. 4 new
+  tests in `tests/test_ss10_imported_pic_context_only_policy.py`; focused slice:
+  72 passed.
+  SS11-2 (S10-A2) — `src/dpf/server/readiness.py` lines 113-326 rewrote
+  `_package_native_first_principles_readiness` — added `_resolve_runtime_deck_scope`
+  and `_scope_blocked_first_principles_readiness`; a full-energy request now runs
+  `pf1000_scholz_2001_24rod_full_energy_deck`; an Akel request runs
+  `pf1000_akel_16kv_engineering_deck`; an undeclared or contradictory scope fails
+  closed with no deck run; the payload now exposes `requested_validation_scope`,
+  `requested_source_scope`, `actual_runtime_validation_scope`,
+  `actual_runtime_source_scope`, `runtime_deck_id`, `scope_match`. 6 new tests in
+  `tests/test_server_readiness.py`; focused slice: 16 passed.
+  SS11-3 (S10-A3) — `src/dpf/first_principles/same_scope.py` moved the hybrid-PIC
+  architecture ref from `SAME_SCOPE_SOURCE_REFS` into a new constant
+  `ARCHITECTURE_OR_SCHEMA_CONTEXT_SOURCES`; `src/dpf/validation/hybrid_pic_3d.py`
+  `same_scope_3d_validation_packet` capability now carries
+  `capability_source="missing_same_scope_3d_validation_packet_no_accepted_source"`;
+  `runner.py` emits a sibling `architecture_or_schema_context_sources` key. 3 new
+  recursive-scan tests in `tests/test_ws9_runner_scope_source_geometry.py`; focused
+  slice: 102 passed. Post-fix: zero `same_scope`-named runtime keys for PF-1000
+  full-energy contain `llnl_like_180ka_axisymmetric_hybrid_pic`,
+  `fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield`, or
+  `hybrid_pic_architecture_order_of_magnitude_other_scope`.
+  SS11-4 (S10-A4) — 6 active stale top-level `results/*.json` files (dated
+  2026_05_16) moved into `results/archive_stale_pre_ss11_2026_05_21/` via plain
+  filesystem `mv`; new `scripts/verify_active_results_artifact_hygiene.py` and
+  `tests/test_results_artifact_hygiene.py` (6 tests); `rg` of non-archive results
+  for `same_scope_3d_validation_packet|llnl_like_180ka_axisymmetric_hybrid_pic`
+  returns only `archive_*` paths.
+  SS11-5 (S10-A5) — `src/dpf/first_principles/acceptance_gate_dry_run.py`
+  `_build_gate_result` pass predicate tightened from `is not False` to `is True`;
+  a gate now reports `pass` only with accepted status + empty missing list + flag
+  literally `True`. `is_fail_closed` docstring corrected. 4 adversarial tests in
+  `tests/test_first_principles_acceptance_gate_dry_run.py`; focused slice: 14 passed.
+  SS11-6 (S10-A6) — `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md` quotes exact
+  command output for source-truth exhaustion (--date 2026_05_21,
+  `exhausted=true`, `open_issue_count=0`), module-source vetting (`strict_passed=true`,
+  298 modules), and SRS traceability export (`2 passed`). Periodic audit section
+  records the post-commit gate per the lead's fill-in policy.
+- Integration evidence (SS11-7 unified gate):
+  `tests/test_ss10_runner_deck_segmented_coherence`, `test_ss10_imported_pic_context_only_policy`,
+  `test_first_principles_acceptance_gate_dry_run`, `test_server_readiness`,
+  `test_git_status_clean_exception`, `test_ws9_runner_scope_source_geometry`,
+  `test_startup_breakdown_audit`, `test_first_principles_startup_bvp`,
+  `test_source_geometry_packet`, `test_results_artifact_hygiene`: **241 passed**.
+  Ruff `src tests`: `All checks passed!`.
+  Module-source vetting and source-truth dated baselines regenerated at date
+  2026_05_21 (SS11 edited physics modules).
+- Boundary:
+  All acceptance flags remain false. `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, `promotes_acceptance=false`
+  everywhere. SS11 closed no physics blocker; it is policy/artifact integrity only.
+  S10-A7 (no acceptance promotion) preserved as required.
+  Completion memo: `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md`.

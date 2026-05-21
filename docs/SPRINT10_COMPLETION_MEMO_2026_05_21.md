@@ -1,11 +1,60 @@
 # Super-Sprint 10 Completion Memo (2026-05-21)
 
+---
+
+## SUPER-SPRINT 10 AUDIT VERDICT (Codex, 2026-05-21)
+
+**Verdict: Super-Sprint 10 is NOT accepted as complete.**
+
+Audited HEAD: `fa713a83f53602d20d3eacc1a078202185f9b603`, branch `codex/corpus`.
+Audit controlling doc: `docs/CODEX_SUPER_SPRINT10_AUDIT_AND_SUPER_SPRINT11_INSTRUCTIONS_2026_05_21.md`.
+Closure sprint: **Super-Sprint 11** — see `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md`.
+
+### What the Codex audit accepted as substantively correct
+
+- SS10-2 / SS10-3: the five blocked PF-1000 geometry fields now flow deck -> runtime
+  telemetry -> segmented manifest; hollow-anode telemetry matches the selected deck.
+- SS10-5: source-truth exhaustion passes; module-vetting is strict-passed with 298 modules.
+- SS10-7: all eight acceptance gates are blocked, named, and report-only for the current runtime.
+- SS10-8: periodic audit passes 10/10 under the 146-line external-churn exception.
+
+### Blocking findings (S10-A1..A6) — closed by Super-Sprint 11
+
+- **S10-A1 (High):** Imported-PIC context-only policy not enforced at deck level — a reviewed
+  complete payload could still carry `can_support_whole_shot_acceptance=True` through the
+  deck/runtime conversion path.
+- **S10-A2 (High):** Server readiness ran the Akel deck while stamping caller-supplied
+  full-energy labels, creating an Akel/full-energy mixing path at the API readiness layer.
+- **S10-A3 (Medium):** Hybrid-PIC architecture source material still appeared under
+  `same_scope` named runtime structures (`telemetry.same_scope_source`,
+  `manifest.candidate_evidence.same_scope_source_packet`,
+  `hybrid_pic_3d_readiness.capabilities.same_scope_3d_validation_packet`).
+- **S10-A4 (Medium):** Active `results/` artifacts still contained stale LLNL-like
+  selected/same-scope emissions from the pre-SS10-1 code path.
+- **S10-A5 (Medium):** Dry-run pass predicate too permissive — a packet with
+  `status=accepted` and no explicit `can_support_first_principles_acceptance=True`
+  was reported as `pass`.
+- **S10-A6 (Low):** Completion memo did not quote the full source-truth, SRS/RTM, or
+  periodic-audit evidence, including the approved 146-line external-churn exception note.
+
+### S10-A7 — Informational
+
+No acceptance-promotion defect was found in the current PF-1000 runtime.
+`accepted_runtime_claim=false`, `can_support_first_principles_acceptance=false`, and
+`promotes_acceptance=false` were preserved throughout.
+
+---
+
 Controlling doc:
 `docs/CODEX_SUPER_SPRINT9_AUDIT_AND_SUPER_SPRINT10_INSTRUCTIONS_2026_05_21.md`.
 
 ## 0. Posture
 
-Super-Sprint 10 is a **correction and gate-instrumentation sprint** — it closed
+Super-Sprint 10 completed its workstreams but was **NOT accepted as complete by
+the Codex audit (2026-05-21) — see verdict above**. Super-Sprint 11 closed the
+six blocking findings S10-A1..A6.
+
+Super-Sprint 10 was a **correction and gate-instrumentation sprint** — it closed
 the Codex Super-Sprint 9 audit findings and added a report-only acceptance-gate
 dry run. It is **not a validation sprint**. No acceptance flag was promoted:
 `accepted_runtime_claim=false` and `can_support_first_principles_acceptance=false`
@@ -148,9 +197,13 @@ $ .venv312/bin/python scripts/run_codex_periodic_audit.py --timeout-seconds 900
 
 ## 4. Definition of Done
 
+> **Note:** SS10 completed its internal workstreams but was NOT accepted as
+> complete by the Codex audit (2026-05-21) — six new audit findings (S10-A1..A6)
+> were raised and closed by Super-Sprint 11. See verdict section above.
+
 | DoD clause | State |
 | --- | --- |
-| Findings A1-A7 closed by code/docs/tests | done |
+| Findings A1-A7 closed by code/docs/tests | done (Codex SS9 findings only — see S10-A1..A6 for SS10 audit findings closed by SS11) |
 | No new acceptance flag promoted | held — all flags false |
 | No LLNL-like evidence under same-scope keys | done (SS10-1) |
 | Conductor-mask + segmented manifest expose the five blocked geometry fields | done (SS10-2/3) |
