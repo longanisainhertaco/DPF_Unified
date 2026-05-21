@@ -1105,14 +1105,16 @@ correctly excused the 145 PDF-symlink typechanges but still failed on a second,
 distinct line: ` m external/athenak`. The `external/athenak` C++ dependency
 submodule reports modified content because its own nested `kokkos` submodule
 carries a dirty worktree — pre-existing external-dependency churn unchanged
-since Sprint 7, untouched by any sprint. This follow-up commit extends the
+since Sprint 7, untouched by any sprint. Follow-up commit `00d7016` extends the
 WS9-0 exception with a narrow `_is_excused_external_submodule()` helper that
 excuses only the ` m ` modified-content line for the explicitly named
 `external/athenak` submodule (any other submodule, a ` M ` content modification,
 or a ` m ` on a non-submodule path still fails the gate). The decision is
 recorded in the §6 addendum of
 `docs/SPRINT9_WS9_0_PDF_SYMLINK_DECISION_2026_05_20.md`;
-`tests/test_git_status_clean_exception.py` covers it (31 tests).
+`tests/test_git_status_clean_exception.py` covers it (31 tests). After
+`00d7016` the periodic audit passes **10/10** — `git_status_clean` PASS with the
+approved 146-line exception note, every other gate green.
 
 ## Notes on CHANGELOG conventions
 

@@ -155,9 +155,18 @@ All checks passed!
 ```
 
 The periodic audit (`scripts/run_codex_periodic_audit.py --timeout-seconds 900`)
-is run at the Phase 2 commit; with the WS9-0 exception the
-`git_status_clean` gate passes against the known PDF-symlink churn while every
-other gate is green.
+was run after the Phase 2 commit. It surfaced that the WS9-0 `git_status_clean`
+exception covered the 145 PDF-symlink typechanges but not a second known-churn
+line, ` m external/athenak` — that C++ dependency submodule reports modified
+content solely because its nested `kokkos` submodule has a dirty worktree
+(pre-existing, unchanged since Sprint 7, untouched by any sprint). The WS9-0
+follow-up commit `00d7016` extended the exception with a narrow named-submodule
+allowlist (`_is_excused_external_submodule`). The periodic audit then passed
+**10/10**: `git_status_clean` PASS with the approved 146-line exception note
+(145 PDF typechanges + `external/athenak`), and every other gate green —
+`git_head`, `git_diff_check`, `source_truth_exhaustion`,
+`module_source_vetting`, `artifact_linter_active`, `artifact_linter_recursive`,
+`ruff_src_tests`, `focused_pytest`, `broad_first_principles_pytest`.
 
 ## 4. Remaining blocked channels (unchanged by Sprint 9)
 
