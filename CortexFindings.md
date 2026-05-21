@@ -7101,3 +7101,52 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   and Braginskii moved blocked -> source-backed runtime candidate, which is
   engineering evidence, not accepted physics. Super-Sprint 8 is reviewed
   code/data plumbing and fail-closed tests, not a validation sprint.
+
+### 2026-05-20: Codex Super-Sprint 8 Audit And Super-Sprint 9 Handoff
+
+- Work completed:
+  Codex audited the team's Super-Sprint 8 completion at HEAD `814ab10` and
+  wrote `docs/CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md`.
+- Audit state:
+  Sprint 8 is accepted as candidate plumbing with corrections. The PF-1000
+  full-energy runtime path is not yet internally coherent because the selected
+  scope label is not propagated into runtime validation scope, the top-level
+  validation packet still carries the old LLNL-like hybrid-PIC source scope,
+  and full-energy same-scope packets still inherit Akel text-supported
+  reference channels from a broad helper predicate.
+- Verification:
+  focused Sprint 8 tests passed (`202 passed`), ruff passed, Braginskii
+  PlasmaPy cross-check passed, and the full periodic audit produced 9/10 gates
+  green with only the known dirty PDF symlink type-change gate failing. The
+  pre-existing imported-PIC startup acceptance test still fails and remains
+  explicit debt.
+- Super-sprint direction:
+  Super-Sprint 9 should repair runtime scope/source propagation first, then
+  wire Bennett startup as wrong-scope candidate context, resolve imported-PIC
+  startup policy, and run a short PF-1000 full-energy engineering probe whose
+  manifest uses the selected scope consistently and keeps all acceptance flags
+  false.
+
+### 2026-05-20: Super-Sprint 9 Completion (WS9-0..WS9-8)
+
+- Work completed:
+  all nine Super-Sprint 9 workstreams are done across two commits — Phase 1
+  `2b2f290` (WS9-0..WS9-6 runtime scope/source coherence) and the Phase 2
+  handoff commit (WS9-7 engineering probe, WS9-8 handoff). Four parallel agents
+  ran Phase 1 on disjoint subsystems (runner, same-scope, startup, audit gate).
+- Plan status:
+  every Codex audit finding is closed — P0-1 scope propagation, P0-2 source
+  evidence separation, P1-1 same-scope full-energy repair (extended to the
+  five-module duplication Codex did not catch), P1-2 Bennett wrong-scope
+  startup context, P1-3 audit-gate exception, P2-1 imported-PIC decision. The
+  PF-1000 full-energy package-native runtime path is now internally coherent
+  as an engineering-experiment surface: the WS9-7 probe emits the selected
+  scope consistently and never the LLNL-like scope.
+- Boundary:
+  no acceptance state changed. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` remain `false` everywhere. Bennett
+  startup stays wrong-scope candidate context; imported-PIC payloads are
+  context-only; power-port Sigma-p terms II/IV/V/VI stay blocked on the
+  WP-N3 reviewed face set. Super-Sprint 9 is scope/source coherence repair and
+  fail-closed plumbing, not a validation sprint. Completion memo:
+  `docs/SPRINT9_COMPLETION_MEMO_2026_05_20.md`.

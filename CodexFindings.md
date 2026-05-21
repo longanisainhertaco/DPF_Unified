@@ -6612,3 +6612,73 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   runtime candidate (engineering evidence only). A pre-existing failure in
   `tests/test_startup_breakdown_audit.py` predates Super-Sprint 8, is outside
   the audit pytest scope, and changed no acceptance flag.
+
+### 2026-05-20: Codex Super-Sprint 8 Audit And Super-Sprint 9 Corrections
+
+- Audit artifact:
+  `docs/CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md`
+  records the Codex review of HEAD `814ab10`.
+- Verdict:
+  accept the Sprint 8 source/candidate packets with corrections; do not call
+  the PF-1000 full-energy runtime path internally coherent until the P0 scope
+  and source-evidence propagation fixes land.
+- Findings:
+  the PF-1000 24-rod preset still emits the deck id as the declared validation
+  scope instead of `pf1000_full_energy_27_to_40_kv`, and the top-level
+  validation packet still reports `llnl_like_180ka_axisymmetric_hybrid_pic` as
+  `source_scope` because `runner.py` unconditionally constructs
+  `HybridPICSourceGeometry()`. The same-scope helper also still treats any
+  PF-1000 scope as Akel-like, which gives full-energy packets Akel
+  text-supported reference channels. Bennett startup extraction is cataloged,
+  not runtime-consumed; this is fail-closed but should not be described as
+  startup registry consumption.
+- Verification:
+  focused Sprint 8 tests passed (`202 passed`), `ruff check src tests` passed,
+  PlasmaPy/Braginskii cross-check passed with max relative difference
+  `0.3618%`, and the periodic audit passed 9/10 gates at HEAD `814ab10`;
+  only `git_status_clean` failed due to the pre-existing PDF symlink type
+  changes. The known startup-breakdown audit test failure still reproduces and
+  is unchanged across Sprint 8.
+- Next direction:
+  Super-Sprint 9 must repair runtime scope propagation, separate architecture
+  source evidence from selected PF-1000 source scope, tighten Akel-vs-full-
+  energy same-scope classification, wire Bennett as wrong-scope startup
+  context without accepting it, and resolve the imported-PIC startup payload
+  policy before any longer PF-1000 engineering probe.
+
+### 2026-05-20: Super-Sprint 9 Completion (WS9-0..WS9-8)
+
+- Work completed:
+  all nine Super-Sprint 9 workstreams landed across two commits — Phase 1
+  `2b2f290` (WS9-0..WS9-6) and the Phase 2 handoff commit (WS9-7/WS9-8).
+- P0/P1 corrections closed:
+  WS9-1 (P0-1) added an explicit `validation_scope` field to the package-native
+  deck path; the PF-1000 full-energy preset emits `pf1000_full_energy_27_to_40_kv`
+  into every declared-scope sink and `_validation_scope_from_package_deck` no
+  longer substitutes the deck id. WS9-2 (P0-2) split `architecture_source` from
+  `selected_machine_source_scope`; the PF-1000 `validation_packet.source_scope`
+  is now `pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source` and
+  the hybrid-PIC paper is kept under `architecture_source_scope`. WS9-3 (P1-1)
+  replaced the broad Akel predicate with an exact
+  `looks_like_pf1000_akel_16kv_scope` classifier hoisted into `channel_state.py`
+  — the defect was duplicated in five modules; all five now share one helper.
+  WS9-4 (P1-2) wired the Bennett packet as wrong-scope startup candidate
+  context. WS9-5 (P2-1) decided imported-PIC startup payloads are context-only.
+  WS9-0 (P1-3) added a narrow `git_status_clean` audit exception for the known
+  PDF symlink churn.
+- Engineering probe (WS9-7):
+  the documented `experimental-segmented-whole-shot` PF-1000 full-energy probe
+  ran 6/6 steps, `horizon_complete=true`, `validation_scope` and
+  `selected_machine_source_scope` consistent, no `llnl_like` selected-machine
+  scope, power-port Sigma-p terms II/IV/V/VI explicitly blocked on the
+  WP-N3 reviewed face set.
+- Verification:
+  825 focused tests pass; ruff `src tests` clean; module-source vetting
+  `strict_passed` (297 modules); RTM regenerated.
+- Boundary:
+  no acceptance state changed. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` remain `false` everywhere. Two
+  pre-existing failures outside the audit pytest glob remain explicit debt:
+  `test_startup_breakdown_audit.py` (resolved by WS9-5 rewrite) and
+  `test_server_readiness.py` (two assertions, confirmed identical on pristine
+  `814ab10`, untouched by Sprint 9).

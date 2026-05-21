@@ -1021,8 +1021,8 @@ Sprint 8 work.
 Controlling doc:
 `docs/CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md`
 — the Codex audit accepted the Sprint 8 candidate packets with corrections
-(P0-1, P0-2, P1-1, P1-2, P1-3, P2-1). The Super-Sprint 9 Phase 1 commit (hash
-assigned at commit time) lands workstreams WS9-0 through WS9-6:
+(P0-1, P0-2, P1-1, P1-2, P1-3, P2-1). The Super-Sprint 9 Phase 1 commit `2b2f290`
+lands workstreams WS9-0 through WS9-6:
 
 - **WS9-0 audit gate cleanup (P1-3):** `scripts/run_codex_periodic_audit.py`
   gains a narrow, documented `git_status_clean` exception that classifies only
@@ -1066,6 +1066,35 @@ assigned at commit time) lands workstreams WS9-0 through WS9-6:
 `false` everywhere. 825 focused tests pass; ruff `src tests` clean;
 module-source vetting `strict_passed` (297 modules); RTM regenerated.
 WS9-7 (engineering probe) and WS9-8 (handoff memo) follow in Phase 2.
+
+### Super-Sprint 9 — engineering probe and handoff, Phase 2 (2026-05-20)
+
+`2b2f290` — Super-Sprint 9 Phase 1 (above section).
+
+The Super-Sprint 9 Phase 2 commit (hash assigned at commit time) lands the
+final two workstreams:
+
+- **WS9-7 engineering runtime probe:** the documented
+  `experimental-segmented-whole-shot` PF-1000 full-energy probe was run
+  (`--deck-preset pf1000_scholz_2001_24rod_full_energy`, 6 steps). The manifest
+  is coherent: `horizon_complete=true`, `validation_scope` and
+  `selected_machine_source_scope` both carry the selected PF-1000 full-energy
+  scope, no LLNL-like scope is used as the selected-machine scope, power-port
+  Sigma-p terms II/IV/V/VI stay explicitly blocked, and
+  `can_support_first_principles_acceptance=false`. The probe directory is a
+  transient verification output and is not committed; the command is recorded
+  in the completion memo for reproducibility.
+- **WS9-8 handoff:** `CodexFindings.md` / `CortexFindings.md` carry dated
+  Super-Sprint 9 completion entries; the completion memo
+  `docs/SPRINT9_COMPLETION_MEMO_2026_05_20.md` records every workstream, the
+  probe outputs, and the verification command set. RTM, source-truth, and
+  module-source-vetting artifacts were regenerated in Phase 1.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Super-Sprint 9 repaired PF-1000 full-energy runtime
+scope/source coherence; it closed no physics blocker and is not a validation
+sprint. The verification command set (825 + 65 + 67 focused tests, ruff
+clean) is in the completion memo.
 
 ## Notes on CHANGELOG conventions
 
