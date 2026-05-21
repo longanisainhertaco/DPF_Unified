@@ -1166,8 +1166,7 @@ SS10-8 (periodic audit) follow in Phase 2.
 
 `a7c88cc` — Super-Sprint 10 Phase 1 (above section).
 
-The Super-Sprint 10 Phase 2 commit (hash assigned at commit time) lands the
-final workstreams:
+Super-Sprint 10 Phase 2 commit `fa713a8` lands the final workstreams:
 
 - **SS10-7 report-only acceptance-gate dry run:** new
   `src/dpf/first_principles/acceptance_gate_dry_run.py` and CLI subcommand
@@ -1193,6 +1192,42 @@ final workstreams:
 `false` everywhere. Super-Sprint 10 closed Codex Super-Sprint 9 audit findings
 A1-A7; it is correction and gate-instrumentation work and closed no physics
 blocker.
+
+### Super-Sprint 11 — policy and artifact-integrity closure (2026-05-21)
+
+`fa713a8` — Super-Sprint 10 Phase 2 (above section).
+
+Super-Sprint 11 commit `1794d00` closes Codex Super-Sprint 10 audit findings
+S10-A1 through S10-A6; S10-A7 (no acceptance promotion) is preserved. It is a
+policy and artifact-integrity closure sprint and closed no physics blocker:
+
+- **SS11-1 (S10-A1):** deck-level `CONTEXT_ONLY_STARTUP_MODES`; `StartupPolicy`
+  unconditionally forces imported-PIC `can_support_whole_shot_acceptance` false,
+  so a reviewed complete payload cannot convert to a runtime deck carrying
+  whole-shot acceptance.
+- **SS11-2 (S10-A2):** server readiness selects the runtime deck from the
+  declared scope, exposes requested vs actual scope, and fails closed on
+  mismatch — full-energy labels can no longer ride an Akel runtime deck.
+- **SS11-3 (S10-A3):** hybrid-PIC architecture references moved off `same_scope`
+  runtime keys into `architecture_or_schema_context_sources`; the
+  `same_scope_3d_validation_packet` capability self-identifies as missing.
+- **SS11-4 (S10-A4):** six stale `results/` artifacts relocated to
+  `results/archive_stale_pre_ss11_2026_05_21/`; new
+  `scripts/verify_active_results_artifact_hygiene.py` gate plus test.
+- **SS11-5 (S10-A5):** the report-only dry-run pass predicate requires
+  `can_support_first_principles_acceptance is True` (strict identity).
+- **SS11-0 / SS11-6:** the Sprint 10 completion memo carries the Codex audit
+  verdict; `docs/SPRINT11_COMPLETION_MEMO_2026_05_21.md` records the
+  Definition-of-Done checklist and traceability evidence; `CodexFindings.md`
+  and `CortexFindings.md` carry dated Super-Sprint 11 entries.
+
+Module-source vetting and source-truth dated baselines were regenerated at
+`2026_05_21`. The Super-Sprint 11 documentation commit (hash assigned at commit
+time) lands this CHANGELOG entry, the periodic-audit evidence in the Sprint 11
+completion memo, and the `CodexFindings.md` / `CortexFindings.md` audit tails.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Super-Sprint 11 promoted nothing.
 
 ## Notes on CHANGELOG conventions
 
