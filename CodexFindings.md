@@ -6946,3 +6946,29 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   everywhere. P0 closed no physics blocker; it closed audit findings
   SS11-A1..A4 only. P1 physics work may begin only after P0 is accepted.
   Completion memo: `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 12 P0 Audit
+
+- Verdict:
+  Super-Sprint 12 Phase P0 is **accepted for P1 authorization**. The four SS11
+  residual policy blockers are closed enough to begin P1 physics-source work.
+- Verified closures:
+  direct `FirstPrinciples3DDeck` imported-PIC construction now clamps the raw
+  whole-shot flag false; partial/mixed readiness scope-source pairs return
+  `runtime_deck_id=not_run` and `scope_match=false`; PF-1000 full-energy runtime
+  scan found zero `same_scope_source` namespace leaks; active results structured
+  linter is clean (`active_hit_count=0`).
+- Verification:
+  focused P0 pytest passed (`84 passed`); ruff passed; source-truth exhaustion
+  `exhausted=true`, `open_issue_count=0`; module-source vetting `strict_passed=true`,
+  298 modules; SRS traceability export passed; dry-run all eight gates blocked
+  and report-only; periodic audit passed at
+  `/private/tmp/dpf-unified-audit-logs/20260521T160018Z`.
+- P1-0 cleanup:
+  reconcile active artifact linter wording vs behavior. The implementation
+  protects `same_scope`/`same_scope_source` key chains but intentionally allows
+  hybrid-PIC source slugs in ordinary non-same-scope source fields. Either
+  enforce context-key-only placement or update the policy wording/tests to state
+  the current contract.
+- P1 authorization packet:
+  `docs/CODEX_SUPER_SPRINT12_P0_AUDIT_AND_P1_AUTHORIZATION_2026_05_21.md`.

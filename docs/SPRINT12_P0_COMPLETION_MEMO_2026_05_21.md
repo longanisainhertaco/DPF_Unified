@@ -102,11 +102,13 @@ Tests: recursive ban tests added to
 File: `scripts/verify_active_results_artifact_hygiene.py`
 
 Rewritten from flat-string scanning to structured JSON key-chain scanning over
-both scalar VALUES and dict KEY NAMES. The linter forbids the hybrid-PIC slugs
-under any `same_scope` key chain and `other_scope`/`wrong_scope` under any
-`same_scope_source` key chain; permits architecture evidence only under
-approved `*_context_sources` / `source_scope_context` keys; excludes
-`archive_*` directories; reports malformed files.
+both scalar VALUES and dict KEY NAMES. The enforced safety property is that the
+hybrid-PIC slugs are forbidden under any `same_scope` key chain and
+`other_scope`/`wrong_scope` under any `same_scope_source` key chain;
+architecture evidence may otherwise appear in ordinary non-`same_scope` source
+fields, with the approved `*_context_sources` / `source_scope_context` keys the
+recommended home for relocated cross-scope context. The linter excludes
+`archive_*` directories and reports malformed files.
 
 Opus code review found one HIGH: the linter inspected only values, not key
 names. This was FIXED — key-name scanning was added along with 2 additional
@@ -220,7 +222,7 @@ Verbatim output:
       "_context_sources"
     ]
   },
-  "authority_policy": "results/ JSON artifacts outside archive_* directories are walked by key chain; the SS11 hybrid-PIC source slugs are forbidden under any 'same_scope' key chain, 'other_scope'/'wrong_scope' tokens are forbidden under any 'same_scope_source' key chain, and architecture or cross-scope evidence is permitted only under approved context keys (a key ending in '_context_sources' or named 'source_scope_context'); stale artifacts are relocated (not rewritten) to archive_* dirs",
+  "authority_policy": "results/ JSON artifacts outside archive_* directories are walked by key chain; the SS11 hybrid-PIC source slugs are forbidden under any 'same_scope' key chain, 'other_scope'/'wrong_scope' tokens are forbidden under any 'same_scope_source' key chain (over both scalar values and dict key names); architecture or cross-scope evidence may otherwise appear in ordinary non-same_scope source fields, with the approved context keys (a key ending in '_context_sources' or named 'source_scope_context') the recommended home for relocated cross-scope context; stale artifacts are relocated (not rewritten) to archive_* dirs",
   "clean": true,
   "hybrid_pic_slugs": [
     "llnl_like_180ka_axisymmetric_hybrid_pic",
@@ -237,6 +239,26 @@ Verbatim output:
 ```
 
 `clean=true`, `active_hit_count=0`. P0-4 closes SS11-A4.
+
+### P1-0 — Active-Results Linter Policy Reconciliation (2026-05-21)
+
+The Codex SS12-P0 audit (finding P0-A4) noted that the linter docstring,
+`authority_policy` JSON, and this memo's wording overstated the contract — they
+said architecture/cross-scope evidence is "permitted only under approved
+context keys", while the implementation enforces the narrower, intended safety
+property: such evidence is FORBIDDEN under `same_scope` key chains and may
+otherwise appear in ordinary non-`same_scope` source fields.
+
+P1-0 decision — **option 2 (current behavior)**. "Forbidden under same-scope
+keys" is the correct safety property and matches the live artifact surface: the
+hybrid-PIC slug legitimately appears in ordinary closure / power-port `source`
+attribution fields, which is not a namespace violation. Option 1 (forbid the
+slug under every non-context key) would over-restrict and falsely flag those
+legitimate citations. The linter docstring, the `authority_policy` JSON, and
+this memo were corrected to state the enforced property accurately; the linter
+behavior is unchanged and `active_hit_count` remains 0. No negative fixture for
+a slug "under an arbitrary non-context key" is added, because under option 2
+that case is permitted, not a violation.
 
 ### Dry-run ledger output
 

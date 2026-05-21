@@ -9,8 +9,8 @@ SS12-P0 (finding SS11-A4) upgrade
 The SS11 linter scanned only two flat strings
 (``same_scope_3d_validation_packet``, ``llnl_like_180ka_axisymmetric_hybrid_pic``).
 That coverage was too narrow: it could not enforce the intended *structure*,
-namely that architecture / cross-scope evidence may appear only under
-architecture / context fields and never under same-scope source fields.
+namely that architecture / cross-scope evidence must never appear under
+same-scope source fields.
 
 This linter now parses each active (non-archive) ``results/**/*.json`` file as
 JSON and walks the object tree by *key chain* (the ordered sequence of dict keys
@@ -38,14 +38,17 @@ the key chains:
   ``forbidden_key_name_under_same_scope_source``.
 
   Rule 3 — approved architecture / cross-scope context keys
-      Architecture and cross-scope evidence is PERMITTED only under explicitly
-      named non-acceptance context keys: any key whose name ends in
-      ``_context_sources`` (for example ``architecture_or_schema_context_sources``
-      or ``cross_scope_context_sources``) or a key named ``source_scope_context``.
-      Because such an approved context key chain by construction does not pass
-      through a ``same_scope`` / ``same_scope_source`` key, Rules 1 and 2 remain
-      authoritative: the *same* evidence relocated under a ``same_scope`` /
-      ``same_scope_source`` key still fails.
+      The enforced safety property is "never under same-scope evidence keys",
+      not "only under context keys".  Architecture and cross-scope evidence is
+      FORBIDDEN under ``same_scope`` key chains (Rules 1 and 2); it MAY appear
+      in ordinary non-``same_scope`` source fields — for example a closure or
+      power-port ``source`` attribution that cites a hybrid-PIC paper.  The
+      explicitly named non-acceptance context keys — any key ending in
+      ``_context_sources`` (``architecture_or_schema_context_sources``,
+      ``cross_scope_context_sources``) or a key named ``source_scope_context``
+      — are the canonical, recommended home for relocated cross-scope context,
+      but they are not the only permitted location.  The *same* evidence
+      relocated under a ``same_scope`` / ``same_scope_source`` key still fails.
 
 Archive policy:
   Any path component that matches the glob ``archive_*`` is considered an
@@ -216,10 +219,11 @@ def scan_active_results(repo_root: Path) -> list[dict[str, Any]]:
 
     Each active (non-archive) JSON file is parsed and its object tree is walked
     by key chain.  Architecture / cross-scope evidence (the SS11 hybrid-PIC
-    slugs, and ``other_scope`` / ``wrong_scope`` tokens) is permitted only
-    outside ``same_scope`` / ``same_scope_source`` key chains — typically under
-    an approved ``*_context_sources`` or ``source_scope_context`` key.  The same
-    evidence relocated under a ``same_scope`` key fails.
+    slugs, and ``other_scope`` / ``wrong_scope`` tokens) is FORBIDDEN under
+    ``same_scope`` / ``same_scope_source`` key chains; it may otherwise appear
+    in ordinary non-``same_scope`` source fields.  The approved
+    ``*_context_sources`` / ``source_scope_context`` keys are the recommended
+    home for relocated cross-scope context, not the only permitted location.
 
     Returns a list of issue dicts.  Namespace violations carry the keys:
       - ``file``: str, path relative to *repo_root*
@@ -297,11 +301,13 @@ def main() -> int:
             "results/ JSON artifacts outside archive_* directories are walked "
             "by key chain; the SS11 hybrid-PIC source slugs are forbidden under "
             "any 'same_scope' key chain, 'other_scope'/'wrong_scope' tokens are "
-            "forbidden under any 'same_scope_source' key chain, and architecture "
-            "or cross-scope evidence is permitted only under approved context "
-            "keys (a key ending in '_context_sources' or named "
-            "'source_scope_context'); stale artifacts are relocated (not "
-            "rewritten) to archive_* dirs"
+            "forbidden under any 'same_scope_source' key chain (over both "
+            "scalar values and dict key names); architecture or cross-scope "
+            "evidence may otherwise appear in ordinary non-same_scope source "
+            "fields, with the approved context keys (a key ending in "
+            "'_context_sources' or named 'source_scope_context') the "
+            "recommended home for relocated cross-scope context; stale "
+            "artifacts are relocated (not rewritten) to archive_* dirs"
         ),
         "clean": clean,
         "active_hit_count": len(issues),

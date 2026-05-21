@@ -7352,3 +7352,26 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   SS12-P0 closed audit findings SS11-A1..A4. P1 physics work may begin only
   after P0 is accepted by the Codex audit.
   Completion memo: `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.
+
+### 2026-05-21: Codex Super-Sprint 12 P0 Audit
+
+- Verdict:
+  P0 is accepted for P1 authorization. The no-promotion boundary held and the
+  four SS11 policy gaps are closed for the P1 start decision.
+- What Codex verified:
+  direct imported-PIC runtime-deck construction clamps false; exact-pair
+  readiness returns `not_run` for partial/mixed pairs and the correct deck for
+  exact pairs; same-scope runtime scan has zero leaks; active artifact linter
+  is clean; dry-run remains all eight gates blocked and report-only.
+- Evidence:
+  P0 focused tests `84 passed`; ruff clean; source-truth exhaustion clean;
+  module-source vetting strict-passed for 298 modules; SRS traceability export
+  passed; periodic audit passed at
+  `/private/tmp/dpf-unified-audit-logs/20260521T160018Z`.
+- P1 guardrail:
+  add a P1-0 cleanup to reconcile the active artifact linter contract. Current
+  code protects same-scope namespaces but allows architecture/closure source
+  slugs in ordinary non-same-scope source fields; either enforce context-key-only
+  placement or make that current behavior explicit.
+- Controlling packet:
+  `docs/CODEX_SUPER_SPRINT12_P0_AUDIT_AND_P1_AUTHORIZATION_2026_05_21.md`.

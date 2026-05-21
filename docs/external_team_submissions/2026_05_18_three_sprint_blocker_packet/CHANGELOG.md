@@ -1268,12 +1268,31 @@ test_results_artifact_hygiene, test_first_principles_acceptance_gate_dry_run):
 **84 passed**. Pre-commit gate: **123 passed**. Ruff clean. Source-truth and
 module vetting pass at 2026_05_21. Dry-run: all 8 gates blocked.
 
-The Super-Sprint 12 Phase P0 documentation commit (assigned at commit time)
-lands this CHANGELOG entry, `CodexFindings.md` / `CortexFindings.md` SS12-P0
-entries, and `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.
+Super-Sprint 12 Phase P0 documentation commit `df84751` lands this CHANGELOG
+entry, `CodexFindings.md` / `CortexFindings.md` SS12-P0 entries, and
+`docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md`.
 
 `accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
 `false` everywhere. Super-Sprint 12 Phase P0 promoted nothing.
+
+### Super-Sprint 12 Phase P1-0 — linter policy reconciliation (2026-05-21)
+
+`df84751` — Super-Sprint 12 Phase P0 documentation commit (above section).
+
+The Codex SS12-P0 audit accepted Phase P0 for P1 authorization and required one
+cleanup (P1-0): the active-results linter docstring and `authority_policy` JSON
+overstated the contract as "architecture evidence permitted only under approved
+context keys", while the implementation enforces the narrower intended property
+-- such evidence is forbidden under `same_scope` keys and may otherwise appear
+in ordinary non-`same_scope` source fields. P1-0 took option 2 (current
+behavior): the linter docstring, the `authority_policy` JSON, and
+`docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md` were corrected to state the
+enforced safety property accurately. Linter behavior is unchanged;
+`active_hit_count` remains 0. The P1-0 commit (hash assigned at commit time)
+lands this change.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. P1-0 promoted nothing.
 
 ## Notes on CHANGELOG conventions
 
