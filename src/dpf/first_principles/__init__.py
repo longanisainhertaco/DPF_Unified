@@ -33,6 +33,7 @@ from dpf.first_principles.deck import (
     may15_second_scope_engineering_decks,
     minimal_engineering_deck,
     pf1000_akel_16kv_engineering_deck,
+    pf1000_scholz_2001_24rod_full_energy_deck,
     willenborg_hendricks_engineering_deck,
 )
 from dpf.first_principles.dimensionality import build_dimensionality_handoff_packet
@@ -135,6 +136,7 @@ __all__ = [
     "may15_second_scope_engineering_decks",
     "minimal_engineering_deck",
     "pf1000_akel_16kv_engineering_deck",
+    "pf1000_scholz_2001_24rod_full_energy_deck",
     "willenborg_hendricks_engineering_deck",
     "build_first_principles_certificate_gate_packet",
     "build_experimental_checkpoint_restart_packet",

@@ -17,6 +17,8 @@ from pydantic import ValidationError
 from dpf import constants as dpf_constants
 from dpf.experimental.civ_breakdown import compute_breakdown
 from dpf.fields.maxwell_3d import HYBRID_PIC_3D_SOURCE
+from dpf.fields.source_geometry import PF1000GeometryPacket
+from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
 
 ELEMENTARY_CHARGE = dpf_constants.e
 K_B = dpf_constants.k_B
@@ -969,6 +971,280 @@ def pf1000_akel_16kv_engineering_deck(
             ),
         ),
     )
+
+
+def pf1000_scholz_2001_24rod_full_energy_deck(
+    *,
+    n_steps: int = 1,
+    shape: tuple[int, int, int] = (5, 5, 5),
+    dt_s: float = 1.0e-13,
+    voltage_kV: float = 27.0,
+    pressure_torr: float = 3.5,
+) -> FirstPrinciplesInputDeck:
+    """Sprint 8 WS3: source-scoped 24-rod PF-1000 full-energy runtime deck.
+
+    Consumes ``PF1000GeometryPacket.scholz_2001_24rod_large_electrode()`` for
+    all sourced geometry fields.  Tagged with the Sprint 8 selected scope label
+    ``pf1000_full_energy_27_to_40_kv`` (``SELECTED_SCOPE_LABEL``).
+
+    This deck is an ENGINEERING CANDIDATE ONLY.  It does not promote acceptance
+    and does not set ``accepted_runtime_claim=True``.
+
+    Five geometry fields are kept EXPLICITLY BLOCKED with their WP-N3 blocker
+    IDs because no same-scope KR source covers them:
+
+    - ``anode_hollow_bore_length_m``  — PF1000-BLK-010
+    - ``insulator_wall_thickness_m``  — PF1000-BLK-016
+    - ``backplate_radial_extent_m``   — PF1000-BLK-017
+    - ``backplate_axial_thickness_m`` — PF1000-BLK-018
+    - ``same_scope_reviewed_geometry_mask`` — no reviewed transfer rule exists
+
+    The geometry packet is consumed verbatim; no field value is invented or
+    averaged with a different revision's source.  The anode is NOT declared
+    hollow because ``anode_inner_radius_m`` is not source-supported for this
+    scope.
+
+    Source authority:
+    [KR: recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md:90-98]
+    [KR: pf-1000-device-a2d6bc15.md:129-154]
+    [KR: scholz-2007-pf1000-part2-jphysd.md:191-225]
+    [KR: scholz-2006-pf1000-mega-joule.md:22-33]
+    """
+    # -- geometry packet: Scholz 2000/2001 24-rod large-electrode revision ---
+    geom_packet = PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+
+    # Blocked field inventory from the geometry packet (fail-closed assertion).
+    # These are the five fields that block geometry mask acceptance.
+    _required_blocked = (
+        "anode_hollow_bore_length_m",
+        "insulator_wall_thickness_m",
+        "backplate_radial_extent_m",
+        "backplate_axial_thickness_m",
+    )
+    for _bf in _required_blocked:
+        _fld = geom_packet.get_field(_bf)
+        if _fld.status != "blocked":
+            raise RuntimeError(
+                f"WS3 invariant violated: {_bf} must be blocked in "
+                "scholz_2001_24rod_large_electrode geometry packet"
+            )
+
+    # Extract source-supported values directly from the geometry packet.
+    anode_radius_m = float(geom_packet.get_field("anode_radius_m").value)  # 0.122 m
+    anode_length_m = float(geom_packet.get_field("anode_length_m").value)   # 0.600 m
+    cathode_cage_radius_m = float(
+        geom_packet.get_field("cathode_cage_radius_m").value
+    )  # 0.200 m
+    cathode_rod_count = int(geom_packet.get_field("cathode_rod_count").value)   # 24
+    cathode_rod_diameter_m = float(
+        geom_packet.get_field("cathode_rod_diameter_m").value
+    )  # 0.032 m
+    cathode_rod_length_m = float(
+        geom_packet.get_field("cathode_rod_length_m").value
+    )  # 0.600 m
+    insulator_exposed_length_m = float(
+        geom_packet.get_field("insulator_exposed_length_m").value
+    )  # 0.113 m
+    insulator_outer_radius_m = float(
+        geom_packet.get_field("insulator_outer_radius_m").value
+    )  # 0.1145 m
+
+    # -- source references -----------------------------------------------
+    scholz2001_ref = SourceReference(
+        path=(
+            "KnowledgeReference/"
+            "recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md"
+        ),
+        record_id="kr:scholz-2001-pf1000-24rod-large-electrode",
+        capability_tags=(
+            "dpf_device",
+            "electrode_geometry",
+            "cathode_rods_24",
+            "full_energy_circuit",
+        ),
+        role="pf1000_scholz_2001_24rod_geometry_source",
+    )
+    scholz2000_ref = SourceReference(
+        path="KnowledgeReference/pf-1000-device-a2d6bc15.md",
+        record_id="kr:scholz-2000-pf1000-device-facility",
+        capability_tags=(
+            "dpf_device",
+            "facility_description",
+            "bank_circuit",
+            "chamber_geometry",
+        ),
+        role="pf1000_scholz_2000_facility_source",
+    )
+
+    # -- operating point -------------------------------------------------
+    voltage_V = float(voltage_kV) * 1.0e3
+    pressure_pa = float(pressure_torr) * 133.32236842105263
+    gas_temperature_K = 300.0
+    background_density_m3 = _ideal_gas_number_density_m3(
+        pressure_pa, gas_temperature_K
+    )
+
+    # Grid spacing: xy covers cathode cage plus one rod radius of margin;
+    # z covers anode + insulator.
+    cathode_outer_radius_m = cathode_cage_radius_m + 0.5 * cathode_rod_diameter_m
+    xy_spacing_m = (2.2 * cathode_outer_radius_m) / max(int(shape[0]) - 1, 1)
+    z_spacing_m = (anode_length_m + insulator_exposed_length_m) / max(
+        int(shape[2]) - 1, 1
+    )
+
+    # -- blocked field manifest (explicitly listed, not silently omitted) --
+    _blocked_field_manifest: dict[str, str] = {
+        "anode_hollow_bore_length_m": (
+            geom_packet.get_field("anode_hollow_bore_length_m").blocker_id or ""
+        ),
+        "insulator_wall_thickness_m": (
+            geom_packet.get_field("insulator_wall_thickness_m").blocker_id or ""
+        ),
+        "backplate_radial_extent_m": (
+            geom_packet.get_field("backplate_radial_extent_m").blocker_id or ""
+        ),
+        "backplate_axial_thickness_m": (
+            geom_packet.get_field("backplate_axial_thickness_m").blocker_id or ""
+        ),
+        "same_scope_reviewed_geometry_mask": (
+            "PF1000-BLK-WS3-same-scope-reviewed-geometry-mask-"
+            "no-reviewed-transfer-rule-sprint8"
+        ),
+    }
+
+    return FirstPrinciplesInputDeck(
+        deck_id=(
+            "pf1000_scholz_2001_24rod_full_energy_27kv_3p5torr_"
+            "engineering_candidate"
+        ),
+        device=DeviceGeometryDeck(
+            name=(
+                "PF-1000 Scholz 2000/2001 24-rod large-electrode "
+                f"full-energy {voltage_kV:.0f} kV engineering candidate"
+            ),
+            anode_radius_m=anode_radius_m,
+            cathode_radius_m=cathode_cage_radius_m,
+            anode_length_m=anode_length_m,
+            insulator_length_m=insulator_exposed_length_m,
+            # anode_inner_radius_m is deliberately absent: the hollow bore is
+            # blocked (PF1000-BLK-009/010); the deck must NOT declare a hollow
+            # anode when the dimension is not source-supported for this scope.
+            anode_inner_radius_m=None,
+            cathode_rod_count=cathode_rod_count,
+            cathode_rod_diameter_m=cathode_rod_diameter_m,
+            cathode_rod_length_m=cathode_rod_length_m,
+            insulator_outer_radius_m=insulator_outer_radius_m,
+            insulator_material="alumina",
+            source_references=(scholz2001_ref, scholz2000_ref),
+        ),
+        circuit=CircuitDeck(
+            # [KR: pf-1000-device-a2d6bc15.md:129-154] C=1332 uF, L0~33 nH
+            # bank parameters from Scholz 2000 facility description.
+            capacitance_F=1.332e-3,
+            voltage_V=voltage_V,
+            inductance_H=33.5e-9,
+            resistance_ohm=6.1e-3,
+            initial_current_A=0.0,
+            initial_charge_C=0.0,
+            source_references=(scholz2000_ref,),
+        ),
+        gas=GasDeck(
+            species="D",
+            pressure_Pa=pressure_pa,
+            temperature_K=gas_temperature_K,
+            source_references=(scholz2001_ref,),
+        ),
+        grid=GridDeck(
+            shape=shape,
+            spacing_m=(xy_spacing_m, xy_spacing_m, z_spacing_m),
+        ),
+        startup=StartupPolicy(
+            mode="seeded_layer",
+            background_density_m3=background_density_m3,
+            initial_ionization_fraction=0.0,
+            electron_temperature_K=gas_temperature_K,
+            ion_temperature_K=gas_temperature_K,
+            initial_electric_field_V_m=(0.0, 0.0, 0.0),
+            evidence_status="engineering_candidate_not_whole_shot",
+            source_scope=SELECTED_SCOPE_LABEL,
+            can_support_whole_shot_acceptance=False,
+            missing_channels=(
+                "breakdown_model",
+                "preionization_state",
+                "surface_flashover_closure",
+                "initial_current_density_distribution",
+                "sheath_liftoff",
+                "insulator_wall_geometry",
+                "backplate_geometry",
+                "same_scope_startup_bvp",
+            ),
+            source_references=(scholz2001_ref, scholz2000_ref),
+        ),
+        closures=ClosurePolicy(
+            density_floor_m3=background_density_m3,
+            apply_circuit_boundary=True,
+            source_references=(scholz2000_ref,),
+        ),
+        boundaries=BoundaryPolicy(
+            pml_cells=1,
+            pml_strength=0.1,
+            particle_absorption_enabled=True,
+            # Geometry mask is candidate only: hollow bore and insulator wall
+            # are blocked, so the mask cannot be reviewed same-scope.
+            conductor_mask_status="candidate_geometry_mask",
+            conductor_mask_mode="pf1000_rod_hollow_projection",
+            source_references=(scholz2001_ref,),
+        ),
+        diagnostics=DiagnosticPolicy(n_steps=n_steps, dt_s=dt_s),
+        source_references=(scholz2001_ref, scholz2000_ref),
+        scientific_status="engineering_candidate_not_validation",
+        validation_targets=(
+            ValidationTargetReference(
+                name=(
+                    "PF-1000 Scholz/Gribkov full-energy I(t) waveform "
+                    "(27-40 kV range)"
+                ),
+                observable="current_waveform",
+                source_reference=scholz2001_ref,
+                status="blocked_by_review",
+            ),
+        ),
+    )
+
+
+def _pf1000_scholz_2001_24rod_blocked_fields() -> dict[str, str]:
+    """Return the WS3 blocked-field manifest for the 24-rod full-energy deck.
+
+    Five fields that block geometry mask acceptance in the
+    ``pf1000_scholz_2001_24rod_full_energy_deck``:
+
+    - ``anode_hollow_bore_length_m``        PF1000-BLK-010
+    - ``insulator_wall_thickness_m``        PF1000-BLK-016
+    - ``backplate_radial_extent_m``         PF1000-BLK-017
+    - ``backplate_axial_thickness_m``       PF1000-BLK-018
+    - ``same_scope_reviewed_geometry_mask`` PF1000-BLK-WS3 (no transfer rule)
+
+    This function is a canonical source of truth for WS3 exit-criteria tests.
+    """
+    geom_packet = PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+    return {
+        "anode_hollow_bore_length_m": (
+            geom_packet.get_field("anode_hollow_bore_length_m").blocker_id or ""
+        ),
+        "insulator_wall_thickness_m": (
+            geom_packet.get_field("insulator_wall_thickness_m").blocker_id or ""
+        ),
+        "backplate_radial_extent_m": (
+            geom_packet.get_field("backplate_radial_extent_m").blocker_id or ""
+        ),
+        "backplate_axial_thickness_m": (
+            geom_packet.get_field("backplate_axial_thickness_m").blocker_id or ""
+        ),
+        "same_scope_reviewed_geometry_mask": (
+            "PF1000-BLK-WS3-same-scope-reviewed-geometry-mask-"
+            "no-reviewed-transfer-rule-sprint8"
+        ),
+    }
 
 
 def ir_mpf_100_engineering_deck(

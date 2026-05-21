@@ -147,7 +147,8 @@ _NEON_HALL = (
 # Sprint 4 tests so that every gap has a stable, searchable identifier.
 # ---------------------------------------------------------------------------
 CLOSURE_BLK_BRAG_001 = (
-    "CLOSURE-BLK-BRAG-001-braginskii-1965-not-yet-target-extracted-in-kr"
+    "CLOSURE-BLK-BRAG-001-braginskii-1965-z1-transport-render-verified-"
+    "candidate-acceptance-blocked"
 )
 CLOSURE_BLK_D2_EN_001 = (
     "CLOSURE-BLK-D2-EN-001-no-kr-source-for-d2-electron-neutral-transport"
@@ -393,26 +394,33 @@ _CLOSURE_REGISTRY_STATIC: dict[str, dict[str, Any]] = {
                     "nu_alpha_n0_sigma_sqrt_kT_over_m_and_sigma_alpha",
                 ),
             ],
-            # Sprint 4 (3a): Braginskii 1965 PDF exists on disk at
-            # archive_reference_OLD/references/papers/mhd-numerics/braginskii_1965.pdf
-            # but has NO KnowledgeReference extract (`ls KR | grep -i braginskii`
-            # returned empty).  The direct coefficient table cannot serve as
-            # closure authority until a KR target extraction is completed.
+            # Sprint 4 (3a) / Sprint 6 WS3 / Sprint 8 WS5: Braginskii 1965
+            # Table 2 (Z=1,2,3,4,inf) is now target-extracted into KR at
+            # KnowledgeReference/braginskii-1965-table-2-TARGET-EXTRACTED.md,
+            # and Sprint 8 WS5 render-verified Eqs. 4.30-4.45 and wired the
+            # Z=1 parallel-branch transport (resistivity / electron + ion
+            # thermal conductivity) as a *candidate* closure -- see
+            # build_braginskii_z1_transport_closure() below and
+            # src/dpf/first_principles/sprint8_braginskii_z1_transport.py.
+            # CLOSURE-BLK-BRAG-001 stays a NON-ACCEPTED blocker: the WS5
+            # candidate is engineering evidence only, and runtime acceptance
+            # of the transport closure still requires numerical-fidelity,
+            # same-scope comparator, and certificate gates at one commit.
+            # Five Table-2 cells remain review-required and unavailable.
             # Blocker: CLOSURE-BLK-BRAG-001
             "missing_parameter_absence": _absent(
-                "the in-code Braginskii alpha(Z)/delta_e(Z) Z-dependent "
-                "correction coefficients are not tabulated in the local NRL "
-                "extract; Braginskii (1965) Table 2 (Z=1,2,3,4,inf "
-                "transport-coefficient families) at journal p.251 is "
-                "render-verified on disk per "
-                "src/dpf/first_principles/sprint5_target_extractions.py::"
-                "BRAGINSKII_1965_TRANSPORT_EXTRACTION but is not yet "
-                "promoted into a KR target-extracted file; the PDF exists "
-                "at archive_reference_OLD/references/papers/"
-                "mhd-numerics/braginskii_1965.pdf -- "
+                "Braginskii (1965) Table 2 (Z=1,2,3,4,inf transport-coefficient "
+                "families) at journal p.251 is render-verified and "
+                "target-extracted into KR; Sprint 8 WS5 render-verified "
+                "Eqs. 4.30-4.45 (journal pp.249-253) and wired the Z=1 "
+                "parallel-branch transport as a CANDIDATE closure. The "
+                "closure is NOT accepted: numerical-fidelity, same-scope "
+                "comparator, and certificate gates remain blocked, and five "
+                "Table-2 cells remain review-required and unavailable -- "
                 f"{CLOSURE_BLK_BRAG_001}",
                 (
-                    "braginskii_alpha_Z_and_delta_e_Z_table",
+                    "braginskii_z1_transport_closure_numerical_comparator_"
+                    "certificate_gates",
                     CLOSURE_BLK_BRAG_001,
                 ),
             ),
@@ -1297,6 +1305,85 @@ def build_plasmapy_closure_regime_gate(
     }
 
 
+def build_braginskii_z1_transport_closure() -> dict[str, Any]:
+    """Return the Sprint 8 WS5 Braginskii Z=1 transport candidate closure.
+
+    Wires the render-verified Braginskii (1965) Z=1 parallel-branch transport
+    closure -- electrical resistivity and electron/ion thermal conductivity --
+    into the closure packet as a *candidate*. The underlying source packet is
+    :func:`dpf.first_principles.sprint8_braginskii_z1_transport.braginskii_z1_transport_source_packet`.
+
+    Sprint 8 WS5 render-verified Eqs. 4.30-4.45 (Braginskii 1965, journal
+    pp.249-253) from the on-disk PDF, so the equations are no longer blocked
+    and the closure may run engineering cases.  ``CLOSURE-BLK-BRAG-001``
+    nonetheless stays a NON-ACCEPTED blocker: this is candidate engineering
+    evidence only.  Acceptance of the transport closure still requires, at
+    one commit, numerical-fidelity tests against a same-scope reference, a
+    same-scope comparator run, and a certificate-gate pass.
+
+    The five review-required Table-2 cells are surfaced as unavailable.  None
+    of them is a Z=1 column cell, so the Z=1 candidate is unaffected, but a
+    consumer can never silently read one.
+
+    This function NEVER sets acceptance: ``accepted_runtime_claim`` and
+    ``can_support_first_principles_acceptance`` are hard-coded ``False``.
+    """
+
+    # Imported lazily so closure_packet has no hard dependency on the WS5
+    # packet at import time.
+    from dpf.first_principles.sprint8_braginskii_z1_transport import (
+        braginskii_z1_transport_source_packet,
+    )
+
+    source_packet = braginskii_z1_transport_source_packet()
+    closure_outputs = source_packet["closure_outputs"]
+    return {
+        "closure_id": "braginskii_z1_transport_candidate",
+        "blocker_id": CLOSURE_BLK_BRAG_001,
+        "classification": "active_source_backed_candidate",
+        "status": (
+            "source_backed_candidate_closure_render_verified_not_accepted"
+        ),
+        "charge_state": 1,
+        "scope_tag": "generic_formulary",
+        # Equations render-verified in Sprint 8 WS5 -> the candidate may run.
+        "equations_4_30_to_4_45_render_verified": True,
+        "candidate_runnable": True,
+        "source_packet_id": source_packet["packet_id"],
+        "source_packet": source_packet,
+        # Surfaced candidate transport outputs (resistivity / conductivities).
+        "candidate_closure_outputs": {
+            "parallel_electrical_resistivity_ohm_m": (
+                closure_outputs["parallel_electrical_resistivity"]
+            ),
+            "electron_parallel_thermal_conductivity_w_per_m_k": (
+                closure_outputs["electron_parallel_thermal_conductivity"]
+            ),
+            "ion_parallel_thermal_conductivity_w_per_m_k": (
+                closure_outputs["ion_parallel_thermal_conductivity"]
+            ),
+        },
+        "review_required_cells_unavailable": list(
+            source_packet["review_required_cells_unavailable"]
+        ),
+        "cross_check_lane_not_authority": (
+            source_packet["cross_check_lane_not_authority"]
+        ),
+        # The closure is wired as a candidate; acceptance stays blocked.
+        "acceptance_gate": (
+            "candidate_braginskii_z1_transport_cannot_support_acceptance_"
+            "until_numerical_fidelity_same_scope_comparator_and_certificate_"
+            "gates_pass_at_one_commit"
+        ),
+        "closure_blk_brag_001_status": (
+            "non_accepted_blocker_remains_open_candidate_wired_acceptance_blocked"
+        ),
+        "review_status": "not_reviewed_for_acceptance",
+        "accepted_runtime_claim": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
 def build_physics_closure_packet(
     *,
     include_hall: bool,
@@ -1470,6 +1557,7 @@ def build_physics_closure_packet(
         runtime_implemented=runtime_implemented,
     )
     plasmapy_regime_gate = build_plasmapy_closure_regime_gate(community_formula_audit)
+    braginskii_z1_transport = build_braginskii_z1_transport_closure()
     return {
         "status": "candidate_engineering_closure_packet_not_validation",
         "decision": "do_not_promote_without_complete_physics_closure_matrix",
@@ -1478,6 +1566,7 @@ def build_physics_closure_packet(
         "effects": effects,
         "closure_registry": closure_registry,
         "plasmapy_regime_gate": plasmapy_regime_gate,
+        "braginskii_z1_transport_candidate": braginskii_z1_transport,
         "closure_matrix_status_by_effect": {
             key: record["status"] for key, record in effects.items()
         },
@@ -1637,6 +1726,10 @@ def _candidate_runtime_channels(
 ) -> list[str]:
     channels: set[str] = set()
     channels.add("candidate_electrical_transport_source_terms")
+    # Sprint 8 WS5: Braginskii Z=1 parallel-branch transport is a
+    # render-verified, source-backed candidate closure. It is a candidate
+    # channel only -- it never unlocks acceptance.
+    channels.add("candidate_braginskii_z1_transport")
     if include_hall:
         channels.add("candidate_hall_term_enabled")
     if ionization_charge_state_present:

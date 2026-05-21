@@ -6576,3 +6576,39 @@ Sprint 3R S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   KR-authoritative; Braginskii equations 4.30-4.45 and five review-required
   cells stay blocked; the comparator scope decision is governance, not
   scientific evidence. WS0 is a bookkeeping/traceability repair pass.
+
+### 2026-05-20: Super-Sprint 8 Phase A WS1/WS2 and Phase B/C Workstreams
+
+- Phase A P0 (commit `bd5be3a`):
+  WS1 added `src/dpf/first_principles/channel_state.py` — exactly seven
+  canonical channel states shared by `same_scope.py`, `numerical_fidelity.py`,
+  `certificate_gate.py`; manual same-scope channels demoted to requested-not-
+  evidence (S7-A8); accepted/missing contradiction removed (S7-A7); the
+  cylindrical `first_principles_mhd.py` gate defers package-native 3-D runs to
+  the `hybrid_pic_3d` gate. WS2 locked the runtime demonstrator to Option B
+  (PF-1000 full-energy 27-40 kV) as a control-plane scope packet
+  (`runtime_demonstrator_scope.py`, `is_scientific_authority=false`).
+- Phase B/C P1+P2 (this commit):
+  WS3 added the engineering-candidate 24-rod deck
+  `pf1000_scholz_2001_24rod_full_energy_deck` with five fields kept blocked.
+  WS4 promoted Bennett 2017 to canonical KR markdown and target-extracted
+  CH03/04/07/08 as source-backed runtime candidate channels
+  (`blocked_wrong_scope` for the demonstrator). WS5 render-verified Braginskii
+  Eqs. 4.30-4.45 and wired the Z=1 transport candidate closure (PlasmaPy
+  cross-check within 0.36 %). WS6 added the explicit six-term Auluck eq.(6)
+  presence roster and demoted active-load placeholders to engineering-only.
+  WS7 delivered CLI parity, a `combine-whole-run` route, and an
+  engineering-candidate 3-D run plan. WS8 produced nine external-source
+  packets (nothing acquired/ingested/wired).
+- Verification:
+  724 focused tests pass in the Phase B+C sweep; ruff `src/ tests/` clean;
+  RTM regenerated (no drift); source-truth index `exhausted=true`;
+  module-source vetting `strict_passed=true` (297 modules); ledger commit pins
+  are a three-tier per-row scheme (`8e6b5e9` / `35bb1a9` / `bd5be3a`).
+- Boundary:
+  no runtime physics was accepted. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` stay `false` everywhere. Bennett
+  startup and Braginskii Z=1 transport advanced blocked -> source-backed
+  runtime candidate (engineering evidence only). A pre-existing failure in
+  `tests/test_startup_breakdown_audit.py` predates Super-Sprint 8, is outside
+  the audit pytest scope, and changed no acceptance flag.

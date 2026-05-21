@@ -1,0 +1,442 @@
+[
+  {
+    "id": "WS8-Q1",
+    "queue_entry": 1,
+    "topic": "D2 Townsend/Paschen coefficients",
+    "sources": [
+      {
+        "type": "journal_preprint",
+        "authors": ["Khrabrov, A.V.", "Smith, D.J.", "Kaganovich, I.D."],
+        "year": 2024,
+        "title": "Modeling the low-pressure high-voltage branch of the Paschen curve for hydrogen and deuterium",
+        "doi": "10.48550/arXiv.2404.01187",
+        "arxiv_id": "2404.01187",
+        "institution": "Princeton Plasma Physics Laboratory"
+      },
+      {
+        "type": "journal_preprint",
+        "authors": ["Korolov, I.", "Donkó, Z."],
+        "year": 2016,
+        "title": "Breakdown in hydrogen and deuterium gases in static and radio-frequency fields",
+        "doi": "10.48550/arXiv.1512.08726",
+        "arxiv_id": "1512.08726"
+      },
+      {
+        "type": "database",
+        "name": "LXCat Biagi database (Magboltz v10+)",
+        "url": "https://lxcat.net",
+        "species": ["H2", "D2"],
+        "data_type": "electron scattering cross sections, Townsend alpha derivable via Boltzmann solver"
+      }
+    ],
+    "acquisition_status": "paywalled_external_required",
+    "notes": "arXiv abstracts freely accessible; full numerical tables in Khrabrov 2024 PDF (binary, not extracted this session). LXCat: database_query_lane (free registration). D2 critical pd ~0.36 Torr·cm; H2 A=3.83 m⁻¹Pa⁻¹, B=93.6 Vm⁻¹Pa⁻¹ (literature values; D2 requires Boltzmann solve).",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "discharge_initiation/insulator_sheath",
+    "symbol_map": {
+      "alpha": "Townsend first ionization coefficient [m⁻¹]",
+      "gamma": "secondary emission coefficient [dimensionless]",
+      "A": "Paschen constant [m⁻¹ Pa⁻¹]",
+      "B": "Paschen constant [V m⁻¹ Pa⁻¹]",
+      "pd": "pressure × gap product [Torr·cm]"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Insulator flashover model, breakdown timing, initial electron seed. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": true
+  },
+  {
+    "id": "WS8-Q2",
+    "queue_entry": 2,
+    "topic": "D2 electron-neutral momentum transfer cross section",
+    "sources": [
+      {
+        "type": "database",
+        "name": "LXCat Biagi database",
+        "url": "https://lxcat.net",
+        "species": "D2",
+        "data_type": "elastic momentum-transfer cross section",
+        "energy_range_eV": "0.001 to ~1000",
+        "citation": "Pitchford, L.C. et al. (2017). LXCat: an Open-Access, Web-Based Platform. Plasma Processes and Polymers, 14, 1600098. DOI: 10.1002/ppap.201600098"
+      },
+      {
+        "type": "journal",
+        "authors": ["Laporta, V.", "Agnello, R.", "Fubiani, G.", "Furno, I.", "Hill, C.", "Reiter, D.", "Taccogna, F."],
+        "year": 2021,
+        "title": "Vibrational excitation and dissociation of deuterium molecule by electron impact",
+        "journal": "Plasma Physics and Controlled Fusion",
+        "volume": 63,
+        "page": "085006",
+        "doi": "10.1088/1361-6587/ac0163",
+        "arxiv_id": "2411.09375"
+      }
+    ],
+    "acquisition_status": "database_query_lane",
+    "notes": "LXCat freely accessible with registration. Biagi database confirmed to contain D2 momentum-transfer cross sections. Laporta 2021 arXiv abstract freely accessible; vibrationally-resolved cross sections for D2 states.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "electron_transport/pre-pinch_gas",
+    "symbol_map": {
+      "sigma_mt": "momentum transfer cross section [m²] as function of electron energy [eV]",
+      "epsilon": "electron energy [eV]"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Electron transport in fill gas, ionization front propagation, Boltzmann solver inputs. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": false
+  },
+  {
+    "id": "WS8-Q3",
+    "queue_entry": 3,
+    "topic": "Molecular D2 ionization / recombination rates",
+    "sources": [
+      {
+        "type": "database",
+        "name": "NIFS Atomic and Molecular Database",
+        "url": "https://dbshino.nifs.ac.jp",
+        "species": ["H2", "D2", "H2+", "D2+"],
+        "data_type": "ionization, dissociation, recombination rate coefficients"
+      },
+      {
+        "type": "database",
+        "name": "Open-ADAS",
+        "url": "https://open.adas.ac.uk",
+        "version": "2.1",
+        "species": "D (atomic) + supplementary molecular",
+        "data_type": "ionization/recombination rate coefficients"
+      },
+      {
+        "type": "journal",
+        "authors": ["Laporta, V.", "Agnello, R.", "Fubiani, G.", "Furno, I.", "Hill, C.", "Reiter, D.", "Taccogna, F."],
+        "year": 2021,
+        "title": "Vibrational excitation and dissociation of deuterium molecule by electron impact",
+        "doi": "10.1088/1361-6587/ac0163",
+        "arxiv_id": "2411.09375"
+      }
+    ],
+    "acquisition_status": "database_query_lane",
+    "notes": "NIFS DB had SSL certificate issue this session; nominally accessible. ADAS covers atomic D; molecular D2 rates require NIFS or VAMDC query. D2 ionization/dissociation cross-sections near-identical to H2 scaled by isotope mass (Born approximation regime).",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "ionization_source_terms/plasma_formation",
+    "symbol_map": {
+      "S_iz": "ionization rate coefficient [m³ s⁻¹] vs Te [eV]",
+      "alpha_rec": "recombination rate coefficient [m³ s⁻¹]",
+      "sigma_da": "dissociative attachment cross section [m²] vs electron energy [eV]",
+      "alpha_dr": "dissociative recombination of D2+ [m³ s⁻¹] vs Te"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Ionization source terms in MHD, pre-ionization model, plasma formation phase. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": false
+  },
+  {
+    "id": "WS8-Q4",
+    "queue_entry": 4,
+    "topic": "Surface secondary-electron emission — Cu / alumina / pyrex / stainless steel",
+    "sources": [
+      {
+        "type": "journal",
+        "authors": ["Beckfeld, F.", "Masheyeva, R.", "Derzsi, A.", "Schulenberg, D.A.", "Korolov, I.", "Bock, C.", "Schulze, J.", "Donkó, Z."],
+        "year": 2025,
+        "title": "Effective secondary electron yields for different surface materials in capacitively coupled plasmas",
+        "journal": "Plasma Sources Science and Technology",
+        "doi": "10.1088/1361-6595/adb885",
+        "materials": ["Cu", "Ni", "Au", "Al", "SS"],
+        "key_data": "Cu gamma*=0.12 at 150V, ~0.09 at 250V, 0.06 at 350V; ordering Al>SS>Cu at 100Pa 250V"
+      },
+      {
+        "type": "journal",
+        "authors": ["Treu, M.", "et al."],
+        "year": 2000,
+        "title": "Secondary-electron yields and their dependence on the angle of incidence on stainless-steel surfaces for three energetic ion beams",
+        "journal": "Physical Review A",
+        "volume": 61,
+        "page": "042901",
+        "doi": "10.1103/PhysRevA.61.042901",
+        "materials": ["SS-304"]
+      },
+      {
+        "type": "journal",
+        "authors": ["Brusilovsky, B.A."],
+        "year": 1986,
+        "title": "Ion secondary electron emission from Al2O3 and MgO films",
+        "journal": "Solid State Communications",
+        "volume": 57,
+        "issue": 7,
+        "doi": "10.1016/0038-1098(86)90266-8",
+        "materials": ["Al2O3"],
+        "key_data": "delta_m range 2.9–3.7; Ar+ ion peak SEE near 275 eV"
+      },
+      {
+        "type": "journal",
+        "authors": ["McKay, K.G."],
+        "year": 1945,
+        "title": "The Secondary Electron Emission of Pyrex Glass",
+        "journal": "Journal of Applied Physics",
+        "volume": 16,
+        "page": 453,
+        "doi": "10.1063/1.1707497",
+        "materials": ["Pyrex"],
+        "note": "Measured 50–10,000 V bombarding voltage; numerical values behind AIP paywall"
+      }
+    ],
+    "acquisition_status": "paywalled_external_required",
+    "notes": "All full texts paywalled. Beckfeld 2025 abstract extracted (IOP). Brusilovsky 1986 abstract accessible. McKay 1945 AIP archival. Partial data (Cu, ordering) from Beckfeld 2025 abstract.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "sheath/cathode_boundary_condition",
+    "symbol_map": {
+      "gamma*": "effective in-situ secondary emission yield [dimensionless]",
+      "delta_m": "maximum secondary emission coefficient [dimensionless]",
+      "E_m": "energy at maximum SEE [eV]"
+    },
+    "target_values_acquired": "partial",
+    "target_values_note": "Cu gamma*≈0.09 at 250V (Beckfeld 2025 abstract); Al2O3 delta_m=2.9–3.7 (Brusilovsky 1986 abstract). Full energy-resolved tables require paid access.",
+    "claim_impact": "Cathode boundary condition in sheath model, discharge current waveform, secondary avalanche. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": true
+  },
+  {
+    "id": "WS8-Q5",
+    "queue_entry": 5,
+    "topic": "Photoemission source",
+    "sources": [
+      {
+        "type": "journal_preprint",
+        "authors": ["Hösl, A.", "Franck, C.M."],
+        "year": 2018,
+        "title": "Swarm parameter measurement in hydrogen, considering secondary photonic electron emission",
+        "doi": "10.48550/arXiv.1802.02916",
+        "arxiv_id": "1802.02916",
+        "key_data": "UV threshold >8 eV for efficient photoemission; dominant secondary mechanism below 200 Td; emission delay hundreds of ns"
+      },
+      {
+        "type": "journal_preprint",
+        "authors": ["Capeillère, J.", "et al."],
+        "year": 2020,
+        "title": "PHOTOPiC: Calculate photo-ionization functions and model coefficients for gas discharge simulations",
+        "doi": "10.48550/arXiv.2005.10021",
+        "arxiv_id": "2005.10021",
+        "key_data": "Photoionization rate integral model S_ph(x) = A∫ξ(x,x')α(x')j(x')dx'; covers H2/N2 mixtures"
+      }
+    ],
+    "acquisition_status": "freely_acquired",
+    "notes": "Both arXiv papers accessible. Absolute quantum efficiency η_pe not extracted (not in accessible abstract). D2 not covered in PHOTOPiC explicitly; H2 as surrogate.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "cathode_secondary_source/UV_photoemission",
+    "symbol_map": {
+      "hv_threshold": "UV photon threshold energy [eV] for photoemission",
+      "eta_pe": "quantum efficiency / photoelectric yield [electrons/photon] — not numerically acquired",
+      "S_ph": "photoionization source rate [m⁻³ s⁻¹]"
+    },
+    "target_values_acquired": "partial",
+    "target_values_note": "Threshold 8 eV confirmed; regime (dominant below 200 Td) confirmed; absolute η_pe not extracted this session.",
+    "claim_impact": "Secondary electron source at insulator/cathode during rundown; initial avalanche model. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": false
+  },
+  {
+    "id": "WS8-Q6",
+    "queue_entry": 6,
+    "topic": "Deuteron stopping tables",
+    "sources": [
+      {
+        "type": "software_database",
+        "name": "SRIM-2013",
+        "authors": ["Ziegler, J.F.", "Ziegler, M.D.", "Biersack, J.P."],
+        "year": 2010,
+        "title": "SRIM — The stopping and range of ions in matter (2010)",
+        "journal": "Nuclear Instruments and Methods in Physics Research B",
+        "volume": 268,
+        "page": "1818–1823",
+        "doi": "10.1016/j.nimb.2010.02.091",
+        "url": "http://www.srim.org",
+        "availability": "Free download (Windows executable; nanoHUB version available)",
+        "energy_range": "10 eV – 2 GeV/nucleon",
+        "ion_species": "all ions including deuterons (Z=1, A=2)",
+        "target_coverage": "all elements, compounds, gaseous targets"
+      },
+      {
+        "type": "database",
+        "name": "IAEA Electronic Stopping Power Database",
+        "url": "https://www-nds.iaea.org/stopping-legacy/stopping_202002/",
+        "version": "202002",
+        "note": "Server returned 402/payment-required this session; accessible via alternate IAEA paths"
+      }
+    ],
+    "acquisition_status": "freely_acquired",
+    "notes": "SRIM-2013 freely downloadable; not installed in dpf-unified this session. NIST PSTAR/ASTAR explicitly do NOT cover deuterons — SRIM is the correct tool. SRIM inputs for DPF: ion=D (A=2, Z=1), target=D2 gas at fill pressure density or Cu electrode.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "fast_ion_energy_deposition/neutron_yield",
+    "symbol_map": {
+      "S_e": "electronic stopping power [MeV cm⁻¹]",
+      "S_n": "nuclear stopping power [MeV cm⁻¹]",
+      "S_total": "total dE/dx [MeV cm⁻¹ or keV μm⁻¹]",
+      "R": "projected range [cm or μm]",
+      "E": "deuteron kinetic energy [keV to MeV]"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Fast deuteron beam energy deposition profile, neutron yield calculation, beam-target fusion rate. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": false
+  },
+  {
+    "id": "WS8-Q7",
+    "queue_entry": 7,
+    "topic": "Brysk Doppler broadening (or accepted equivalent)",
+    "sources": [
+      {
+        "type": "journal",
+        "authors": ["Brysk, H."],
+        "year": 1973,
+        "title": "Fusion neutron energies and spectra",
+        "journal": "Plasma Physics",
+        "volume": 15,
+        "issue": 7,
+        "page": "611–617",
+        "doi": "10.1088/0032-1028/15/7/001",
+        "institution": "KMS Fusion Inc., Ann Arbor, MI",
+        "acquisition_note": "paywalled — IOP Publishing"
+      },
+      {
+        "type": "journal",
+        "authors": ["Munro, D.H."],
+        "year": 2016,
+        "title": "Interpreting inertial fusion neutron spectra",
+        "journal": "Nuclear Fusion",
+        "volume": 56,
+        "issue": 3,
+        "page": "036001",
+        "doi": "10.1088/0029-5515/56/3/036001",
+        "osti": "1240980",
+        "acquisition_note": "accepted manuscript at OSTI purl/1240980 (PDF binary, not text-extractable this session)"
+      }
+    ],
+    "acquisition_status": "paywalled_external_required",
+    "notes": "Brysk 1973 is the canonical first-principles reference. Munro 2016 provides relativistic correction and multi-element generalization used at NIF/Omega. OSTI PDF binary-encoded this session. Formula form inferred from secondary citations: sigma^2 = (2/3)(m_r/m_n^2)E0*kT — NOT verified from paper this session.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "neutron_spectrum_diagnostic/ion_temperature_inference",
+    "symbol_map": {
+      "E0_DD": "D-D neutron peak energy = 2.452 MeV [TRAINING, unverified]",
+      "sigma": "Gaussian width of neutron peak [keV]",
+      "m_r": "reduced mass of D-D system = m_D/2",
+      "m_n": "neutron mass",
+      "T": "ion temperature [keV]",
+      "FWHM": "= 2.355 * sigma [keV]"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Synthetic neutron spectrum diagnostic; ion temperature inference from PF-1000 TOF data comparison. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": true
+  },
+  {
+    "id": "WS8-Q8",
+    "queue_entry": 8,
+    "topic": "Quantitative lower-hybrid anomalous resistivity",
+    "sources": [
+      {
+        "type": "journal",
+        "authors": ["Huba, J.D.", "Gladd, N.T.", "Papadopoulos, K."],
+        "year": 1977,
+        "title": "The lower-hybrid-drift instability as a source of anomalous resistivity for magnetic field line reconnection",
+        "journal": "Geophysical Research Letters",
+        "volume": 4,
+        "issue": 3,
+        "page": "125–128",
+        "doi": "10.1029/GL004i003p00125",
+        "acquisition_note": "paywalled — AGU Publications"
+      },
+      {
+        "type": "journal",
+        "authors": ["Yoo, J.", "Ji, H.", "Shi, P.", "Bose, S.", "Ng, J.", "Chen, L.-J.", "Yamada, M."],
+        "year": 2025,
+        "title": "Anomalous resistivity and electron heating by lower hybrid drift waves inside reconnecting current sheets",
+        "journal": "Physics of Plasmas",
+        "volume": 32,
+        "page": "062114",
+        "doi": "10.1063/5.0271730",
+        "acquisition_note": "paywalled — AIP Publishing"
+      },
+      {
+        "type": "journal",
+        "authors": ["Laity, G.", "et al."],
+        "year": 2012,
+        "title": "Fully kinetic simulations of dense plasma focus Z-pinch devices",
+        "journal": "Physical Review Letters",
+        "volume": 109,
+        "page": "205003",
+        "doi": "10.1103/PhysRevLett.109.205003",
+        "osti": "1070171",
+        "acquisition_note": "PDF binary encoded this session; OSTI record accessible"
+      },
+      {
+        "type": "preprint",
+        "authors": ["Rososhek, A.", "Seyler, C.E.", "Lavine, E.S.", "Hammer, D.A."],
+        "year": 2026,
+        "title": "The Hall Term and Anomalous Resistivity Effects in Neon Gas-Puff Z-Pinches",
+        "arxiv_id": "2603.00330",
+        "acquisition_note": "arXiv abstract accessible; PDF binary (not text-extractable this session)"
+      }
+    ],
+    "acquisition_status": "paywalled_external_required",
+    "notes": "Huba 1977 foundational formula paywalled. Laity 2012 confirms LHDI in DPF z-pinch via kinetic simulation. Quantitative alpha_LH not extracted this session. General form: eta_anom = m_e*nu_eff/(n_e*e^2), nu_eff ~ alpha_LH * omega_LH, omega_LH = sqrt(omega_pi * omega_ci). alpha_LH ~10^-2 order of magnitude from secondary literature [INFERRED].",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "pinch_phase_resistivity/anomalous_heating",
+    "symbol_map": {
+      "eta_anom": "anomalous resistivity [Ohm·m]",
+      "nu_eff": "effective collision frequency [s⁻¹]",
+      "omega_LH": "lower hybrid frequency [rad/s]",
+      "omega_pi": "ion plasma frequency [rad/s]",
+      "omega_ci": "ion cyclotron frequency [rad/s]",
+      "alpha_LH": "dimensionless scaling coefficient [~10⁻²]"
+    },
+    "target_values_acquired": false,
+    "claim_impact": "Pinch-phase resistivity enhancement, current interruption model, anomalous heating in z-pinch. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": true
+  },
+  {
+    "id": "WS8-Q9",
+    "queue_entry": 9,
+    "topic": "PF-1000 facility drawings — wall/backplate dimensions",
+    "sources": [
+      {
+        "type": "facility_web",
+        "institution": "Institute of Plasma Physics and Laser Microfusion (IFPILM), Warsaw",
+        "url": "https://www.ifpilm.pl/en/dpt-laboratories/pf-1000u-laboratory",
+        "data_extracted": "Vessel: D=1400mm, L=2500mm, SS. Anode: D=231mm, L=600mm, Cu. Cathode: D=400mm, 12 SS rods 80mm dia. Insulator: L=113mm, alumina."
+      },
+      {
+        "type": "facility_web",
+        "institution": "International Center for Dense Magnetised Plasmas (ICDMP)",
+        "url": "https://icdmp.pl/pf-1000",
+        "data_extracted": "Electrode dimensions confirmed. Backplate standoff not available publicly."
+      }
+    ],
+    "acquisition_status": "facility_request_required",
+    "notes": "Public sources confirmed vessel/electrode dimensions. Backplate position/standoff from anode base is NOT in public literature this session — requires direct request to IPPLM/ICDMP engineering team. Contact: Institute of Plasma Physics and Laser Microfusion, 23 Hery St., 01-497 Warsaw, Poland.",
+    "on_disk_path": null,
+    "sha256": null,
+    "scope_tag": "computational_domain_geometry/outer_boundary",
+    "symbol_map": {
+      "r_wall": "vacuum vessel inner radius = 700 mm",
+      "r_anode": "anode radius = 115.5 mm",
+      "r_cathode": "cathode outer radius = 200 mm",
+      "L_vessel": "vessel length = 2500 mm",
+      "L_anode": "anode length = 600 mm",
+      "L_insulator": "insulator length = 113 mm",
+      "d_backplate": "backplate standoff — NOT ACQUIRED, facility_request_required"
+    },
+    "target_values_acquired": "partial",
+    "target_values_note": "Vessel and electrode OD/length confirmed from IFPILM web. Backplate distance not publicly available.",
+    "claim_impact": "Outer radial/axial boundary of MHD computational domain; shock reflection from wall; debris estimate. NOT wired. NOT KR-ingested.",
+    "already_in_kr": false,
+    "external_required": true
+  }
+]

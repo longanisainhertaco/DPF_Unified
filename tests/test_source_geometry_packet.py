@@ -1212,3 +1212,174 @@ def test_s7wsb_scholz2001_scope_tag_distinct_from_akel_and_krauz() -> None:
     # Acceptance flags are false on all three.
     for packet in (scholz2001, akel, krauz):
         assert packet.can_support_first_principles_acceptance is False
+
+
+# ===========================================================================
+# Sprint 8 WS3 -- 24-rod PF-1000 full-energy runtime deck tests.
+#
+# Authority: SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md
+# §Workstream 3. The deck is an engineering candidate only; all acceptance
+# flags remain False.
+# ===========================================================================
+
+def test_ws3_deck_consumes_scholz_2001_24rod_geometry_packet() -> None:
+    """WS3: deck values match the scholz_2001_24rod_large_electrode() packet."""
+    import pytest
+
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    geom = sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+
+    assert deck.device.anode_radius_m == pytest.approx(
+        geom.get_field("anode_radius_m").value
+    )
+    assert deck.device.anode_length_m == pytest.approx(
+        geom.get_field("anode_length_m").value
+    )
+    assert deck.device.cathode_radius_m == pytest.approx(
+        geom.get_field("cathode_cage_radius_m").value
+    )
+    assert deck.device.cathode_rod_count == geom.get_field("cathode_rod_count").value
+    assert deck.device.cathode_rod_diameter_m == pytest.approx(
+        geom.get_field("cathode_rod_diameter_m").value
+    )
+    assert deck.device.cathode_rod_length_m == pytest.approx(
+        geom.get_field("cathode_rod_length_m").value
+    )
+    assert deck.device.insulator_length_m == pytest.approx(
+        geom.get_field("insulator_exposed_length_m").value
+    )
+    assert deck.device.insulator_outer_radius_m == pytest.approx(
+        geom.get_field("insulator_outer_radius_m").value
+    )
+
+
+def test_ws3_deck_scope_label_is_selected_scope() -> None:
+    """WS3: deck startup source_scope matches the Sprint 8 selected scope label."""
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+    from dpf.first_principles.runtime_demonstrator_scope import SELECTED_SCOPE_LABEL
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    assert deck.startup.source_scope == SELECTED_SCOPE_LABEL
+    assert SELECTED_SCOPE_LABEL == "pf1000_full_energy_27_to_40_kv"
+
+
+def test_ws3_deck_acceptance_flags_all_false() -> None:
+    """WS3: deck never claims acceptance or first-principles support."""
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    assert deck.scientific_status == "engineering_candidate_not_validation"
+    assert deck.startup.can_support_whole_shot_acceptance is False
+
+
+def test_ws3_deck_no_hollow_anode_declared() -> None:
+    """WS3: anode_inner_radius_m is None; deck must NOT declare a hollow anode.
+
+    The hollow bore length is blocked (PF1000-BLK-010); the deck must not
+    pretend the anode is hollow when the dimension is not source-supported.
+    """
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    assert deck.device.anode_inner_radius_m is None, (
+        "deck must not declare hollow anode: bore length is blocked (PF1000-BLK-010)"
+    )
+
+
+def test_ws3_deck_five_blocked_fields_explicit() -> None:
+    """WS3: all five WS3 blocker fields are listed in the blocked manifest.
+
+    Required blocked fields (exit criteria):
+      anode_hollow_bore_length_m  PF1000-BLK-010
+      insulator_wall_thickness_m  PF1000-BLK-016
+      backplate_radial_extent_m   PF1000-BLK-017
+      backplate_axial_thickness_m PF1000-BLK-018
+      same_scope_reviewed_geometry_mask  PF1000-BLK-WS3
+    """
+    from dpf.first_principles.deck import _pf1000_scholz_2001_24rod_blocked_fields
+
+    manifest = _pf1000_scholz_2001_24rod_blocked_fields()
+
+    required_fields = {
+        "anode_hollow_bore_length_m",
+        "insulator_wall_thickness_m",
+        "backplate_radial_extent_m",
+        "backplate_axial_thickness_m",
+        "same_scope_reviewed_geometry_mask",
+    }
+    assert set(manifest.keys()) == required_fields, (
+        f"missing blocked fields: {required_fields - set(manifest.keys())}"
+    )
+    # Each blocker ID must be non-empty and reference the correct prefix.
+    assert manifest["anode_hollow_bore_length_m"].startswith("PF1000-BLK-010")
+    assert manifest["insulator_wall_thickness_m"].startswith("PF1000-BLK-016")
+    assert manifest["backplate_radial_extent_m"].startswith("PF1000-BLK-017")
+    assert manifest["backplate_axial_thickness_m"].startswith("PF1000-BLK-018")
+    assert "PF1000-BLK-WS3" in manifest["same_scope_reviewed_geometry_mask"]
+
+
+def test_ws3_geometry_mask_acceptance_blocked_by_missing_fields() -> None:
+    """WS3: geometry mask acceptance is blocked because required fields are absent.
+
+    The geometry packet from scholz_2001_24rod_large_electrode() carries five
+    blocked fields.  Any geometry mask built from this packet cannot claim
+    reviewed or accepted status.
+    """
+    geom = sg.PF1000GeometryPacket.scholz_2001_24rod_large_electrode()
+    assert geom.can_support_first_principles_acceptance is False
+    assert geom.geometry_review_status == "geometry_candidate_not_reviewed"
+
+    expected_blocked = {
+        "anode_hollow_bore_length_m",
+        "insulator_wall_thickness_m",
+        "backplate_radial_extent_m",
+        "backplate_axial_thickness_m",
+    }
+    actual_blocked = set(geom.blocked_field_names())
+    # All four geometry-mask-blocking fields are present.
+    assert expected_blocked.issubset(actual_blocked), (
+        f"missing blocked fields: {expected_blocked - actual_blocked}"
+    )
+
+
+def test_ws3_akel_constructor_unchanged() -> None:
+    """WS3: akel_shot_12581 constructor is unmodified (rod count stays 12)."""
+    akel = sg.PF1000GeometryPacket.akel_shot_12581()
+    # Akel scope has 12-rod conflict field, not a source-supported 24-rod value.
+    assert akel.get_field("cathode_rod_count").status == "conflict"
+    assert akel.get_field("cathode_rod_count").value is None
+    assert akel.scope_tag == "pf1000_akel_16kv_1p2torr_shot_12581"
+    assert akel.can_support_first_principles_acceptance is False
+
+
+def test_ws3_krauz_constructor_unchanged() -> None:
+    """WS3: krauz_2012 constructor is unmodified (anode radius stays 0.1155 m)."""
+    krauz = sg.PF1000GeometryPacket.krauz_2012()
+    fld = krauz.get_field("anode_radius_m")
+    assert fld.status == "source_supported"
+    assert fld.value == pytest.approx(0.1155)
+    assert krauz.can_support_first_principles_acceptance is False
+
+
+def test_ws3_deck_source_references_point_to_kr_files() -> None:
+    """WS3: deck source references point at existing KnowledgeReference files."""
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    for ref in deck.source_references:
+        path = ref.path
+        assert path.startswith("KnowledgeReference/"), path
+        assert (_REPO_ROOT / path).is_file(), f"missing KR source: {path}"
+
+
+def test_ws3_deck_is_engineering_candidate_label() -> None:
+    """WS3: deck_id contains 'engineering_candidate' and scope label."""
+    from dpf.first_principles.deck import pf1000_scholz_2001_24rod_full_energy_deck
+
+    deck = pf1000_scholz_2001_24rod_full_energy_deck()
+    assert "engineering_candidate" in deck.deck_id
+    # Deck is NOT labeled as accepted, validation, or first_principles_accepted.
+    assert "accepted" not in deck.deck_id
+    assert "validation" not in deck.deck_id

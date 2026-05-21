@@ -1114,3 +1114,206 @@ def test_s3r5_full_operand_presence_does_not_compute_terms_before_sprint4() -> N
     # The residual must still be None with all four Sigma_p terms blocked.
     assert wp["residual_J"] is None
     assert wp["all_six_terms_computed_independently"] is False
+
+
+# ===========================================================================
+# S8-WS6 -- power-port and Sigma_p operator ledger.
+#
+# WS6 adds: (a) an explicit six-term-presence roster (each Auluck eq. (6) term
+# independently present or fail-closed); (b) four explicit ledger-structure
+# fields -- sign_convention / time_centering / domain / residual; (c) demotion
+# of every active-load placeholder to engineering-only telemetry that cannot
+# satisfy accepted power coupling. These tests enforce all three.
+# Authority: AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (1), (6).
+# ===========================================================================
+
+
+def test_ws6_ledger_has_four_explicit_structure_fields() -> None:
+    """WS6: the ledger structure carries the four explicit named fields
+    sign_convention / time_centering / domain / residual, both at top level
+    and grouped in a coherent power_port_ledger_fields block."""
+    wp = build_wp_n1_auluck_power_port_ledger(_ledger())
+    for field in ("sign_convention", "time_centering", "domain", "residual"):
+        assert field in wp, f"top-level ledger field {field!r} missing"
+        assert field in wp["power_port_ledger_fields"], (
+            f"grouped ledger field {field!r} missing"
+        )
+
+
+def test_ws6_four_structure_fields_present_when_no_ledger() -> None:
+    """WS6: the four explicit fields exist even with no telemetry, so the
+    ledger structure shape is invariant."""
+    wp = build_wp_n1_auluck_power_port_ledger(None)
+    for field in ("sign_convention", "time_centering", "domain", "residual"):
+        assert field in wp, f"no-telemetry ledger field {field!r} missing"
+        assert field in wp["power_port_ledger_fields"], field
+
+
+def test_ws6_domain_field_names_omega_and_excludes_source_interface() -> None:
+    """WS6 domain field: integration domain is Omega and the
+    electrode/power-source interface is explicitly excluded (Auluck p.6-7)."""
+    domain = build_wp_n1_auluck_power_port_ledger(_ledger())["domain"]
+    assert domain["integration_domain"] == "Omega"
+    assert domain["moving_boundary"] == "Sigma_p"
+    assert "excluded_from_domain" in domain
+    assert "interface" in domain["excluded_from_domain"].lower()
+    assert domain["can_support_power_port_acceptance"] is False
+
+
+def test_ws6_residual_field_tolerance_fails_closed_not_source_backed() -> None:
+    """WS6 residual field: Auluck supplies no balance tolerance, so the
+    accepted residual tolerance is not attached and a fail-closed blocker is
+    named. The residual cannot gate acceptance."""
+    residual = build_wp_n1_auluck_power_port_ledger(_ledger())["residual"]
+    assert residual["accepted_residual_tolerance"] == "not_attached"
+    assert "not_source_backed" in residual["residual_tolerance_blocker"]
+    assert residual["is_closure_by_construction"] is False
+    assert residual["can_support_power_port_acceptance"] is False
+
+
+def test_ws6_six_term_presence_lists_all_six_in_eq6_order() -> None:
+    """WS6: the six-term-presence roster lists exactly the six Auluck eq. (6)
+    terms, each tagged with its Auluck term label I-VI."""
+    presence = build_wp_n1_auluck_power_port_ledger(
+        _ledger()
+    )["auluck_eq6_six_term_presence"]
+    assert presence["expected_term_count"] == 6
+    assert set(presence["terms"]) == set(_WP_N1B_LEDGER_KEYS)
+    labels = {p["auluck_term_label"] for p in presence["terms"].values()}
+    assert labels == {"I", "II", "III", "IV", "V", "VI"}
+
+
+def test_ws6_six_term_presence_all_blocked_no_split_no_sigma_p() -> None:
+    """WS6: with no stored-EM split and no Sigma_p face set, every one of the
+    six terms is `blocked_fail_closed` and the balance is not complete."""
+    presence = build_wp_n1_auluck_power_port_ledger(
+        _ledger()
+    )["auluck_eq6_six_term_presence"]
+    assert presence["independent_term_count"] == 0
+    assert presence["all_six_terms_present"] is False
+    for key, entry in presence["terms"].items():
+        assert entry["state"] == "blocked_fail_closed", key
+        assert entry["blocker"] is not None, key
+
+
+def test_ws6_missing_sigma_p_face_set_blocks_terms_ii_iv_v_vi() -> None:
+    """WS6 test: a missing Sigma_p face set blocks power-port acceptance --
+    terms II/IV/V/VI fail closed naming the missing face set."""
+    presence = build_wp_n1_auluck_power_port_ledger(
+        _ledger()
+    )["auluck_eq6_six_term_presence"]
+    for key in _SIGMA_P_TERMS:
+        entry = presence["terms"][key]
+        assert entry["state"] == "blocked_fail_closed", key
+        assert "sigma_p_face_set_not_available" in entry["blocker"], key
+
+
+def test_ws6_missing_face_velocity_blocks_terms_ii_iv_vi() -> None:
+    """WS6 test: missing face velocity v blocks terms II, IV, VI (the
+    motional and anomalous Sigma_p terms) -- not V."""
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="blocked", resistivity="available"
+    )
+    packets = build_wp_n1_auluck_power_port_ledger(
+        ledger
+    )["energy_ledger_term_packets"]
+    for key in (
+        "term_ii_motional_magnetic_sigma_p_J",
+        "term_iv_motional_electric_sigma_p_J",
+        "term_vi_anomalous_poloidal_sigma_p_J",
+    ):
+        assert packets[key]["status"] == "blocked", key
+        assert packets[key]["missing_operand"] == "v", key
+
+
+def test_ws6_missing_resistivity_blocks_term_v() -> None:
+    """WS6 test: missing resistivity eta blocks term V (resistive Sigma_p)."""
+    ledger = _ledger()
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available", resistivity="blocked"
+    )
+    packets = build_wp_n1_auluck_power_port_ledger(
+        ledger
+    )["energy_ledger_term_packets"]
+    term_v = packets["term_v_resistive_sigma_p_J"]
+    assert term_v["status"] == "blocked"
+    assert term_v["missing_operand"] == "eta"
+
+
+def test_ws6_active_load_placeholders_demoted_engineering_only() -> None:
+    """WS6: the engineering packet demotes every active-load placeholder to
+    engineering-only telemetry; none satisfies accepted power coupling."""
+    packet = build_engineering_power_port_packet(
+        {
+            "last": {
+                "circuit_step": {"current_A": 1.0e5, "udpf_V": 2.0e4},
+            }
+        },
+        conservation={"final": {"magnetic_energy_J": 5.0e3}},
+    )
+    demotion = packet["active_load_placeholder_demotion"]
+    assert demotion["satisfies_accepted_power_coupling"] is False
+    assert demotion["any_placeholder_satisfies_accepted_power_coupling"] is False
+    assert demotion["accepted_load_power_source"] == "none"
+    assert demotion["can_support_first_principles_acceptance"] is False
+    for name, entry in demotion["placeholders"].items():
+        assert entry["channel_state"] == "excluded_not_validated", name
+
+
+def test_ws6_diagnostic_inductance_cannot_be_accepted_load() -> None:
+    """WS6 test: the diagnostic field inductance (L = 2 E_B / I^2) is an
+    active-load fallback and CANNOT satisfy accepted power coupling."""
+    packet = build_engineering_power_port_packet(
+        {"last": {"circuit_step": {"current_A": 1.0e5, "udpf_V": 2.0e4}}},
+        conservation={"final": {"magnetic_energy_J": 5.0e3}},
+    )
+    demotion = packet["active_load_placeholder_demotion"]
+    ind = demotion["placeholders"]["diagnostic_field_inductance_H"]
+    # The fallback value is computed (engineering telemetry) ...
+    assert ind["value"] is not None
+    # ... but it is excluded_not_validated and cannot couple power.
+    assert ind["channel_state"] == "excluded_not_validated"
+    assert demotion["satisfies_accepted_power_coupling"] is False
+    # And the legacy authority tag still says diagnostic-only-not-load.
+    assert (
+        packet["magnetic_energy_inductance_authority"]
+        == "diagnostic_only_not_circuit_load"
+    )
+
+
+def test_ws6_terminal_iv_product_is_not_accepted_power_coupling() -> None:
+    """WS6 test: the terminal I*V product (active_power_W) is an active-load
+    placeholder; it is engineering telemetry and is not accepted load power."""
+    packet = build_engineering_power_port_packet(
+        {"last": {"circuit_step": {"current_A": 1.0e5, "udpf_V": 2.0e4}}},
+    )
+    demotion = packet["active_load_placeholder_demotion"]
+    iv = demotion["placeholders"]["active_power_W_terminal_iv_product"]
+    assert iv["value"] == pytest.approx(1.0e5 * 2.0e4)
+    assert iv["channel_state"] == "excluded_not_validated"
+    # active_power_W is exposed for engineering review but the accepted load
+    # source stays 'none'.
+    assert packet["accepted_load_power_source"] == "none"
+    assert (
+        packet["active_load_decision"]["can_support_power_port_acceptance"]
+        is False
+    )
+
+
+def test_ws6_power_port_authority_blocked_until_all_six_plus_residual() -> None:
+    """WS6 exit criterion: accepted power-port authority stays blocked until
+    all six terms AND the residual tolerance are source-backed. A fully
+    operand Sigma_p packet does not unlock it (integral is Sprint 4; Auluck
+    supplies no residual tolerance)."""
+    ledger = _ledger(stored_magnetic_delta_J=10.0, stored_electric_delta_J=1.0)
+    ledger["sigma_p_surface_packet"] = _sigma_p_packet_with(
+        velocity="available", resistivity="available"
+    )
+    wp = build_wp_n1_auluck_power_port_ledger(ledger)
+    presence = wp["auluck_eq6_six_term_presence"]
+    # Terms I/III present, II/IV/V/VI still blocked -> not all six.
+    assert presence["all_six_terms_present"] is False
+    assert wp["residual"]["accepted_residual_tolerance"] == "not_attached"
+    assert wp["can_support_power_port_acceptance"] is False
+    assert wp["can_support_first_principles_acceptance"] is False

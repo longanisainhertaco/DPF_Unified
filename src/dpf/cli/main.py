@@ -19,6 +19,7 @@ from dpf.first_principles.manifest import stamp_artifact_provenance
 
 FIRST_PRINCIPLES_3D_DECK_PRESETS = (
     "pf1000_akel_16kv",
+    "pf1000_scholz_2001_24rod_full_energy",
     "ir_mpf_100",
     "compact_chinese_dpf",
     "willenborg_hendricks",
@@ -384,12 +385,14 @@ def _first_principles_3d_deck_preset(deck_preset: str) -> dict[str, Any]:
         gv_verified_engineering_deck,
         ir_mpf_100_engineering_deck,
         pf1000_akel_16kv_engineering_deck,
+        pf1000_scholz_2001_24rod_full_energy_deck,
         willenborg_hendricks_engineering_deck,
     )
 
     normalized = deck_preset.lower()
     builders = {
         "pf1000_akel_16kv": pf1000_akel_16kv_engineering_deck,
+        "pf1000_scholz_2001_24rod_full_energy": pf1000_scholz_2001_24rod_full_energy_deck,
         "ir_mpf_100": ir_mpf_100_engineering_deck,
         "compact_chinese_dpf": compact_chinese_dpf_engineering_deck,
         "willenborg_hendricks": willenborg_hendricks_engineering_deck,
@@ -723,6 +726,20 @@ def _experimental_deck_initial_ohmic_cfl_dt_s(deck: dict[str, Any]) -> float:
         ohmic_cfl_safety=float(resolved.ohmic_cfl_safety),
         cfl=0.95,
     )
+
+
+def _experimental_deck_n_steps(deck: dict[str, Any]) -> int:
+    """Return the resolved n_steps / steps from an experimental deck dict."""
+    if {"device", "circuit", "grid"}.issubset(deck.keys()):
+        diagnostics = deck.get("diagnostics", {})
+        value = diagnostics.get("n_steps") if isinstance(diagnostics, dict) else None
+    else:
+        value = deck.get("steps") or deck.get("n_steps")
+    if value is None:
+        raise click.ClickException(
+            "auto-step-budget: resolved deck has no n_steps/steps field"
+        )
+    return int(value)
 
 
 def _ceil_division_time_steps(*, target_time_s: float, dt_s: float) -> int:
@@ -3588,6 +3605,44 @@ def experimental_limiter_proof(
     help="Resume the horizon from a prior segment checkpoint .npz.",
 )
 @click.option(
+    "--dt-policy",
+    type=click.Choice(
+        ["deck", "vacuum-cfl", "ohmic-cfl", "combined-cfl"],
+        case_sensitive=False,
+    ),
+    default="deck",
+    show_default=True,
+    help=(
+        "Experimental timestep policy applied before planning the segment "
+        "schedule. 'deck' uses the deck/--dt-s value; 'vacuum-cfl' uses the "
+        "explicit 3-D Yee limit; 'ohmic-cfl' uses the source-grounded explicit "
+        "Ohmic relaxation limit; 'combined-cfl' uses the stricter of both."
+    ),
+)
+@click.option(
+    "--vacuum-cfl",
+    type=float,
+    default=0.95,
+    show_default=True,
+    help="CFL fraction used by --dt-policy vacuum-cfl.",
+)
+@click.option(
+    "--auto-step-budget/--no-auto-step-budget",
+    default=False,
+    show_default=True,
+    help=(
+        "Set --explicit-total-steps to ceil(target_time_s / dt_s) after dt "
+        "policy is applied. The --max-auto-steps cap must still permit the run."
+    ),
+)
+@click.option(
+    "--max-auto-steps",
+    type=int,
+    default=100_000,
+    show_default=True,
+    help="Safety cap for --auto-step-budget.",
+)
+@click.option(
     "--verify-restart-equivalence/--no-verify-restart-equivalence",
     default=True,
     show_default=True,
@@ -3611,6 +3666,10 @@ def experimental_segmented_whole_shot(
     explicit_total_steps: int | None,
     segment_steps: int,
     dt_s: float | None,
+    dt_policy: str,
+    vacuum_cfl: float,
+    auto_step_budget: bool,
+    max_auto_steps: int,
     checkpoint_every_segments: int,
     wall_time_cap_s: float | None,
     resume_from_checkpoint: Path | None,
@@ -3623,6 +3682,10 @@ def experimental_segmented_whole_shot(
     segment carrying cumulative ledgers across checkpoint boundaries, and
     emits a run directory. Not a validation run; a full 12 us run is a known
     compute-wall blocker reported in the blocker verdicts.
+
+    CLI parity with experimental-whole-shot: --dt-policy and --auto-step-budget
+    apply the same CFL and step-budget helpers before the segment planner runs,
+    so both routes accept the same timestep-control surface.
     """
     import json
 
@@ -3637,11 +3700,33 @@ def experimental_segmented_whole_shot(
         )
 
     runtime_deck = _load_first_principles_3d_deck(deck, deck_preset=deck_preset)
-    if dt_s is not None:
+    # Apply explicit CLI runtime overrides (dt_s and target_time_s) so
+    # downstream helpers (_apply_experimental_dt_policy, _apply_experimental_auto_step_budget)
+    # read consistent values from the deck dict.
+    if dt_s is not None or target_time_s is not None:
         runtime_deck = _override_first_principles_3d_deck_runtime(
             runtime_deck,
             dt_s=dt_s,
+            target_time_s=target_time_s,
         )
+    # Apply CFL dt policy (same helper as experimental-whole-shot).
+    runtime_deck = _apply_experimental_dt_policy(
+        runtime_deck,
+        dt_policy=dt_policy.lower(),
+        vacuum_cfl=vacuum_cfl,
+    )
+    # Auto-step budget: set explicit_total_steps from ceil(target / dt) when
+    # requested, using the same helper as experimental-whole-shot.  The caller-
+    # supplied --explicit-total-steps takes precedence over the auto budget when
+    # both are set (the deck's n_steps is only used as a fallback by the planner).
+    if auto_step_budget and explicit_total_steps is None:
+        runtime_deck = _apply_experimental_auto_step_budget(
+            runtime_deck,
+            enabled=True,
+            max_auto_steps=max_auto_steps,
+        )
+        # Extract the resolved step count so it feeds the segmented planner.
+        explicit_total_steps = _experimental_deck_n_steps(runtime_deck)
     resolved_deck = FirstPrinciples3DDeck.from_deck(runtime_deck)
 
     try:
@@ -3696,6 +3781,64 @@ def experimental_segmented_whole_shot(
     click.echo(f"  blocker_summary: {manifest['blocker_verdicts']['summary']}")
     click.echo(f"  status: {manifest['status']}")
     click.echo(f"  artifact: {output}")
+
+
+@cli.command("combine-whole-run")
+@click.argument(
+    "run_dirs",
+    nargs=-1,
+    type=click.Path(exists=True, file_okay=False, path_type=Path),
+)
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=None,
+    help="Write the combined whole-run manifest JSON here. Without it, JSON goes to stdout.",
+)
+def combine_whole_run(
+    run_dirs: tuple[Path, ...],
+    output: Path | None,
+) -> None:
+    """Merge N segmented-whole-shot run directories into one combined manifest.
+
+    Each RUN_DIR must contain a run_manifest.json produced by
+    experimental-segmented-whole-shot.  Restarts must tile the planned horizon
+    contiguously (no step gap, no overlap); any violation is a hard error.
+
+    The combined manifest carries merged cumulative ledgers, a re-indexed
+    segment inventory, and a checkpoint inventory for further resume.  It is
+    an engineering-candidate artifact only; can_support_first_principles_acceptance
+    is always False.
+    """
+    import json
+
+    from dpf.first_principles.segmented_whole_shot_combine import (
+        LedgerMergeError,
+        combine_whole_run_artifacts,
+    )
+
+    if not run_dirs:
+        raise click.UsageError("at least one RUN_DIR is required")
+
+    try:
+        combined = combine_whole_run_artifacts(list(run_dirs))
+    except LedgerMergeError as exc:
+        raise click.ClickException(str(exc)) from exc
+
+    text = json.dumps(stamp_artifact_provenance(combined), indent=2, sort_keys=True)
+    if output is not None:
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(text)
+        click.echo("Combined whole-run engineering-candidate manifest")
+        click.echo(f"  restart_count: {combined['restart_count']}")
+        click.echo(f"  total_steps_combined: {combined['total_steps_combined']}")
+        click.echo(f"  planned_total_steps: {combined['planned_total_steps']}")
+        click.echo(f"  horizon_complete: {combined['horizon_complete']}")
+        click.echo(f"  status: {combined['status']}")
+        click.echo(f"  artifact: {output}")
+    else:
+        click.echo(text)
 
 
 @cli.command("experimental-numerical-family")

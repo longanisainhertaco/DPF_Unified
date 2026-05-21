@@ -7076,3 +7076,28 @@ S3R.2–S3R.7 are assigned to parallel agents and are in progress.
   closure, the same-scope comparator, and whole-shot first-principles runtime
   acceptance all remain blocked. WS0 is bookkeeping and traceability repair,
   not a physics promotion.
+
+### 2026-05-20: Super-Sprint 8 Phase A WS1/WS2 and Phase B/C Workstreams
+
+- Work completed:
+  Super-Sprint 8 finished all P0 (WS0/WS1/WS2), all P1 (WS3/WS4/WS5/WS6), and
+  both P2 (WS7/WS8) workstreams across two commits — Phase A `bd5be3a` and the
+  Phase B/C commit. The runtime demonstrator scope is locked to Option B
+  (PF-1000 full-energy 27-40 kV); the acceptance-channel contract is a single
+  seven-state vocabulary; geometry, Bennett startup, Braginskii Z=1 transport,
+  and the power-port six-term ledger are wired as engineering candidates.
+- Plan status:
+  the Definition of Done is met — all P0+P1 workstreams done, tests pass,
+  ledgers synchronized, RTM without drift, and the audit memo
+  `docs/SPRINT8_SUPER_SPRINT_AUDIT_MEMO_2026_05_20.md` lists every remaining
+  blocked channel. Next-step gating work is the numerical-fidelity, same-scope
+  comparator, UQ, and certificate gates — none run as acceptance gates this
+  sprint — plus IPPLM facility outreach for the four absent geometry
+  dimensions, a same-scope 3-D validation packet, and second-reader
+  confirmation of the five Braginskii review-required cells.
+- Boundary:
+  no acceptance state changed. `accepted_runtime_claim` and
+  `can_support_first_principles_acceptance` remain `false` everywhere. Bennett
+  and Braginskii moved blocked -> source-backed runtime candidate, which is
+  engineering evidence, not accepted physics. Super-Sprint 8 is reviewed
+  code/data plumbing and fail-closed tests, not a validation sprint.

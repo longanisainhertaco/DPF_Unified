@@ -203,6 +203,17 @@ def build_engineering_power_port_packet(
         "terminal_current_A": current_A,
         "terminal_voltage_V": terminal_voltage_V,
         "active_power_W": active_power_W,
+        # S8-WS6: explicit demotion of every active-load placeholder to
+        # engineering-only telemetry. None of these may satisfy accepted power
+        # coupling: the only accepted load-power sources are a named Poynting
+        # surface flux or a reviewed volume J.E integral (ACCEPTED_LOAD_POWER_
+        # SOURCES). Each placeholder carries the WS1 channel-state contract
+        # string `excluded_not_validated` -- it is engineering evidence only.
+        "active_load_placeholder_demotion": _active_load_placeholder_demotion(
+            active_power_W=active_power_W,
+            diagnostic_field_inductance_H=diagnostic_field_inductance_H,
+            active_load_relation=active_load_relation,
+        ),
         "power_port_step_records": _power_port_step_records(
             circuit_step=circuit_step,
             udpf_source=udpf_source,
@@ -407,6 +418,60 @@ _AULUCK_EQ1_SIGN_CONVENTION = "V_12 = -(1/I) integral_Omega d3r (J.E)"
 _SIGMA_P_BLOCKER = SIGMA_P_BLOCKERS["sigma_p"]
 _STORED_SPLIT_BLOCKER = (
     "stored_em_energy_magnetic_electric_split_not_exposed_by_runtime"
+)
+
+# S8-WS6: the Auluck eq. (6) six-term roster, in eq. (6) order, with the
+# one-line Auluck identification of each term (verified extract eq. (6) p.8;
+# term identification prose p.9-10). The ledger emits this roster so a
+# reviewer can confirm every one of the six terms is independently accounted
+# for -- a five-term or closure-padded balance is not acceptable.
+# [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8, term ID p.9-10]
+_AULUCK_EQ6_TERM_ROSTER = (
+    (
+        "term_i_stored_magnetic_energy_rate_J",
+        "I",
+        "d/dt integral_Omega d3r (1/2 mu0^-1 B^2)",
+        "stored magnetic energy rate (Auluck term I)",
+    ),
+    (
+        "term_ii_motional_magnetic_sigma_p_J",
+        "II",
+        "integral_Sigma_p dS.v (1/2 mu0^-1 B^2)",
+        "motional magnetic Sigma_p surface integral (Auluck term II)",
+    ),
+    (
+        "term_iii_stored_electric_energy_rate_J",
+        "III",
+        "d/dt integral_Omega d3r (1/2 eps0 E^2)",
+        "stored electric energy rate (Auluck term III)",
+    ),
+    (
+        "term_iv_motional_electric_sigma_p_J",
+        "IV",
+        "- integral_Sigma_p dS.v (1/2 eps0 E^2)",
+        "motional electric Sigma_p surface integral (Auluck term IV)",
+    ),
+    (
+        "term_v_resistive_sigma_p_J",
+        "V",
+        "mu0^-1 oint_Sigma_p dS.(eta J x B)",
+        "resistive Sigma_p surface integral (Auluck term V)",
+    ),
+    (
+        "term_vi_anomalous_poloidal_sigma_p_J",
+        "VI",
+        "- mu0^-1 oint_Sigma_p dS.B (B.v)",
+        "anomalous/poloidal Sigma_p surface integral (Auluck term VI)",
+    ),
+)
+
+# S8-WS6: Auluck (verified extract, "What this source ... DOES NOT provide")
+# supplies NO numerical residual / energy-balance tolerance and NO
+# time-centering / quadrature prescription. The residual tolerance therefore
+# fails closed until a source packet attaches one; this string is the
+# fail-closed reason.
+_RESIDUAL_TOLERANCE_NOT_SOURCE_BACKED = (
+    "residual_tolerance_not_source_backed_auluck_supplies_no_balance_tolerance"
 )
 
 
@@ -668,6 +733,111 @@ def _sigma_p_surface_term(
     return packet
 
 
+def _ws6_six_term_presence(
+    term_packets: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Return the S8-WS6 explicit six-term presence roster.
+
+    WS6 requires each of the six Auluck eq. (6) terms to be *independently
+    present, or fail closed*. This walks `_AULUCK_EQ6_TERM_ROSTER` (eq. (6)
+    order) and reports, per term, whether it is `present` (independently
+    computed from a runtime field channel) or `blocked_fail_closed` (with the
+    naming blocker). The ledger embeds this so a reviewer never has to infer
+    completeness from scattered keys, and so a five-term balance is visibly
+    incomplete. [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8]
+    """
+    roster: dict[str, Any] = {}
+    present_count = 0
+    for key, label, integrand, name in _AULUCK_EQ6_TERM_ROSTER:
+        packet = term_packets.get(key, {})
+        independent = bool(packet.get("computed_independently"))
+        if independent:
+            present_count += 1
+        roster[key] = {
+            "auluck_term_label": label,
+            "auluck_eq6_integrand": integrand,
+            "name": name,
+            "state": "present" if independent else "blocked_fail_closed",
+            "value_J": packet.get("value_J"),
+            "blocker": packet.get("blocker"),
+        }
+    return {
+        "expected_term_count": len(_AULUCK_EQ6_TERM_ROSTER),
+        "independent_term_count": present_count,
+        "all_six_terms_present": present_count == len(_AULUCK_EQ6_TERM_ROSTER),
+        "terms": roster,
+        "fail_closed_rule": (
+            "each of the six Auluck eq. (6) terms must be independently "
+            "present; any term blocked fails the six-term balance closed"
+        ),
+    }
+
+
+def _ws6_domain_field(
+    auluck_omega_domain: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return the S8-WS6 explicit `domain` field for the ledger structure.
+
+    WS6 mandates an explicit `domain` field. Auluck's balance is a volume
+    integral over the toroidal domain Omega (J = 0 outside it) bounded by the
+    closed surface Sigma, whose *moving* part is Sigma_p; the
+    electrode/power-source interface is EXCLUDED from Omega and its Poynting
+    flux IS the LHS I(t)V(t). This wraps the existing Omega-domain packet and
+    surfaces those facts as named fields. [verified extract Domain p.6-7]
+    """
+    return {
+        "integration_domain": "Omega",
+        "domain_topology": "toroid_not_simply_connected",
+        "domain_definition": "current-carrying volume; J = 0 outside Omega",
+        "bounding_surface": "Sigma",
+        "moving_boundary": "Sigma_p",
+        "excluded_from_domain": (
+            "electrode/power-source interface; its Poynting flux IS the "
+            "LHS I(t)V(t) power input"
+        ),
+        "domain_partition_status": auluck_omega_domain.get("status"),
+        "domain_partition_valid": auluck_omega_domain.get("partition_valid"),
+        "auluck_omega_domain": auluck_omega_domain,
+        "source_ref": (
+            "AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md Domain p.6-7"
+        ),
+        "can_support_power_port_acceptance": False,
+    }
+
+
+def _ws6_residual_field(
+    *,
+    residual_J: float | None,
+    residual_fraction: float | None,
+    residual_is_genuine: bool,
+    iv_work_J: float | None,
+) -> dict[str, Any]:
+    """Return the S8-WS6 explicit `residual` field for the ledger structure.
+
+    WS6 mandates an explicit `residual` field. The residual is
+    `I*V - (I+II+III+IV+V+VI)`, a GENUINE (non-closure) diagnostic that is
+    `None` while any term fails closed. Auluck supplies no balance tolerance
+    (verified extract "DOES NOT provide"), so `accepted_residual_tolerance`
+    fails closed and the residual cannot gate acceptance.
+    [AULUCK_2021_POWER_BALANCE_EQUATIONS_VERIFIED.md eq. (6) p.8]
+    """
+    return {
+        "definition": (
+            "I*V - (term_i + term_ii + term_iii + term_iv + term_v + term_vi)"
+        ),
+        "residual_J": residual_J,
+        "residual_fraction": residual_fraction,
+        "iv_work_lhs_J": iv_work_J,
+        "is_genuine_diagnostic": residual_is_genuine,
+        "is_closure_by_construction": False,
+        "computable_only_when": "all six eq. (6) terms independently present",
+        "accepted_residual_tolerance": "not_attached",
+        "residual_tolerance_blocker": _RESIDUAL_TOLERANCE_NOT_SOURCE_BACKED,
+        "tracked_energy_delta_is_residual": False,
+        "can_support_power_port_acceptance": False,
+    }
+
+
 def build_wp_n1_auluck_power_port_ledger(
     ledger: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
@@ -720,6 +890,15 @@ def build_wp_n1_auluck_power_port_ledger(
             "auluck_eq1_sign_convention": _AULUCK_EQ1_SIGN_CONVENTION,
             "auluck_eq1_sign_convention_recorded": True,
             "energy_ledger_terms_J": {key: None for key in _WP_N1B_LEDGER_KEYS},
+            # S8-WS6: all six terms fail closed when no ledger telemetry exists.
+            "auluck_eq6_six_term_presence": _ws6_six_term_presence(
+                {
+                    key: _term_blocked_packet(
+                        "no_power_port_ledger_telemetry", source_ref=eq6_ref
+                    )
+                    for key in _WP_N1B_LEDGER_KEYS
+                }
+            ),
             "ledger_blocked": True,
             "ledger_blocker": "no_power_port_ledger_telemetry",
             "iv_work_J": None,
@@ -727,6 +906,28 @@ def build_wp_n1_auluck_power_port_ledger(
             "residual_fraction": None,
             "residual_is_genuine_diagnostic": False,
             "accepted_residual_tolerance": "not_attached",
+            # S8-WS6: the four explicit ledger-structure fields, present even
+            # when no telemetry exists so the structure shape is invariant.
+            "power_port_ledger_fields": {
+                "sign_convention": _wp_n1b_sign_convention_packet(True),
+                "time_centering": _wp_n1_time_centering_packet({}),
+                "domain": _ws6_domain_field(_omega_domain_unavailable_packet()),
+                "residual": _ws6_residual_field(
+                    residual_J=None,
+                    residual_fraction=None,
+                    residual_is_genuine=False,
+                    iv_work_J=None,
+                ),
+            },
+            "sign_convention": _wp_n1b_sign_convention_packet(True),
+            "time_centering": _wp_n1_time_centering_packet({}),
+            "domain": _ws6_domain_field(_omega_domain_unavailable_packet()),
+            "residual": _ws6_residual_field(
+                residual_J=None,
+                residual_fraction=None,
+                residual_is_genuine=False,
+                iv_work_J=None,
+            ),
             "source_refs": [eq6_ref, eq1_ref],
             "can_support_power_port_acceptance": False,
             "can_support_first_principles_acceptance": False,
@@ -929,10 +1130,45 @@ def build_wp_n1_auluck_power_port_ledger(
         "ledger_blocker": ledger_blocker,
         "accepted_residual_tolerance": "not_attached",
         "tracked_energy_delta_is_residual": False,
+        # S8-WS6: the six explicit Auluck eq. (6) terms, each independently
+        # present or fail-closed (eq. (6) order, with Auluck term labels).
+        "auluck_eq6_six_term_presence": _ws6_six_term_presence(term_packets),
+        # S8-WS6: the four explicit ledger-structure fields mandated by WS6 --
+        # sign_convention / time_centering / domain / residual -- grouped so a
+        # reviewer reads one coherent block. The standalone `sign_convention`
+        # and `time_centering` keys below are retained for back-compatibility.
+        "power_port_ledger_fields": {
+            "sign_convention": _wp_n1b_sign_convention_packet(
+                sign_convention_recorded
+            ),
+            "time_centering": _wp_n1_time_centering_packet(ledger),
+            "domain": _ws6_domain_field(auluck_omega_domain),
+            "residual": _ws6_residual_field(
+                residual_J=residual_J,
+                residual_fraction=_residual_fraction(
+                    residual_J, iv_work_J, energy_ledger_terms_J[
+                        "term_i_stored_magnetic_energy_rate_J"
+                    ]
+                ),
+                residual_is_genuine=residual_is_genuine,
+                iv_work_J=iv_work_J,
+            ),
+        },
         "sign_convention": _wp_n1b_sign_convention_packet(
             sign_convention_recorded
         ),
         "time_centering": _wp_n1_time_centering_packet(ledger),
+        "domain": _ws6_domain_field(auluck_omega_domain),
+        "residual": _ws6_residual_field(
+            residual_J=residual_J,
+            residual_fraction=_residual_fraction(
+                residual_J, iv_work_J, energy_ledger_terms_J[
+                    "term_i_stored_magnetic_energy_rate_J"
+                ]
+            ),
+            residual_is_genuine=residual_is_genuine,
+            iv_work_J=iv_work_J,
+        ),
         "first_step_fallback": bool(ledger.get("first_step_fallback")),
         "first_step_udpf_source": ledger.get("first_step_udpf_source"),
         "steps_accumulated": ledger.get("steps_accumulated"),
@@ -1202,6 +1438,63 @@ def _uses_candidate_j_dot_e_active_load(active_load_relation: str) -> bool:
     return active_load_relation in {
         "lagged_volume_j_dot_e_voltage_not_accepted",
         "lagged_auluck_volume_j_dot_e_voltage_not_accepted",
+    }
+
+
+# S8-WS6: the WS1 channel-state contract string for a placeholder that is
+# engineering telemetry only. It is never `accepted`; it cannot set
+# accepted_runtime_claim or can_support_first_principles_acceptance.
+_WS6_PLACEHOLDER_CHANNEL_STATE = "excluded_not_validated"
+
+
+def _active_load_placeholder_demotion(
+    *,
+    active_power_W: float | None,
+    diagnostic_field_inductance_H: float | None,
+    active_load_relation: str,
+) -> dict[str, Any]:
+    """Return the S8-WS6 active-load placeholder demotion block.
+
+    WS6: every active-load placeholder is demoted to engineering-only
+    telemetry and CANNOT satisfy accepted power coupling. Accepted load power
+    comes only from a named Poynting surface flux or a reviewed volume J.E
+    integral (`ACCEPTED_LOAD_POWER_SOURCES`); the placeholders below are not
+    in that set. Each carries the WS1 channel-state string
+    `excluded_not_validated`. [verified extract: Auluck's accepted load-power
+    relation is field-power over Omega, not a terminal I*V product]
+    """
+    placeholders = {
+        "active_power_W_terminal_iv_product": {
+            "value": active_power_W,
+            "definition": "terminal_current_A * terminal_voltage_V",
+            "channel_state": _WS6_PLACEHOLDER_CHANNEL_STATE,
+            "why_not_accepted": (
+                "input-voltage-sequence I*V product is not a source-derived "
+                "load; Auluck's load power is field power over Omega"
+            ),
+        },
+        "diagnostic_field_inductance_H": {
+            "value": diagnostic_field_inductance_H,
+            "definition": "L_field = 2 * magnetic_energy_J / I^2",
+            "channel_state": _WS6_PLACEHOLDER_CHANNEL_STATE,
+            "why_not_accepted": (
+                "energy-derived inductance is a diagnostic, not a circuit "
+                "load; eqs (13)-(14): dL_p/dt does not equal the motional "
+                "Sigma_p terms"
+            ),
+        },
+    }
+    return {
+        "status": "active_load_placeholders_demoted_engineering_only",
+        "active_load_relation": active_load_relation,
+        "accepted_load_power_source": "none",
+        "required_accepted_load_power_sources": list(ACCEPTED_LOAD_POWER_SOURCES),
+        "placeholders": placeholders,
+        "placeholder_channel_state": _WS6_PLACEHOLDER_CHANNEL_STATE,
+        "any_placeholder_satisfies_accepted_power_coupling": False,
+        "satisfies_accepted_power_coupling": False,
+        "can_support_power_port_acceptance": False,
+        "can_support_first_principles_acceptance": False,
     }
 
 

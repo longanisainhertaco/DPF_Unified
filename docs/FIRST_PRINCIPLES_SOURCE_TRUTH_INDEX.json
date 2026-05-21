@@ -238,9 +238,9 @@
       ]
     },
     "dpf_device": {
-      "direct_record_count": 166,
+      "direct_record_count": 167,
       "label": "DPF/device scope",
-      "record_count": 173,
+      "record_count": 174,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -317,9 +317,9 @@
       ]
     },
     "electrode_boundary": {
-      "direct_record_count": 155,
+      "direct_record_count": 156,
       "label": "Electrode/conductor/boundaries",
-      "record_count": 376,
+      "record_count": 377,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -554,9 +554,9 @@
       ]
     },
     "ionization_eos": {
-      "direct_record_count": 108,
+      "direct_record_count": 109,
       "label": "Ionization/EOS/transport coefficients",
-      "record_count": 343,
+      "record_count": 344,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -633,9 +633,9 @@
       ]
     },
     "maxwell_fields": {
-      "direct_record_count": 127,
+      "direct_record_count": 128,
       "label": "Maxwell/vacuum EM fields",
-      "record_count": 400,
+      "record_count": 401,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -949,9 +949,9 @@
       ]
     },
     "numerical_method": {
-      "direct_record_count": 23,
+      "direct_record_count": 24,
       "label": "Numerical method/verification",
-      "record_count": 100,
+      "record_count": 101,
       "representative_records": [
         {
           "id": "kr:a-three-dimensional-finite-volume-arbitrary-lagrangian-f0967271",
@@ -969,6 +969,12 @@
           "id": "kr:bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860",
           "path": "KnowledgeReference/bayesian-inference-of-spectrometric-data-and-validation-with-numerical-simulations-of-plas-9ff01860.md",
           "title": "Bayesian inference of spectrometric data and validation with numerical simulations of plasma sheath diagnostics of a plasma focus discharge",
+          "verdict": "directly_needed"
+        },
+        {
+          "id": "kr:bennett-2017-kinetic-dpf-breakdown",
+          "path": "KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md",
+          "title": "Bennett et al. 2017 \u2014 Kinetic simulations of gas breakdown in the dense plasma focus",
           "verdict": "directly_needed"
         },
         {
@@ -1017,12 +1023,6 @@
           "id": "kr:goyon-2022-mjolnir-high-low",
           "path": "KnowledgeReference/goyon-2022-mjolnir-high-low.md",
           "title": "Measuring characteristic differences between high- and low-performing discharges on the MegaJOuLe Neutron Imaging Radiography (MJOLNIR) DPF",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:high-power-laser-and-particle-beams-d1758d55",
-          "path": "KnowledgeReference/high-power-laser-and-particle-beams-d1758d55.md",
-          "title": "Development of Dense Plasma Focus Device",
           "verdict": "directly_needed"
         }
       ]
@@ -1168,9 +1168,9 @@
       ]
     },
     "startup_breakdown": {
-      "direct_record_count": 119,
+      "direct_record_count": 120,
       "label": "Startup/breakdown/liftoff",
-      "record_count": 223,
+      "record_count": 224,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1247,9 +1247,9 @@
       ]
     },
     "three_d_geometry": {
-      "direct_record_count": 84,
+      "direct_record_count": 85,
       "label": "True 3D geometry/instabilities",
-      "record_count": 280,
+      "record_count": 281,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -1326,9 +1326,9 @@
       ]
     },
     "two_temperature": {
-      "direct_record_count": 61,
+      "direct_record_count": 62,
       "label": "Separate electron/ion temperature",
-      "record_count": 219,
+      "record_count": 220,
       "representative_records": [
         {
           "id": "kr:2024-a-hybrid-kinetic-simulation-tool-for-non-thermal-warm-x-ray-z-pinch-sources-wit",
@@ -1385,6 +1385,12 @@
           "verdict": "directly_needed"
         },
         {
+          "id": "kr:bennett-2017-kinetic-dpf-breakdown",
+          "path": "KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md",
+          "title": "Bennett et al. 2017 \u2014 Kinetic simulations of gas breakdown in the dense plasma focus",
+          "verdict": "directly_needed"
+        },
+        {
           "id": "kr:bosch-hale-1992-fusion-reactivity",
           "path": "KnowledgeReference/bosch-hale-1992-fusion-reactivity.md",
           "title": "Bosch and Hale 1992 \u2014 Fusion Cross-Sections and Thermal Reactivities",
@@ -1394,12 +1400,6 @@
           "id": "kr:characterising-the-plasma-focus-pinch-and-speed-enhancing-the-neutron-yield",
           "path": "KnowledgeReference/characterising-the-plasma-focus-pinch-and-speed-enhancing-the-neutron-yield.md",
           "title": "Charactpfspeedenhancecairo03",
-          "verdict": "directly_needed"
-        },
-        {
-          "id": "kr:characterization-of-electron-beams-from-a-dense-plasma-focus-d48f6741",
-          "path": "KnowledgeReference/characterization-of-electron-beams-from-a-dense-plasma-focus-d48f6741.md",
-          "title": "Characterization of Electron Beams from a Dense Plasma Focus",
           "verdict": "directly_needed"
         }
       ]
@@ -1484,9 +1484,9 @@
       ]
     },
     "validation_target": {
-      "direct_record_count": 130,
+      "direct_record_count": 131,
       "label": "Experimental validation target",
-      "record_count": 225,
+      "record_count": 226,
       "representative_records": [
         {
           "id": "kr:2019nrlplasma-formulary-037290d4",
@@ -2656,6 +2656,13 @@
       "path": "KnowledgeReference/beam-velocity-and-density-inuences-on-ion-beam-pulses-moving-in-magnetized-plasmas-xiao-ying-zhao.md",
       "sha256": "e9ff300c020f79e86b891fd5029e612feaa242f0a17e5c60584e2ca7a503715e",
       "size_bytes": 26407
+    },
+    {
+      "extension": ".md",
+      "kind": "source_markdown",
+      "path": "KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md",
+      "sha256": "475b9034fe6961bb6ecdad1e59ca5fa3dd51e4c7aafae85043a6dec5327a4db3",
+      "size_bytes": 12851
     },
     {
       "extension": ".json",
@@ -14453,6 +14460,45 @@
       ],
       "title": "Beam_Velocity_And_Density_Influences_On_Ion Beam_Pulses_Moving_In_Magnetized_Plasmas",
       "validation_status": "",
+      "year": null
+    },
+    {
+      "accession": "",
+      "authors": [],
+      "doi": "",
+      "figure_count": 0,
+      "first_principles_use": "Direct source candidate for DPF/device scope; Maxwell/vacuum EM fields; Startup/breakdown/liftoff; Electrode/conductor/boundaries; Ionization/EOS/transport coefficients; Separate electron/ion temperature; True 3D geometry/instabilities; Experimental validation target.",
+      "first_principles_verdict": "directly_needed",
+      "hashes": {
+        "markdown_sha256": "475b9034fe6961bb6ecdad1e59ca5fa3dd51e4c7aafae85043a6dec5327a4db3"
+      },
+      "id": "kr:bennett-2017-kinetic-dpf-breakdown",
+      "ingestion_status": "text_parity_extracted_review_needed",
+      "page_count": 0,
+      "paths": {
+        "json": null,
+        "markdown": "KnowledgeReference/bennett-2017-kinetic-dpf-breakdown.md"
+      },
+      "record_kind": "knowledge_reference_document",
+      "source_fidelity_status": "review_needed",
+      "source_pdf": "",
+      "source_pdf_relative_path": "",
+      "source_pdf_sha256": "",
+      "source_type": "dpf_or_first_principles",
+      "table_count": 0,
+      "tags": [
+        "dpf_device",
+        "maxwell_fields",
+        "startup_breakdown",
+        "electrode_boundary",
+        "ionization_eos",
+        "two_temperature",
+        "three_d_geometry",
+        "validation_target",
+        "numerical_method"
+      ],
+      "title": "Bennett et al. 2017 \u2014 Kinetic simulations of gas breakdown in the dense plasma focus",
+      "validation_status": "source_available_not_target_extracted",
       "year": null
     },
     {
@@ -32261,38 +32307,38 @@
       "derived_chunk": 252,
       "figure_or_image": 92,
       "source_json_metadata": 538,
-      "source_markdown": 541,
+      "source_markdown": 542,
       "system_metadata": 7
     },
     "json_metadata_count": 538,
-    "knowledge_reference_document_count": 541,
-    "knowledge_reference_file_count": 1430,
-    "markdown_source_count": 541,
+    "knowledge_reference_document_count": 542,
+    "knowledge_reference_file_count": 1431,
+    "markdown_source_count": 542,
     "tag_counts": {
       "circuit_coupling": 152,
       "collisions": 143,
       "detector_response": 82,
-      "dpf_device": 173,
-      "electrode_boundary": 376,
+      "dpf_device": 174,
+      "electrode_boundary": 377,
       "generalized_ohm": 61,
       "hybrid_pic_fluid": 97,
-      "ionization_eos": 343,
-      "maxwell_fields": 400,
+      "ionization_eos": 344,
+      "maxwell_fields": 401,
       "mhd": 240,
       "neutron_beam_target": 156,
       "neutron_thermonuclear": 141,
-      "numerical_method": 100,
+      "numerical_method": 101,
       "poynting_power": 42,
       "radiation": 327,
-      "startup_breakdown": 223,
-      "three_d_geometry": 280,
-      "two_temperature": 219,
+      "startup_breakdown": 224,
+      "three_d_geometry": 281,
+      "two_temperature": 220,
       "uncertainty_uq": 84,
-      "validation_target": 225
+      "validation_target": 226
     },
     "verdict_counts": {
       "background_only": 16,
-      "directly_needed": 166,
+      "directly_needed": 167,
       "not_relevant": 22,
       "supporting_method": 337
     }

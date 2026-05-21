@@ -865,26 +865,32 @@ def test_sprint4_blocker_ids_are_exported():
 
 
 # ---------------------------------------------------------------------------
-# 3a: Braginskii 1965 direct transport coefficients — BLOCKED
+# 3a: Braginskii 1965 transport coefficients — render-verified candidate,
+#     acceptance still BLOCKED
 # ---------------------------------------------------------------------------
 
-def test_sprint4_3a_braginskii_blocked_no_kr_extract():
-    """Braginskii 1965 PDF has no KR extract; the Z-dependent alpha/delta_e
-    coefficient table cannot serve as closure authority.
-    Blocker: CLOSURE-BLK-BRAG-001."""
+def test_sprint4_3a_braginskii_render_verified_candidate_acceptance_blocked():
+    """Braginskii 1965 Table 2 and Eqs. 4.30-4.45 are render-verified and
+    target-extracted into KR (Sprint 8 WS5), and the Z=1 parallel transport is
+    wired as a candidate closure; CLOSURE-BLK-BRAG-001 nonetheless stays a
+    non-accepted blocker until numerical-fidelity, same-scope comparator, and
+    certificate gates pass. Blocker: CLOSURE-BLK-BRAG-001."""
     from dpf.first_principles.closure_packet import CLOSURE_BLK_BRAG_001
     reg = _registry()
     rec = reg["closures"]["electrical_thermal_transport"]
-    # The transport closure itself is active_source_backed_candidate (Spitzer/NRL),
-    # but the Braginskii coefficient table is absent.
+    # The transport closure itself is active_source_backed_candidate; the
+    # Braginskii Z=1 transport candidate is engineering evidence only.
     assert rec["classification"] == "active_source_backed_candidate"
-    # The missing-parameter absence must cite the Braginskii blocker ID.
+    # The missing-parameter absence must still cite the Braginskii blocker ID:
+    # the candidate closure does not close the acceptance gate.
     missing_params = rec["missing_parameters"]
     assert any(
         CLOSURE_BLK_BRAG_001 in str(p) for p in missing_params
     ), (
         f"{CLOSURE_BLK_BRAG_001} not found in missing_parameters: {missing_params}"
     )
+    # The blocker constant must no longer claim the source is not target-extracted.
+    assert "not-yet-target-extracted" not in CLOSURE_BLK_BRAG_001
     # Acceptance is still blocked.
     assert rec["can_support_first_principles_acceptance"] is False
 

@@ -903,8 +903,7 @@ no engineering-firm certificate. 233 focused tests pass; ruff clean.
 
 `35bb1a9` — Sprint 7 first-principles runtime contract (above section).
 
-The Sprint 8 Phase A commit (hash assigned at commit time) delivers the three
-P0 workstreams of
+Sprint 8 Phase A commit `bd5be3a` delivers the three P0 workstreams of
 `docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md`:
 
 - **WS0 Ledger / KR / Traceability Repair:** Bennett 2017 corrected to
@@ -939,6 +938,65 @@ P0 workstreams of
 `accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
 `false` everywhere. Sprint 8 Phase A is not a validation sprint. 305 focused
 tests pass; ruff clean.
+
+### Sprint 8 — super-sprint source-to-runtime, Phase B+C P1/P2 (2026-05-20)
+
+`bd5be3a` — Sprint 8 Phase A P0 foundation (above section).
+
+The Sprint 8 Phase B+C commit (hash assigned at commit time) delivers the four
+P1 and two P2 workstreams of
+`docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md`:
+
+- **WS3 PF-1000 Geometry Source-To-Runtime:** new engineering-candidate deck
+  `pf1000_scholz_2001_24rod_full_energy_deck` in
+  `src/dpf/first_principles/deck.py`, scope-tagged
+  `pf1000_full_energy_27_to_40_kv`, consuming
+  `PF1000GeometryPacket.scholz_2001_24rod_large_electrode()`. Five fields stay
+  explicitly blocked (anode hollow-bore length, insulator wall thickness,
+  backplate radial extent, backplate axial thickness, same-scope reviewed
+  mask); the deck declares no hollow anode.
+- **WS4 Bennett Startup BVP Consumption:** Bennett 2017 promoted to canonical
+  KR markdown (gitignored local); new typed packet
+  `sprint8_bennett_startup_target_extraction.py` target-extracts CH03/04/07/08
+  with enforced SI unit conversions. The four channels become source-backed
+  runtime candidate channels; their same-scope status for the demonstrator is
+  `blocked_wrong_scope` (Bennett is wrong-scope per WS2). CH01/02/05/06/09-13
+  stay blocked or wrong-scope. Source-ledger `bennett_2017_startup`
+  `already_in_kr` false -> true.
+- **WS5 Braginskii Z=1 Transport Candidate:** Braginskii 1965 Eqs. 4.30-4.45
+  render-verified (PyMuPDF, journal pp.249-253); new
+  `sprint8_braginskii_z1_transport.py` carries the Z=1 resistivity and
+  electron/ion parallel thermal conductivity; candidate closure wired through
+  `closure_packet.py`; PlasmaPy cross-check agrees within 0.36 %. The five
+  review-required Table-2 cells stay unavailable. `CLOSURE-BLK-BRAG-001` ->
+  `equations_4_30_to_4_45_render_verified_z1_transport_wired_as_candidate_acceptance_blocked`.
+- **WS6 Power-Port and Sigma-p Operator Ledger:** `power_port.py` gains an
+  explicit six-term Auluck eq.(6) presence roster; active-load placeholders
+  demoted to `excluded_not_validated` engineering-only telemetry; new
+  `sign_convention` / `time_centering` / `domain` / `residual` fields; Sigma /
+  quasi-TEM line-voltage recorded as not-source-verified. Terms II/IV/V/VI
+  fail closed pending Sigma-p geometry.
+- **WS7 3-D Runtime Ratchet:** `experimental-segmented-whole-shot` gains
+  `--dt-policy` / `--vacuum-cfl` / `--auto-step-budget` / `--max-auto-steps`
+  parity with `experimental-whole-shot`; new `combine-whole-run` CLI route;
+  the WS3 24-rod deck exposed as preset `pf1000_scholz_2001_24rod_full_energy`;
+  engineering-candidate run plan
+  `docs/SPRINT8_WS7_ENGINEERING_CANDIDATE_3D_RUN_PLAN_2026_05_20.md`.
+- **WS8 External Source Queue:** nine source packets in
+  `docs/SPRINT8_WS8_EXTERNAL_SOURCE_QUEUE_2026_05_20.{md,json}`; nothing
+  acquired to disk, nothing KR-ingested, nothing wired.
+- **WS0 Phase B integration:** ledger deltas applied, three-tier per-row
+  commit pins (`8e6b5e9` / `35bb1a9` / `bd5be3a`), RTM regenerated (no drift),
+  source-truth index refreshed (`exhausted=true`), module-source vetting
+  `strict_passed=true` (297 modules), stale `CLOSURE_BLK_BRAG_001` constant
+  corrected.
+- **Deliverable audit memo:**
+  `docs/SPRINT8_SUPER_SPRINT_AUDIT_MEMO_2026_05_20.md`.
+
+`accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
+`false` everywhere. Bennett startup and Braginskii Z=1 transport advanced from
+blocked to source-backed runtime candidate — engineering evidence only, no
+acceptance. 724 focused tests pass; ruff `src/ tests/` clean.
 
 ## Notes on CHANGELOG conventions
 
