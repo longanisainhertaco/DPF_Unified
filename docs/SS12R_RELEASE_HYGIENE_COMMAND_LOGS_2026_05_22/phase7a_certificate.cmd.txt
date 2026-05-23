@@ -1,0 +1,1 @@
+.venv312/bin/python scripts/validate_ss12_phase7a_review_certificate.py docs/SS12_P1_PHASE7A_REVIEW_CERTIFICATE_SKELETON_2026_05_22.json

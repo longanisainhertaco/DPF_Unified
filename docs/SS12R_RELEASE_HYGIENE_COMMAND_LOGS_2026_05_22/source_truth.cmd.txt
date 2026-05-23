@@ -1,0 +1,1 @@
+.venv312/bin/python scripts/verify_first_principles_source_truth_exhaustion.py --check --date 2026_05_22

@@ -1,0 +1,354 @@
+{
+  "packet_id": "pf1000_full_energy_same_scope_source_packet",
+  "generated_at": "2026-05-22T04:12:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "selected_source_scope": "pf1000_szydlowski_2001_large_electrode_full_energy_source",
+  "authority_rule": "local_reviewed_sources_only",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "channels": [
+    {
+      "channel": "geometry",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "outer_electrode_diameter",
+          "value": 400,
+          "unit": "mm",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 81,
+              "line_end": 83,
+              "quote": "larger dimensions. The outer electrode is 400 mm in diam- eter and the inner one is 230 mm in diameter. Both the elec- trodes are about 600 mm in length. These new large elec-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "inner_electrode_diameter",
+          "value": 230,
+          "unit": "mm",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 81,
+              "line_end": 83,
+              "quote": "larger dimensions. The outer electrode is 400 mm in diam- eter and the inner one is 230 mm in diameter. Both the elec- trodes are about 600 mm in length. These new large elec-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "electrode_length",
+          "value": 600,
+          "unit": "mm",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 81,
+              "line_end": 83,
+              "quote": "larger dimensions. The outer electrode is 400 mm in diam- eter and the inner one is 230 mm in diameter. Both the elec- trodes are about 600 mm in length. These new large elec-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Values are line-cited but uncertainty/complete electrode assembly details and independent review are pending."
+    },
+    {
+      "channel": "bank_circuit",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "stored_energy_max",
+          "value": 1,
+          "unit": "MJ",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 83,
+              "line_end": 86,
+              "quote": "trodes are about 600 mm in length. These new large elec- trodes seem to be better matched to transmit electrical energy (up to 1 MJ stored in the condenser battery) to plas- ma discharges. This paper reports on neutron emission,",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "charging_voltage_range_table",
+          "value": [
+            27.25,
+            40.0
+          ],
+          "unit": "kV",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 161,
+              "line_end": 329,
+              "quote": "Shot No. U0 [kV] W0 [kJ] p0 [Torr] Imax [kA] Yn(25\u00b0)\u00d71010 Yn(90\u00b0)\u00d71010 Anisotropy 01/19/09 27.25 500.0 1 1020 2.74 1.82 1.51 02/19/09 27.25 500.0 1 927 2.31 1.83 1.26 03/19/09 27.25 500.0 1 952 2.81 2.09 1.34 05/19/09 27.25 500.0 1 768 0.98 0.76 1.30 10/19/09 31.06 650.0 1 1129 4.01 3.14 1.28 10/19/09 31.06 650.0 1 1285 2.52 2.01 1.25 01/21/09 29.00 566.5 2 1101 3.11 2.33 1.33 05/21/09 30.00 606.3 2 1265 6.30 4.89 1.29 06/21/09 30.00 606.3 2 1306 3.03 2.38 1.27 09/21/09 31.00 647.4 2 1258 9.98 7.40 1.35 01/22/09 31.00 647.4 2 1346 9.69 7.92 1.22 04/22/09 35.00 825.3 2 1646 6.58 5.19 1.14 08/22/09 35.00 825.3 4 1505 5.70 5.25 1.08 09/22/09 36.00 873.1 4 1761 6.38 5.26 1.21 01/27/09 35.00 825.3 4 1673 6.72 5.52 1.22 01/27/09 36.00 873.1 5 1992 3.21 2.63 1.22 02/27/09 37.00 922.3 5 2156 13.10 11.80 1.18 03/27/09 38.00 972.3 5 2020 19.00 16.40 1.17 04/27/09 38.50 998.6 5 2101 20.00 16.20 1.23 05/27/09 40.00 1078.0 5 1992 20.60 18.00 1.14 Table 1. Experimental data from a series of shots performed with the modernised PF-1000 machine.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Line-cited operating table exists, but full circuit parameters and uncertainty/review are pending."
+    },
+    {
+      "channel": "gas_fill",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "deuterium_pressure_low_fast_ions",
+          "value": [
+            1,
+            2
+          ],
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 74,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2\u00d71011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from shots performed at a low filling pressure (1-2 Torr).",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 169,
+              "line_end": 329,
+              "quote": "01/19/09 27.25 500.0 1 1020 2.74 1.82 1.51 02/19/09 27.25 500.0 1 927 2.31 1.83 1.26 03/19/09 27.25 500.0 1 952 2.81 2.09 1.34 05/19/09 27.25 500.0 1 768 0.98 0.76 1.30 10/19/09 31.06 650.0 1 1129 4.01 3.14 1.28 10/19/09 31.06 650.0 1 1285 2.52 2.01 1.25 01/21/09 29.00 566.5 2 1101 3.11 2.33 1.33 05/21/09 30.00 606.3 2 1265 6.30 4.89 1.29 06/21/09 30.00 606.3 2 1306 3.03 2.38 1.27 09/21/09 31.00 647.4 2 1258 9.98 7.40 1.35 01/22/09 31.00 647.4 2 1346 9.69 7.92 1.22 04/22/09 35.00 825.3 2 1646 6.58 5.19 1.14 08/22/09 35.00 825.3 4 1505 5.70 5.25 1.08 09/22/09 36.00 873.1 4 1761 6.38 5.26 1.21 01/27/09 35.00 825.3 4 1673 6.72 5.52 1.22 01/27/09 36.00 873.1 5 1992 3.21 2.63 1.22 02/27/09 37.00 922.3 5 2156 13.10 11.80 1.18 03/27/09 38.00 972.3 5 2020 19.00 16.40 1.17 04/27/09 38.50 998.6 5 2101 20.00 16.20 1.23 05/27/09 40.00 1078.0 5 1992 20.60 18.00 1.14 Table 1. Experimental data from a series of shots performed with the modernised PF-1000 machine.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Candidate D2 pressure evidence exists, but complete gas handling/shot-conditioning context and uncertainties are pending."
+    },
+    {
+      "channel": "current_waveform",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "imax_table_range",
+          "value": [
+            768,
+            2156
+          ],
+          "unit": "kA",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 161,
+              "line_end": 329,
+              "quote": "Shot No. U0 [kV] W0 [kJ] p0 [Torr] Imax [kA] Yn(25\u00b0)\u00d71010 Yn(90\u00b0)\u00d71010 Anisotropy 01/19/09 27.25 500.0 1 1020 2.74 1.82 1.51 02/19/09 27.25 500.0 1 927 2.31 1.83 1.26 03/19/09 27.25 500.0 1 952 2.81 2.09 1.34 05/19/09 27.25 500.0 1 768 0.98 0.76 1.30 10/19/09 31.06 650.0 1 1129 4.01 3.14 1.28 10/19/09 31.06 650.0 1 1285 2.52 2.01 1.25 01/21/09 29.00 566.5 2 1101 3.11 2.33 1.33 05/21/09 30.00 606.3 2 1265 6.30 4.89 1.29 06/21/09 30.00 606.3 2 1306 3.03 2.38 1.27 09/21/09 31.00 647.4 2 1258 9.98 7.40 1.35 01/22/09 31.00 647.4 2 1346 9.69 7.92 1.22 04/22/09 35.00 825.3 2 1646 6.58 5.19 1.14 08/22/09 35.00 825.3 4 1505 5.70 5.25 1.08 09/22/09 36.00 873.1 4 1761 6.38 5.26 1.21 01/27/09 35.00 825.3 4 1673 6.72 5.52 1.22 01/27/09 36.00 873.1 5 1992 3.21 2.63 1.22 02/27/09 37.00 922.3 5 2156 13.10 11.80 1.18 03/27/09 38.00 972.3 5 2020 19.00 16.40 1.17 04/27/09 38.50 998.6 5 2101 20.00 16.20 1.23 05/27/09 40.00 1078.0 5 1992 20.60 18.00 1.14 Table 1. Experimental data from a series of shots performed with the modernised PF-1000 machine.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Imax table is not a full current waveform; waveform trace/timing/probe calibration evidence remains pending."
+    },
+    {
+      "channel": "startup",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "Same-scope breakdown/preionization/insulator flashover/sheath-liftoff/electrical handoff evidence is not extracted."
+    },
+    {
+      "channel": "density_history",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "Same-scope density-history evidence is not extracted."
+    },
+    {
+      "channel": "em_field_history",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "Same-scope EM/magnetic-field history is not extracted."
+    },
+    {
+      "channel": "temperature_or_distribution_history",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "Same-scope temperature/distribution history is not extracted."
+    },
+    {
+      "channel": "neutron_scalar_yield",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "max_neutron_yield",
+          "value": 200000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 73,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2\u00d71011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 145,
+              "line_end": 147,
+              "quote": "emission decreases. One can see (Table 1) that the highest neutron yield registered so far was about 2\u00d71011 neutrons/shot, but it is expected that still higher neutron",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Scalar yield candidate exists, but detector calibration, uncertainty budget, and review are pending."
+    },
+    {
+      "channel": "neutron_timing",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "scintillation_signal_peak_interpretation",
+          "value": "first_peak_hard_xray_second_peak_2p45mev_neutrons",
+          "unit": null,
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 354,
+              "line_end": 358,
+              "quote": "those registered without the foil-filter. Fig. 5 shows typical signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Timing trace values and absolute timing uncertainties are not extracted."
+    },
+    {
+      "channel": "neutron_spectrum",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "observables": [],
+      "blocked_reason": "Source explicitly says TOF neutron spectra were future work: lines 100-102. No same-scope spectrum measurement extracted."
+    },
+    {
+      "channel": "neutron_anisotropy",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "anisotropy_definition",
+          "value": "Yn(25deg)/Yn(90deg)",
+          "unit": null,
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 133,
+              "line_end": 137,
+              "quote": "in the condenser battery (W0), the D2 filling pressure (p0), the maximum current amplitude (Imax), and a coefficient describing the neutron emission anisotropy defined in this work as (Yn(25\u00b0)/Yn(90\u00b0). The neutron emission was inves- tigated as a function of the initial charging voltage for sev-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "anisotropy_table_range",
+          "value": [
+            1.08,
+            1.51
+          ],
+          "unit": "dimensionless",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 161,
+              "line_end": 329,
+              "quote": "Shot No. U0 [kV] W0 [kJ] p0 [Torr] Imax [kA] Yn(25\u00b0)\u00d71010 Yn(90\u00b0)\u00d71010 Anisotropy 01/19/09 27.25 500.0 1 1020 2.74 1.82 1.51 02/19/09 27.25 500.0 1 927 2.31 1.83 1.26 03/19/09 27.25 500.0 1 952 2.81 2.09 1.34 05/19/09 27.25 500.0 1 768 0.98 0.76 1.30 10/19/09 31.06 650.0 1 1129 4.01 3.14 1.28 10/19/09 31.06 650.0 1 1285 2.52 2.01 1.25 01/21/09 29.00 566.5 2 1101 3.11 2.33 1.33 05/21/09 30.00 606.3 2 1265 6.30 4.89 1.29 06/21/09 30.00 606.3 2 1306 3.03 2.38 1.27 09/21/09 31.00 647.4 2 1258 9.98 7.40 1.35 01/22/09 31.00 647.4 2 1346 9.69 7.92 1.22 04/22/09 35.00 825.3 2 1646 6.58 5.19 1.14 08/22/09 35.00 825.3 4 1505 5.70 5.25 1.08 09/22/09 36.00 873.1 4 1761 6.38 5.26 1.21 01/27/09 35.00 825.3 4 1673 6.72 5.52 1.22 01/27/09 36.00 873.1 5 1992 3.21 2.63 1.22 02/27/09 37.00 922.3 5 2156 13.10 11.80 1.18 03/27/09 38.00 972.3 5 2020 19.00 16.40 1.17 04/27/09 38.50 998.6 5 2101 20.00 16.20 1.23 05/27/09 40.00 1078.0 5 1992 20.60 18.00 1.14 Table 1. Experimental data from a series of shots performed with the modernised PF-1000 machine.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Anisotropy is line-cited but detector/geometry uncertainty and review are pending."
+    },
+    {
+      "channel": "detector_response",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "activation_counter_count",
+          "value": 4,
+          "unit": "silver_activation_counters",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 88,
+              "line_end": 96,
+              "quote": "with an electrode assembly. The total neutron yield (in every single shot), and the neutron emission angular distri- bution, were measured with four silver activation counters placed around the main discharge chamber of the PF-1000 facility as shown in Fig. 1. Those counters were specially designed and manufactured for the PF-1000 experiment purposes. After their fixing, they were calibrated using an Am-Be neutron source of precisely defined activity equal to 1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "scintillation_probe_distance",
+          "value": 15,
+          "unit": "m",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 96,
+              "line_end": 102,
+              "quote": "1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Detector descriptions are extracted, but response function/calibration uncertainty and review are incomplete."
+    },
+    {
+      "channel": "uncertainty_budget",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "No complete same-scope measurement/model/numerical uncertainty budget has been extracted."
+    },
+    {
+      "channel": "review_certificate",
+      "status": "blocked",
+      "scope_match": "unknown",
+      "observables": [],
+      "blocked_reason": "Independent review certificate does not exist."
+    }
+  ],
+  "global_blockers": [
+    "No channel is accepted; all extracted values remain target-extraction candidates until uncertainty and independent review close.",
+    "Same-scope neutron spectrum, density history, EM history, startup BVP, and uncertainty budget remain blocked.",
+    "Acceptance flags remain false."
+  ],
+  "source_scope_note": "Renamed from prior scholz_2000_2001_24rod label: this extracted matrix cites the 2001 Szydlowski et al. large-electrode PF-1000 source. 24-rod geometry is not asserted unless line-cited from a source."
+}

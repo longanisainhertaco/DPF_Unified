@@ -1,0 +1,59 @@
+{
+  "plan_id": "ss12_p1_phase5d_crop_region_plan",
+  "generated_at": "2026-05-22T09:20:00Z",
+  "phase5c_page_render_manifest": "docs/SS12_P1_PHASE5C_PAGE_RENDER_CROP_MANIFEST_2026_05_22.json",
+  "acceptance_boundary": {
+    "accepted_crop_claim": false,
+    "accepted_digitization_claim": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "note": "Approximate visual crop regions only. Crops are artifacts for later calibration and review, not accepted observables."
+  },
+  "crop_regions": [
+    {
+      "id": "crop_plan_pf1000_recent_progress_fig6_current_waveform",
+      "figure_source_id": "pf1000_recent_progress_fig6_current_waveform",
+      "crop_bbox_px": [140, 138, 525, 445],
+      "crop_basis": "visual_estimate_from_page_render",
+      "accepted_crop_claim": false,
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false
+    },
+    {
+      "id": "crop_plan_pf1000_scholz_fig4_density_distribution",
+      "figure_source_id": "pf1000_scholz_fig4_density_distribution",
+      "crop_bbox_px": [648, 632, 1042, 1515],
+      "crop_basis": "visual_estimate_from_page_render",
+      "accepted_crop_claim": false,
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false
+    },
+    {
+      "id": "crop_plan_pf1000_krauz_fig8_magnetic_probe_current",
+      "figure_source_id": "pf1000_krauz_fig8_magnetic_probe_current",
+      "crop_bbox_px": [690, 155, 1145, 1340],
+      "crop_basis": "visual_estimate_from_page_render",
+      "accepted_crop_claim": false,
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false
+    },
+    {
+      "id": "crop_plan_pf1000_scholz_fig9_neutron_timing",
+      "figure_source_id": "pf1000_scholz_fig9_neutron_timing",
+      "crop_bbox_px": [668, 1110, 1085, 1452],
+      "crop_basis": "visual_estimate_from_page_render",
+      "accepted_crop_claim": false,
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false
+    }
+  ]
+}

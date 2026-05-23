@@ -1,0 +1,81 @@
+{
+  "matrix_id": "ss12_p1_phase3_transfer_candidate_matrix",
+  "generated_at": "2026-05-22T05:00:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "same_source_matrix": "docs/SS12_P1_PHASE2_SOURCE_PACKET_MATRIX_EXTRACTED_2026_05_22.json",
+  "acceptance_boundary": {
+    "promotes_acceptance": false,
+    "can_fill_same_scope_channel": false,
+    "requires_transfer_rule_review": true
+  },
+  "transfer_candidates": [
+    {
+      "channel": "current_waveform",
+      "status": "transfer_candidate",
+      "source_path": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md",
+      "line_start": 169,
+      "line_end": 178,
+      "scope_assessment": "PF-1000 near-1MJ transfer candidate; time-resolved Rogowski/PIN/dI/dt signals for 1070 kJ good shot; figure digitization and review required.",
+      "quote": "the highest brightness on its axis. The \u201cgood\u201d shot (Fig. 4) was performed at the discharge energy equal to 1070 kJ and neutron yield amounted to 2.06\u00d71011 in this shot. The time resolved signals (from Rogowski coil, two PIN diodes, dI/dt probe) as registered in the good shot are presented in Fig. 6. One can see two separate and sharp X-ray pulses (50 ns one after another) revealed by the PIN diodes in this shot. The streak camera pictures, taken through a narrow vertical slit situated at a distance of 2 cm from the inner electrode face, demonstrate that the imploding current sheath under-"
+    },
+    {
+      "channel": "em_field_history",
+      "status": "transfer_candidate",
+      "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+      "line_start": 262,
+      "line_end": 297,
+      "scope_assessment": "PF-1000 magnetic-probe transfer candidate; lower-energy/config-shifted; gives dBphi/dt measurement and 15-20% magnetic induction accuracy.",
+      "quote": "The probes designed for measurements of the azimuthal magnetic \ufb01eld distribution in the stage of PCS compression in the PF-1000 facility consist of two \u223c300 \u00b5m-diameter coils wound in clockwise and counterclockwise directions. The design of the sensitive element of the probe is shown in \ufb01gure 1(a). The coils are packed in a common plane screen made of a niobium-titanium foil with a thickness of 10\u201315 \u00b5m, which is less than the skin depth for the characteristic times of the processes under study. The time of electromagnetic \ufb01eld diffusion through such a screen was calculated in MHD approximation for supersonic plasma \ufb02ow with a frozen-in magnetic \ufb01eld and for parameters of the Angara 5-1-facility which is closed to parameters of PF-1000: ne = 5 \u00d7 1017\u2013 1019 cm\u22123, plasma velocity 106\u20135\u00d7107 cm s\u22121, magnetic \ufb01eld 0\u2013100 kG, T = 1\u201330 eV [37]. For the total size of the sensitive element of the probe in the direction perpendicular to the incident plasma \ufb02ow 0.7\u20130.8 mm, the calculated diffusion time is \u223c1.5 ns. Two symmetric signals of different polarity from two coils allow one to be sure of their magnetic origin. At the instant of probe destruction, the symmetry of the signals violates. Each probe measured the time derivative of the azimuthal magnetic \ufb01eld dB\u03d5(r, \u03d5)/dt at its location. To determine the current \ufb02owing within the radius at which the probe was installed, the signal was integrated numerically under the assumption that the plasma current was symmetric with respect to the system axis. The probes were calibrated using a homogeneous ac magnetic \ufb01eld with a known amplitude and known frequency by the method described in [37]. The probe sensitivity was \u223c(1.0\u20135.0) \u00d7 10\u221211 V G\u22121 s\u22121. The calibration accuracy was better than 5%, and the accuracy in determining the magnetic induction in plasma with account of calibration was about 15\u201320%."
+    },
+    {
+      "channel": "power_circuit_coupling",
+      "status": "transfer_candidate",
+      "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+      "line_start": 138,
+      "line_end": 154,
+      "scope_assessment": "PF-1000 bank/circuit transfer candidate with C0/E0/L0/T1/4/ISC/Z0; not same-source Szydlowski matrix evidence.",
+      "quote": "creep liquid N2 traps is employed. The condenser bank of 1200 kJ, 40 kV system consists of twelve condenser modules each comprising twenty four 50 kV, 4.625 \u00b5F low inductance condensers connected in parallel (Fig. 3). The electric energy is transferred to a collector and elec- trodes by means of low-inductance cables. The importance of low-inductance cables, condensers, and switches in power supply cannot be overstressed if the large tube currents are to be achieved. Summarizing, parameters of the PF-1000 generator are: \u2013 the charging voltage \u2013 U0 = 20\u00f740 kV, \u2013 the condenser bank capacitance \u2013 C0 = 1.332 mF, \u2013 the initial capacitor bank energy \u2013 E0 = 266\u00f71064 kJ, \u2013 the nominal inductance \u2013 L0 = 8.9 nH, \u2013 the quarter discharge time \u2013 T1/4 = 5.4 \u00b5s, \u2013 the short-circuit current \u2013 ISC = 15 MA, \u2013 the characteristic impedance \u2013 Z0 = 2.6 m\u2126."
+    },
+    {
+      "channel": "startup",
+      "status": "transfer_candidate_blocking_warning",
+      "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+      "line_start": 149,
+      "line_end": 170,
+      "scope_assessment": "PF-1000 startup warning: initial breakdown at insulator surface; accurate quantitative current-sheath formation model still missing; startup remains blocked.",
+      "quote": "and more systematically. Status in studies of breakdown The initial breakdown occurs at the insulator surface, and the final PF pinch-column is formed at the electrode outlet. These two stages, which are separated by the axial acceleration and radial collapse phases, can in fact be optimized in different ways. A current-sheath layer, as formed at the insulator, cannot be accelerated within the inter-electrode gap effectively at a very low gas pressure. An appropriate amount of gas must be delivered to enable effective \u201csnow-plough\u201d process. Numerical simulation of the breakdown phase was performed by researchers [5] and the results of such computations agree relatively well with results of experi- mental observations, as shown in Fig. 3. Unfortunately, an accurate quantitative model, taking into account complexity of the current sheath formation phase, is still missing. In particular, the influence of a status of the insulator surface should be taken into consideration. Active experiments with planned modifications of the insulator surface have not been performed so far. A localized gas puffing has"
+    },
+    {
+      "channel": "density_history",
+      "status": "transfer_candidate",
+      "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+      "line_start": 303,
+      "line_end": 305,
+      "scope_assessment": "Computed PF-1000 plasma density distributions at 9, 9.5, and 10 microseconds; figure/model review required; not experimental same-source density history.",
+      "quote": "10 Fig. 4. Plasma density distribution during the radial collapse, as computed for the PF-1000 experiment [7] and different"
+    },
+    {
+      "channel": "neutron_spectrum",
+      "status": "same_source_absence_proof",
+      "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+      "line_start": 96,
+      "line_end": 102,
+      "scope_assessment": "Same-source absence proof: paper says scintillation probes will be used in future experiments to measure neutron energy spectra by TOF; spectrum remains blocked.",
+      "quote": "1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight"
+    },
+    {
+      "channel": "detector_response",
+      "status": "same_source_candidate_not_uncertainty_budget",
+      "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+      "line_start": 88,
+      "line_end": 96,
+      "scope_assessment": "Same-source detector calibration candidate: silver activation counters calibrated with Am-Be source; not complete detector response/uncertainty budget.",
+      "quote": "with an electrode assembly. The total neutron yield (in every single shot), and the neutron emission angular distri- bution, were measured with four silver activation counters placed around the main discharge chamber of the PF-1000 facility as shown in Fig. 1. Those counters were specially designed and manufactured for the PF-1000 experiment purposes. After their fixing, they were calibrated using an Am-Be neutron source of precisely defined activity equal to 1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved"
+    }
+  ],
+  "global_blockers": [
+    "Transfer candidates cannot promote acceptance.",
+    "Figure digitization must be separately reviewed before numeric waveform/density targets are introduced.",
+    "Startup BVP, neutron spectrum, uncertainty budget, and review certificate remain blocked."
+  ]
+}

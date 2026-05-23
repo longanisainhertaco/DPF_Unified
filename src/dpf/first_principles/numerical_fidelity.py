@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
+from pathlib import Path
 from typing import Any
 
 from dpf.first_principles.channel_state import (
@@ -204,6 +206,11 @@ REQUIRED_UPSTREAM_NUMERICAL_PACKETS = (
     "physics_closure",
 )
 
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_PHASE3_TRANSFER_MATRIX_PATH = (
+    _REPO_ROOT / "docs/SS12_P1_PHASE3_TRANSFER_CANDIDATE_MATRIX_2026_05_22.json"
+)
+
 
 def build_numerical_fidelity_packet(
     *,
@@ -213,6 +220,7 @@ def build_numerical_fidelity_packet(
     conservation: Mapping[str, Any] | None = None,
     simulation_telemetry: Mapping[str, Any] | None = None,
     upstream_packets: Mapping[str, Mapping[str, Any]] | None = None,
+    phase3_transfer_matrix_path: str | Path | None = DEFAULT_PHASE3_TRANSFER_MATRIX_PATH,
 ) -> dict[str, Any]:
     """Return a non-promoting numerical-fidelity gate packet."""
 
@@ -223,6 +231,9 @@ def build_numerical_fidelity_packet(
     channel_states = _numerical_channel_states(accepted)
     state_summary = channel_state_summary(channel_states)
     missing = set(state_summary["missing_acceptance_channels"])
+    phase3_transfer_linkage = load_phase3_transfer_candidate_linkage(
+        phase3_transfer_matrix_path
+    )
 
     return {
         "status": "blocked_numerical_fidelity_packet_not_available",
@@ -247,6 +258,10 @@ def build_numerical_fidelity_packet(
             conservation=conservation,
             simulation_telemetry=simulation_telemetry,
             upstream_packets=upstream_packets,
+        ),
+        "phase3_transfer_candidate_linkage": phase3_transfer_linkage,
+        "phase4a_transfer_linkage_gate": _phase4a_transfer_linkage_gate(
+            phase3_transfer_linkage
         ),
         "runtime_observations": _runtime_observations(
             conservation=conservation,
@@ -278,6 +293,179 @@ def build_numerical_fidelity_packet(
         "can_support_numerical_acceptance": False,
         "can_support_first_principles_acceptance": False,
     }
+
+
+def load_phase3_transfer_candidate_linkage(
+    matrix_path: str | Path | None = DEFAULT_PHASE3_TRANSFER_MATRIX_PATH,
+) -> dict[str, Any]:
+    """Load Phase 3 transfer candidates as non-accepting linkage metadata."""
+
+    if matrix_path is None:
+        return _blocked_transfer_linkage(
+            None,
+            status="blocked_transfer_matrix_path_not_declared",
+            reason="phase3_transfer_matrix_path_not_declared",
+        )
+
+    path = Path(matrix_path)
+    if not path.is_absolute():
+        path = _REPO_ROOT / path
+    if not path.exists():
+        return _blocked_transfer_linkage(
+            path,
+            status="blocked_transfer_matrix_missing",
+            reason="phase3_transfer_matrix_missing",
+        )
+
+    try:
+        raw = json.loads(path.read_text())
+    except json.JSONDecodeError:
+        return _blocked_transfer_linkage(
+            path,
+            status="blocked_transfer_matrix_invalid_json",
+            reason="phase3_transfer_matrix_invalid_json",
+        )
+
+    if not isinstance(raw, Mapping):
+        return _blocked_transfer_linkage(
+            path,
+            status="blocked_transfer_matrix_invalid_schema",
+            reason="phase3_transfer_matrix_not_object",
+        )
+
+    boundary = _mapping(raw.get("acceptance_boundary"))
+    boundary_is_non_promoting = (
+        boundary.get("promotes_acceptance") is False
+        and boundary.get("can_fill_same_scope_channel") is False
+        and boundary.get("requires_transfer_rule_review") is True
+    )
+    raw_candidates = raw.get("transfer_candidates")
+    if not isinstance(raw_candidates, list):
+        return _blocked_transfer_linkage(
+            path,
+            status="blocked_transfer_matrix_invalid_schema",
+            reason="phase3_transfer_candidates_not_list",
+        )
+
+    transfer_candidates = [
+        _transfer_candidate_summary(row)
+        for row in raw_candidates
+        if isinstance(row, Mapping)
+    ]
+    blocking_reasons: list[str] = []
+    if not boundary_is_non_promoting:
+        blocking_reasons.append("phase3_transfer_boundary_not_non_promoting")
+    if len(transfer_candidates) != len(raw_candidates):
+        blocking_reasons.append("phase3_transfer_candidate_row_not_object")
+    if not transfer_candidates:
+        blocking_reasons.append("phase3_transfer_candidates_missing")
+
+    status = (
+        "loaded_transfer_candidates_non_promoting"
+        if not blocking_reasons
+        else "blocked_transfer_matrix_invalid_non_promotion_contract"
+    )
+    return {
+        "status": status,
+        "matrix_path": _display_path(path),
+        "matrix_id": raw.get("matrix_id"),
+        "validation_scope": raw.get("validation_scope"),
+        "same_source_matrix": raw.get("same_source_matrix"),
+        "acceptance_boundary": dict(boundary),
+        "transfer_candidate_channels": sorted(
+            {row["channel"] for row in transfer_candidates}
+        ),
+        "accepted_source_channels": [],
+        "transfer_candidates": transfer_candidates,
+        "transfer_candidate_count": len(transfer_candidates),
+        "global_blockers": list(raw.get("global_blockers", ())),
+        "all_transfer_candidates_non_promoting": not blocking_reasons,
+        "blocking_reasons": blocking_reasons,
+        "promotes_acceptance": False,
+        "can_fill_same_scope_channel": False,
+        "can_support_numerical_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _blocked_transfer_linkage(
+    path: Path | None,
+    *,
+    status: str,
+    reason: str,
+) -> dict[str, Any]:
+    return {
+        "status": status,
+        "matrix_path": None if path is None else _display_path(path),
+        "matrix_id": None,
+        "validation_scope": None,
+        "same_source_matrix": None,
+        "acceptance_boundary": {
+            "promotes_acceptance": False,
+            "can_fill_same_scope_channel": False,
+            "requires_transfer_rule_review": True,
+        },
+        "transfer_candidate_channels": [],
+        "accepted_source_channels": [],
+        "transfer_candidates": [],
+        "transfer_candidate_count": 0,
+        "global_blockers": [],
+        "all_transfer_candidates_non_promoting": False,
+        "blocking_reasons": [reason],
+        "promotes_acceptance": False,
+        "can_fill_same_scope_channel": False,
+        "can_support_numerical_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _transfer_candidate_summary(row: Mapping[str, Any]) -> dict[str, Any]:
+    return {
+        "channel": str(row.get("channel", "unknown_channel")),
+        "status": str(row.get("status", "unknown_status")),
+        "source_path": row.get("source_path"),
+        "line_start": row.get("line_start"),
+        "line_end": row.get("line_end"),
+        "scope_assessment": row.get("scope_assessment"),
+        "source_channel_role": "transfer_candidate_not_accepted_channel",
+        "requires_transfer_rule_review": True,
+        "promotes_acceptance": False,
+        "can_fill_same_scope_channel": False,
+        "can_support_numerical_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _phase4a_transfer_linkage_gate(
+    linkage: Mapping[str, Any],
+) -> dict[str, Any]:
+    status = str(linkage.get("status"))
+    transfer_matrix_available = status != "blocked_transfer_matrix_missing"
+    if status == "blocked_transfer_matrix_missing":
+        gate_status = "blocked_by_missing_phase3_transfer_matrix"
+    elif status == "loaded_transfer_candidates_non_promoting":
+        gate_status = "transfer_candidates_linked_non_promoting_packet_still_blocked"
+    else:
+        gate_status = "blocked_by_invalid_phase3_transfer_matrix"
+    return {
+        "status": gate_status,
+        "transfer_matrix_available": transfer_matrix_available,
+        "transfer_candidate_count": int(linkage.get("transfer_candidate_count", 0) or 0),
+        "accepted_source_channel_count": len(linkage.get("accepted_source_channels", ())),
+        "all_transfer_candidates_non_promoting": bool(
+            linkage.get("all_transfer_candidates_non_promoting")
+        ),
+        "blocking_reasons": list(linkage.get("blocking_reasons", ())),
+        "can_support_numerical_acceptance": False,
+        "can_support_first_principles_acceptance": False,
+    }
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(_REPO_ROOT))
+    except ValueError:
+        return str(path)
 
 
 def _numerical_channel_states(accepted: set[str]) -> dict[str, ChannelState]:

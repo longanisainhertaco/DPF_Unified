@@ -64,6 +64,11 @@ Exit codes:
       files)
   1 — one or more active artifacts violate a namespace rule or are malformed,
       and --strict or --check is set
+
+The JSON report includes ``ordinary_non_same_scope_source_fields="allowed"``
+and ``protected_key_chains=["same_scope", "same_scope_source"]`` so downstream
+docs and audits do not confuse the recommended context keys with the enforced
+same-scope ban.
 """
 
 from __future__ import annotations
@@ -313,6 +318,11 @@ def main() -> int:
         "active_hit_count": len(issues),
         "hybrid_pic_slugs": list(HYBRID_PIC_SLUGS),
         "wrong_scope_tokens": list(WRONG_SCOPE_TOKENS),
+        "ordinary_non_same_scope_source_fields": "allowed",
+        "protected_key_chains": [
+            "same_scope",
+            "same_scope_source",
+        ],
         "approved_context_keys": {
             "exact": [SOURCE_SCOPE_CONTEXT_KEY],
             "suffix": [CONTEXT_KEY_SUFFIX],

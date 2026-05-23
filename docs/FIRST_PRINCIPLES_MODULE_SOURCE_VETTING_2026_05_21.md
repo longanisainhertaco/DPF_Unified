@@ -10,9 +10,9 @@ KnowledgeReference plus explicitly user-verified staged sources only; module sou
 
 ## Summary
 
-- Total modules: `298`
+- Total modules: `303`
 - Active first-principles import-closure modules: `61`
-- Physics-facing modules: `185`
+- Physics-facing modules: `190`
 - Modules with source references: `72`
 - Active physics modules needing source vetting: `0`
 - Inactive physics modules needing source vetting: `0`
@@ -26,7 +26,7 @@ KnowledgeReference plus explicitly user-verified staged sources only; module sou
 - `inactive_backend_numerical_utility_not_first_principles_authority`: `36`
 - `inactive_diagnostic_surface_not_first_principles_authority`: `15`
 - `inactive_legacy_physics_not_first_principles_authority`: `20`
-- `nonphysics_infrastructure`: `64`
+- `nonphysics_infrastructure`: `69`
 - `package_export_surface`: `32`
 - `physics_source_referenced`: `5`
 - `reduced_or_baseline_only_not_first_principles_authority`: `31`

@@ -1,0 +1,115 @@
+{
+  "manifest_id": "ss12_p1_phase5_figure_source_manifest",
+  "generated_at": "2026-05-22T06:00:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "acceptance_boundary": {
+    "accepted_figure_claim": false,
+    "accepted_observable_claim": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "note": "Phase 5 figure sources are extraction candidates only. Numeric observables remain staged until digitization hash, uncertainty, same-scope classification, reviewer, and certificate are present."
+  },
+  "figure_sources": [
+    {
+      "id": "pf1000_recent_progress_fig6_current_waveform",
+      "channel": "current_waveform",
+      "source_path": "KnowledgeReference/recent-progress-in-1-mj-plasma-focus-research-d3e51f6c.md",
+      "line_start": 169,
+      "line_end": 173,
+      "figure_id": "Fig. 6",
+      "scope_classification": "same_machine_candidate",
+      "extraction_priority": "high",
+      "review_state": "unreviewed_candidate",
+      "status": "figure_source_candidate",
+      "accepted_observable_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "evidence_tokens": [
+        "Rogowski",
+        "dI/dt",
+        "PIN",
+        "1070 kJ"
+      ],
+      "extraction_target": "Rogowski coil, PIN diode, and dI/dt time-resolved traces in a PF-1000 good shot",
+      "blocked_reason": "requires image-region extraction, digitization hash, axis calibration, uncertainty, and review certificate",
+      "accepted_figure_claim": false,
+      "accepted_runtime_claim": false
+    },
+    {
+      "id": "pf1000_scholz_fig4_density_distribution",
+      "channel": "density_history",
+      "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+      "line_start": 303,
+      "line_end": 305,
+      "figure_id": "Fig. 4",
+      "scope_classification": "transfer_figure_candidate",
+      "extraction_priority": "high",
+      "review_state": "unreviewed_candidate",
+      "status": "transfer_figure_source_candidate",
+      "accepted_observable_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "evidence_tokens": [
+        "Plasma density",
+        "PF-1000",
+        "9.5",
+        "10 \u00b5s"
+      ],
+      "extraction_target": "computed plasma density distributions during radial collapse",
+      "blocked_reason": "computed figure is useful for numerical target staging but not same-source accepted experimental density history",
+      "accepted_figure_claim": false,
+      "accepted_runtime_claim": false
+    },
+    {
+      "id": "pf1000_krauz_fig8_magnetic_probe_current",
+      "channel": "em_field_history",
+      "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+      "line_start": 568,
+      "line_end": 612,
+      "figure_id": "Figure 8",
+      "scope_classification": "same_machine_candidate",
+      "extraction_priority": "high",
+      "review_state": "unreviewed_candidate",
+      "status": "figure_source_candidate",
+      "accepted_observable_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "evidence_tokens": [
+        "magnetic probe",
+        "PCS current",
+        "Rogowski",
+        "1.7 MA"
+      ],
+      "extraction_target": "magnetic probe dB/dt / PCS current trace and comparison to Rogowski total current",
+      "blocked_reason": "requires digitization, magnetic-probe calibration propagation, timing alignment, uncertainty, and review certificate",
+      "accepted_figure_claim": false,
+      "accepted_runtime_claim": false
+    },
+    {
+      "id": "pf1000_scholz_fig9_neutron_timing",
+      "channel": "neutron_timing_or_spectrum",
+      "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+      "line_start": 400,
+      "line_end": 419,
+      "figure_id": "Fig. 9",
+      "scope_classification": "same_machine_candidate",
+      "extraction_priority": "medium",
+      "review_state": "unreviewed_candidate",
+      "status": "figure_source_candidate",
+      "accepted_observable_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "evidence_tokens": [
+        "neutrons",
+        "X-rays",
+        "FWHM",
+        "Fig. 9"
+      ],
+      "extraction_target": "neutron timing relative to X-ray/current-derivative traces; timing candidate, not neutron spectrum",
+      "blocked_reason": "supports neutron timing staging only; same-scope neutron spectrum remains missing",
+      "accepted_figure_claim": false,
+      "accepted_runtime_claim": false
+    }
+  ]
+}

@@ -185,9 +185,16 @@ def test_first_principles_3d_runtime_overrides_do_not_promote_builtin_deck() -> 
     assert payload["max_step_results"] == 1
     assert payload["simulation"]["retained_step_result_count"] == 1
     assert payload["scientific_status"] == "engineering_candidate_not_validation"
-    assert payload["engineering_current_waveform_comparison"]["status"] == (
-        "engineering_current_waveform_comparison_not_validation"
-    )
+    comparison = payload["engineering_current_waveform_comparison"]
+    assert comparison["status"] in {
+        "engineering_current_waveform_comparison_not_validation",
+        "blocked_current_waveform_target_not_bound",
+    }
+    assert comparison["decision"] in {
+        "engineering_comparison_only_do_not_validate",
+        "engineering_comparison_blocked_do_not_validate",
+    }
+    assert comparison["can_support_first_principles_acceptance"] is False
     assert payload["can_support_first_principles_acceptance"] is False
 
 

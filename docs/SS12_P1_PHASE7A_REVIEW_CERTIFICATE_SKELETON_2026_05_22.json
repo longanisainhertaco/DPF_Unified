@@ -1,0 +1,482 @@
+{
+  "scaffold_id": "ss12_p1_phase7a_review_certificate_skeleton",
+  "generated_at": "2026-05-22T12:00:00Z",
+  "phase6c_power_port_certification_scaffold": "docs/SS12_P1_PHASE6C_POWER_PORT_CERTIFICATION_SCAFFOLD_2026_05_22.json",
+  "acceptance_boundary": {
+    "accepted_review_certificate": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "emits_accepted_certificate": false
+  },
+  "review_certificate_rows": [
+    {
+      "observable_id": "crowbar_timing",
+      "output_field_mapping": {
+        "observable_id": "crowbar_timing",
+        "runtime_output_field": "run.circuit.crowbar_time_s",
+        "source_evidence_field": "evidence.power_port.crowbar_timing",
+        "comparison_field": "comparator.crowbar_timing.residual_s"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "absolute_crowbar_time_residual",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "crowbar_timing_wrong_scope_shot",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_wrong_scope_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    },
+    {
+      "observable_id": "current_sheath_acceleration",
+      "output_field_mapping": {
+        "observable_id": "current_sheath_acceleration",
+        "runtime_output_field": "run.sheath.acceleration_m_s2",
+        "source_evidence_field": "evidence.power_port.current_sheath_acceleration",
+        "comparison_field": "comparator.current_sheath_acceleration.normalized_residual"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "normalized_current_sheath_acceleration_residual",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "current_sheath_acceleration_synthetic_trace",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_synthetic_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    },
+    {
+      "observable_id": "pinch_focus_dynamics",
+      "output_field_mapping": {
+        "observable_id": "pinch_focus_dynamics",
+        "runtime_output_field": "run.pinch.focus_dynamics",
+        "source_evidence_field": "evidence.power_port.pinch_focus_dynamics",
+        "comparison_field": "comparator.pinch_focus_dynamics.composite_residual"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "pinch_focus_composite_residual",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "pinch_focus_dynamics_wrong_device",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_wrong_device_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    },
+    {
+      "observable_id": "magnetic_field_history",
+      "output_field_mapping": {
+        "observable_id": "magnetic_field_history",
+        "runtime_output_field": "run.fields.magnetic_probe_history_T",
+        "source_evidence_field": "evidence.same_scope.magnetic_probe_history",
+        "comparison_field": "comparator.magnetic_field_history.time_series_residual_T"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "magnetic_history_weighted_rms_residual",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "magnetic_field_history_unreviewed_probe_trace",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_unreviewed_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    },
+    {
+      "observable_id": "temperature_distribution_history",
+      "output_field_mapping": {
+        "observable_id": "temperature_distribution_history",
+        "runtime_output_field": "run.thermodynamics.temperature_distribution_history_eV",
+        "source_evidence_field": "evidence.same_scope.temperature_distribution_history",
+        "comparison_field": "comparator.temperature_distribution_history.distribution_distance"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "temperature_distribution_distance",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "temperature_distribution_wrong_scope_spectrum",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_wrong_scope_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    },
+    {
+      "observable_id": "neutron_yield_timing_spectrum_anisotropy_detector_response",
+      "output_field_mapping": {
+        "observable_id": "neutron_yield_timing_spectrum_anisotropy_detector_response",
+        "runtime_output_field": "run.neutrons.mechanism_separated_yield_timing_spectrum_anisotropy_detector_response",
+        "source_evidence_field": "evidence.same_scope.neutron_diagnostics_packet",
+        "comparison_field": "comparator.neutron_diagnostics.multi_channel_residual"
+      },
+      "uncertainty_placeholders": {
+        "measurement": {
+          "term": "measurement",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "model": {
+          "term": "model",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        },
+        "numerical": {
+          "term": "numerical",
+          "status": "placeholder_incomplete",
+          "value": null,
+          "unit": null,
+          "evidence_hash": null
+        }
+      },
+      "pass_fail_metrics": {
+        "metric_id": "neutron_diagnostics_multi_channel_acceptance",
+        "status": "placeholder_incomplete",
+        "tolerance": {
+          "value": null,
+          "unit": null
+        },
+        "result": null
+      },
+      "negative_controls": [
+        {
+          "control_id": "neutron_diagnostics_mechanism_collapsed_yield_only",
+          "status": "placeholder_incomplete",
+          "evidence_hash": null,
+          "expected_result": "reject_mechanism_collapsed_evidence"
+        }
+      ],
+      "run_evidence_hashes": {
+        "runtime_run_hash": null,
+        "source_evidence_hash": null,
+        "uq_packet_hash": null
+      },
+      "independent_review_placeholders": {
+        "reviewer_id": null,
+        "reviewer_affiliation": null,
+        "reviewed_at": null,
+        "review_packet_hash": null,
+        "review_status": "missing",
+        "blocking_findings": [
+          "phase7a_review_placeholder_incomplete"
+        ]
+      },
+      "certificate_status": "blocked_review_certificate_incomplete",
+      "accepted_review_certificate": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "measurement_uncertainty_placeholder_incomplete",
+        "model_uncertainty_placeholder_incomplete",
+        "numerical_uncertainty_placeholder_incomplete",
+        "negative_control_placeholder_incomplete",
+        "run_evidence_hash_missing",
+        "independent_review_missing",
+        "phase7a_no_acceptance_promotion"
+      ]
+    }
+  ]
+}

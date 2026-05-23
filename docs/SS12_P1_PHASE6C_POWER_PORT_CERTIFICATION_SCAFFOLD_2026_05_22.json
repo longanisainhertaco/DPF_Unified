@@ -1,0 +1,88 @@
+{
+  "scaffold_id": "ss12_p1_phase6c_power_port_certification_scaffold",
+  "generated_at": "2026-05-22T11:25:00Z",
+  "phase4b_circuit_power_port_artifacts": [
+    "src/dpf/first_principles/circuit_power_port.py",
+    "tests/test_first_principles_circuit_power_port_phase4b.py",
+    "docs/SS12_P1_PHASE4B_EVALUATE_LEARN_CONTINUE_2026_05_22.md"
+  ],
+  "phase6b_uq_propagation_scaffold": "docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_2026_05_22.json",
+  "acceptance_boundary": {
+    "accepted_power_port_claim": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "note": "Phase 6-C defines certification rows only. Phase 4-B power-port evidence remains non-accepting and Phase 6-B UQ propagation remains incomplete; no runtime or first-principles acceptance is promoted."
+  },
+  "power_port_certification_rows": [
+    {
+      "id": "cert_crowbar_timing",
+      "certification_target": "crowbar timing",
+      "phase4b_power_port_gate": "blocked_circuit_power_port_not_accepted",
+      "phase6b_uq_dependency": "docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_2026_05_22.json",
+      "power_port_evidence_status": "blocked_power_port_evidence_incomplete",
+      "uq_propagation_status": "blocked_uq_budget_incomplete",
+      "certification_status": "blocked_certification_incomplete",
+      "certified_observable": null,
+      "certified_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_power_port_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "phase4b_power_port_packet_non_accepting",
+        "reviewed_crowbar_timing_evidence_missing",
+        "uq_propagation_incomplete",
+        "review_certificate_missing",
+        "phase6c_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "cert_current_sheath_acceleration",
+      "certification_target": "current-sheath acceleration",
+      "phase4b_power_port_gate": "blocked_circuit_power_port_not_accepted",
+      "phase6b_uq_dependency": "docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_2026_05_22.json",
+      "power_port_evidence_status": "blocked_power_port_evidence_incomplete",
+      "uq_propagation_status": "blocked_uq_budget_incomplete",
+      "certification_status": "blocked_certification_incomplete",
+      "certified_observable": null,
+      "certified_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_power_port_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "phase4b_power_port_packet_non_accepting",
+        "reviewed_current_sheath_acceleration_evidence_missing",
+        "uq_propagation_incomplete",
+        "review_certificate_missing",
+        "phase6c_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "cert_pinch_focus_dynamics",
+      "certification_target": "pinch-focus dynamics",
+      "phase4b_power_port_gate": "blocked_circuit_power_port_not_accepted",
+      "phase6b_uq_dependency": "docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_2026_05_22.json",
+      "power_port_evidence_status": "blocked_power_port_evidence_incomplete",
+      "uq_propagation_status": "blocked_uq_budget_incomplete",
+      "certification_status": "blocked_certification_incomplete",
+      "certified_observable": null,
+      "certified_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_power_port_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "phase4b_power_port_packet_non_accepting",
+        "reviewed_pinch_focus_dynamics_evidence_missing",
+        "uq_propagation_incomplete",
+        "review_certificate_missing",
+        "phase6c_no_acceptance_promotion"
+      ]
+    }
+  ]
+}

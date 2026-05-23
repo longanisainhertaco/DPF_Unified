@@ -1,0 +1,61 @@
+{
+  "packet_id": "pf1000_full_energy_same_scope_source_packet",
+  "generated_at": "2026-05-22T03:55:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "selected_source_scope": "pf1000_scholz_2000_2001_24rod_large_electrode_full_energy_source",
+  "authority_rule": "local_reviewed_sources_only",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "sources_considered": [
+    {
+      "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+      "scope_assessment": "strongest_same_scope_candidate",
+      "notes": "PF-1000 new large electrodes, up to 1 MJ, 27.25-40 kV table, D2 pressure, Imax, neutron yield/anisotropy/detectors. Requires exact line review before acceptance."
+    },
+    {
+      "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+      "scope_assessment": "partial_same_scope_baseline",
+      "notes": "Scholz 2000 PF-1000 device baseline geometry/bank/diagnostics/startup/current. May not be the full large-electrode neutron scope."
+    },
+    {
+      "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+      "scope_assessment": "same_family_cross_scope_candidate",
+      "notes": "Full-scale PF-1000 later source; useful context for geometry/current/density/EM/startup."
+    },
+    {
+      "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+      "scope_assessment": "same_family_cross_scope_candidate",
+      "notes": "Later PF-1000 full-scale diagnostics/current/neutron/uncertainty source."
+    },
+    {
+      "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+      "scope_assessment": "secondary_cross_scope_context",
+      "notes": "Review/status context; not primary same-scope closure by itself."
+    }
+  ],
+  "channels": [
+    {"channel": "geometry", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Exact line-cited same-scope geometry values not reviewed yet."},
+    {"channel": "bank_circuit", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Exact line-cited bank/circuit values and uncertainties not reviewed yet."},
+    {"channel": "gas_fill", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Exact line-cited D2 fill-pressure records not reviewed yet."},
+    {"channel": "current_waveform", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Current waveform/source trace evidence not line-cited and reviewed yet."},
+    {"channel": "startup", "status": "blocked", "scope_match": "unknown", "observables": [], "blocked_reason": "Startup BVP evidence requires D2 breakdown/preionization, insulator flashover, sheath liftoff, and early circuit handoff inputs from same-scope reviewed sources."},
+    {"channel": "density_history", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Density history may exist in same-family diagnostics but exact same-scope status is unreviewed."},
+    {"channel": "em_field_history", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "EM/magnetic/X-ray diagnostic history not yet line-cited and scope-reviewed."},
+    {"channel": "temperature_or_distribution_history", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Temperature or distribution history not yet line-cited and scope-reviewed."},
+    {"channel": "neutron_scalar_yield", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Scalar yield table candidate exists but exact line-cited same-scope review is pending."},
+    {"channel": "neutron_timing", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Neutron timing evidence not yet line-cited and scope-reviewed."},
+    {"channel": "neutron_spectrum", "status": "blocked", "scope_match": "unknown", "observables": [], "blocked_reason": "No reviewed same-scope neutron spectrum evidence has been extracted yet."},
+    {"channel": "neutron_anisotropy", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Anisotropy candidate exists but exact line-cited same-scope review is pending."},
+    {"channel": "detector_response", "status": "candidate", "scope_match": "unknown", "observables": [], "blocked_reason": "Detector calibration/activation/TOF response requires line-cited reviewed extraction."},
+    {"channel": "uncertainty_budget", "status": "blocked", "scope_match": "unknown", "observables": [], "blocked_reason": "No complete measurement/model/numerical uncertainty budget has been extracted and reviewed."},
+    {"channel": "review_certificate", "status": "blocked", "scope_match": "unknown", "observables": [], "blocked_reason": "Independent review certificate does not exist yet."}
+  ],
+  "global_blockers": [
+    "Exact line ranges and quotes are not populated yet.",
+    "No channel is accepted yet.",
+    "No review certificate exists yet."
+  ]
+}

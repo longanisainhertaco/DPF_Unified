@@ -230,6 +230,11 @@ Verbatim output:
     "hybrid_pic_architecture_order_of_magnitude_other_scope"
   ],
   "issues": [],
+  "ordinary_non_same_scope_source_fields": "allowed",
+  "protected_key_chains": [
+    "same_scope",
+    "same_scope_source"
+  ],
   "scope": "active_results_artifact_hygiene",
   "wrong_scope_tokens": [
     "other_scope",
@@ -259,6 +264,10 @@ this memo were corrected to state the enforced property accurately; the linter
 behavior is unchanged and `active_hit_count` remains 0. No negative fixture for
 a slug "under an arbitrary non-context key" is added, because under option 2
 that case is permitted, not a violation.
+
+The machine-readable linter report now makes the same decision explicit with
+`ordinary_non_same_scope_source_fields="allowed"` and
+`protected_key_chains=["same_scope", "same_scope_source"]`.
 
 ### Dry-run ledger output
 

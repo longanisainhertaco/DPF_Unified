@@ -11,8 +11,9 @@ structured JSON key-chain scanning.  These tests verify that:
      ``same_scope_source`` key is flagged.
   4. A temp active JSON with the SAME architecture evidence under an approved
      ``*_context_sources`` context key is NOT flagged.
-  5. Files under an ``archive_*`` directory are excluded from the scan.
-  6. A malformed (non-JSON) active file is reported, not crashed on.
+  5. The CLI authority-policy JSON records current-behavior P1-0 semantics.
+  6. Files under an ``archive_*`` directory are excluded from the scan.
+  7. A malformed (non-JSON) active file is reported, not crashed on.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ sys.path.insert(0, str(_SCRIPTS_DIR))
 
 _mod = importlib.import_module("verify_active_results_artifact_hygiene")
 scan_active_results = _mod.scan_active_results
+audit_main = _mod.main
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -343,6 +345,39 @@ class TestArchitectureEvidenceUnderContextKeyIsAllowed:
         assert issues == [], (
             "A hybrid-PIC slug in a plain source field outside any same_scope "
             f"key chain must be allowed; got issues: {issues}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Policy JSON test: the CLI output must state the current-behavior contract
+# ---------------------------------------------------------------------------
+
+
+class TestAuthorityPolicyJson:
+    """The machine-readable policy output documents the P1-0 decision."""
+
+    def test_policy_json_records_current_behavior_and_protected_chains(
+        self,
+        capsys: pytest.CaptureFixture[str],
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(sys, "argv", ["verify_active_results_artifact_hygiene.py"])
+        exit_code = audit_main()
+
+        assert exit_code == 0
+        report = json.loads(capsys.readouterr().out)
+        assert report["ordinary_non_same_scope_source_fields"] == "allowed"
+        assert report["protected_key_chains"] == [
+            "same_scope",
+            "same_scope_source",
+        ]
+        assert report["approved_context_keys"]["exact"] == ["source_scope_context"]
+        assert report["approved_context_keys"]["suffix"] == ["_context_sources"]
+        assert "may otherwise appear in ordinary non-same_scope source fields" in (
+            report["authority_policy"]
+        )
+        assert "forbidden under any 'same_scope' key chain" in (
+            report["authority_policy"]
         )
 
 

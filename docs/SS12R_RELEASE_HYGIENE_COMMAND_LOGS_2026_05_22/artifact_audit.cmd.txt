@@ -1,0 +1,1 @@
+.venv312/bin/python scripts/audit_first_principles_artifacts.py results/**/*.json artifacts/**/*.json

@@ -1,0 +1,114 @@
+{
+  "scaffold_id": "ss12_p1_phase5e_digitization_scaffold",
+  "generated_at": "2026-05-22T10:05:00Z",
+  "phase5d_crop_artifact_manifest": "docs/SS12_P1_PHASE5D_CROP_ARTIFACT_MANIFEST_2026_05_22.json",
+  "acceptance_boundary": {
+    "accepted_digitization_claim": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "note": "Phase 5-E defines digitization schema only. No calibrated digitized values or accepted observables are present."
+  },
+  "digitization_packets": [
+    {
+      "id": "digitization_pf1000_recent_progress_fig6_current_waveform",
+      "crop_artifact_id": "crop_pf1000_recent_progress_fig6_current_waveform",
+      "figure_source_id": "pf1000_recent_progress_fig6_current_waveform",
+      "crop_image_path": "/Users/anthonyzamora/dpf-unified/artifacts/ss12_phase5d/crops/pf1000_recent_progress_fig6_current_waveform_crop.png",
+      "crop_image_sha256": "97fcffa40dc90a74a053fb44d4ea2a3bb9372476f4c7ff4234f63b28b6812e2c",
+      "digitization_status": "blocked_calibration_missing",
+      "axis_calibration_status": "missing",
+      "axis_calibration": null,
+      "digitized_series": [],
+      "digitization_hash": null,
+      "uncertainty_budget_status": "missing",
+      "review_certificate_status": "missing",
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "axis_calibration_missing",
+        "digitized_series_missing",
+        "uncertainty_budget_missing",
+        "review_certificate_missing",
+        "phase5e_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "digitization_pf1000_scholz_fig4_density_distribution",
+      "crop_artifact_id": "crop_pf1000_scholz_fig4_density_distribution",
+      "figure_source_id": "pf1000_scholz_fig4_density_distribution",
+      "crop_image_path": "/Users/anthonyzamora/dpf-unified/artifacts/ss12_phase5d/crops/pf1000_scholz_fig4_density_distribution_crop.png",
+      "crop_image_sha256": "48d01849f46176a3ea1bbb29128a64607a8fa9f15383623feb87802ab2a8fd4a",
+      "digitization_status": "blocked_calibration_missing",
+      "axis_calibration_status": "missing",
+      "axis_calibration": null,
+      "digitized_series": [],
+      "digitization_hash": null,
+      "uncertainty_budget_status": "missing",
+      "review_certificate_status": "missing",
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "axis_calibration_missing",
+        "digitized_series_missing",
+        "uncertainty_budget_missing",
+        "review_certificate_missing",
+        "phase5e_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "digitization_pf1000_krauz_fig8_magnetic_probe_current",
+      "crop_artifact_id": "crop_pf1000_krauz_fig8_magnetic_probe_current",
+      "figure_source_id": "pf1000_krauz_fig8_magnetic_probe_current",
+      "crop_image_path": "/Users/anthonyzamora/dpf-unified/artifacts/ss12_phase5d/crops/pf1000_krauz_fig8_magnetic_probe_current_crop.png",
+      "crop_image_sha256": "a2956d90a57bdece337134f21eb66da0e23de409a7642e07a140f33dbf94198c",
+      "digitization_status": "blocked_calibration_missing",
+      "axis_calibration_status": "missing",
+      "axis_calibration": null,
+      "digitized_series": [],
+      "digitization_hash": null,
+      "uncertainty_budget_status": "missing",
+      "review_certificate_status": "missing",
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "axis_calibration_missing",
+        "digitized_series_missing",
+        "uncertainty_budget_missing",
+        "review_certificate_missing",
+        "phase5e_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "digitization_pf1000_scholz_fig9_neutron_timing",
+      "crop_artifact_id": "crop_pf1000_scholz_fig9_neutron_timing",
+      "figure_source_id": "pf1000_scholz_fig9_neutron_timing",
+      "crop_image_path": "/Users/anthonyzamora/dpf-unified/artifacts/ss12_phase5d/crops/pf1000_scholz_fig9_neutron_timing_crop.png",
+      "crop_image_sha256": "2014ca34a436829b03df8a72af685e13fe746550e0a7a6e9df44b066a963aeef",
+      "digitization_status": "blocked_calibration_missing",
+      "axis_calibration_status": "missing",
+      "axis_calibration": null,
+      "digitized_series": [],
+      "digitization_hash": null,
+      "uncertainty_budget_status": "missing",
+      "review_certificate_status": "missing",
+      "accepted_digitization_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "axis_calibration_missing",
+        "digitized_series_missing",
+        "uncertainty_budget_missing",
+        "review_certificate_missing",
+        "phase5e_no_acceptance_promotion"
+      ]
+    }
+  ]
+}

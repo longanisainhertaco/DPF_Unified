@@ -95,6 +95,16 @@ NONPHYSICS_INFRASTRUCTURE_FILES = {
     # a fail-closed ledger. It computes no physics, holds no KR authority, and
     # has no code path that promotes acceptance (channel_state.py precedent).
     "src/dpf/first_principles/acceptance_gate_dry_run.py",
+    # Phase 5/6/7/8 certificate and artifact-gate helpers. These are validation
+    # boundary/reporting surfaces: they inventory evidence, stage candidates, or
+    # emit fail-closed packets. They do not compute physics authority and every
+    # acceptance bit is forced false until an independent reviewed certificate
+    # stack exists.
+    "src/dpf/first_principles/acceptance_shield.py",
+    "src/dpf/first_principles/circuit_power_port.py",
+    "src/dpf/first_principles/figure_asset_inventory.py",
+    "src/dpf/first_principles/figure_candidate_staging.py",
+    "src/dpf/first_principles/figure_source_manifest.py",
 }
 INACTIVE_NUMERICAL_UTILITY_FILES = {
     "src/dpf/experimental/static_refinement.py",

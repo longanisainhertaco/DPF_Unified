@@ -1123,13 +1123,13 @@ with gr.Blocks(title="DPF-Unified Simulator", analytics_enabled=False) as app:
 |--------------|--------|------|
 | See full 2D plasma structure, no GPU available | **MHD Standard** | 10-30 sec |
 | Same as above but faster on Apple Silicon | **MHD GPU** | 5-15 sec |
-| Maximum accuracy for publications | **MHD High Fidelity** | 30-120 sec |
+| Highest numerical-resolution preview; not publication validation | **MHD High Fidelity** | 30-120 sec |
 
 **Why are there multiple options?** They're like zoom levels on a camera:
 - **Lee Model** = wide shot (fast, sees the big picture)
 - **Hybrid** = portrait (balanced, captures the important detail)
 - **MHD Standard / GPU** = macro lens (sees fine spatial structure)
-- **MHD High Fidelity** = electron microscope (sharpest features, publication quality)
+- **MHD High Fidelity** = electron microscope (sharpest preview; publication or Reference claims still require accepted source evidence)
 
 Under the hood, there are only **2 physics engines**: the Lee model (solves circuit equations) and the MHD solver (solves fluid equations on a grid). The different MHD options configure the solver at different accuracy/speed tradeoffs.
 
@@ -1151,13 +1151,13 @@ Under the hood, there are only **2 physics engines**: the Lee model (solves circ
 
 The Lee model treats the plasma as a thin piston (current sheath) that sweeps gas along the anode and then compresses it radially. It's a 0D model -- no spatial grid, just ordinary differential equations. Two fitted parameters (**fc** = current fraction, **fm** = mass fraction) calibrate it to match experimental data.
 
-**Validated against:** PF-1000, NX2, UNU-ICTP, POSEIDON, MJOLNIR, FAETON-I, and dozens more published devices.
+**Authority:** Lee/snowplow comparison is a baseline reduced-model reference. Current device presets and waveform comparisons are source-gated; they do not establish predictive validation or first-principles acceptance without accepted local KnowledgeReference packets and same-scope review.
 
 ### MHD Standard (10-30 sec) -- Cross-Platform
 **What it computes:** Full spatial fields (density, velocity, magnetic field, pressure, temperature) on a 2D cylindrical grid.
 **How:** Godunov scheme with PLM reconstruction and HLL Riemann solver, all in pure Python/NumPy.
 
-Runs on any machine -- no Apple Silicon, no GPU, no special hardware. The current sheath and compression emerge from first principles. Stable at all DPF current levels thanks to proper shock-capturing numerics.
+Runs on any machine -- no Apple Silicon, no GPU, no special hardware. The current sheath and compression are computed from the configured MHD equations under the current source-gated, non-accepting scope. Stability and engineering usefulness are not scientific validation.
 
 **When to use:** You're on Linux or Windows, or you want a portable simulation that works anywhere.
 
@@ -1190,7 +1190,7 @@ The best of both worlds: the Lee model handles the well-understood axial rundown
 |--------|-----------|-------------|--------|-------------|
 | **Coarse** | 16 x 16 x 32 | 8,192 | ~1 MB | Quick tests, checking parameters work |
 | **Medium** | 32 x 32 x 64 | 65,536 | ~8 MB | Standard runs, seeing general structure |
-| **Fine** | 64 x 64 x 128 | 524,288 | ~64 MB | Resolving current sheath, publication use |
+| **Fine** | 64 x 64 x 128 | 524,288 | ~64 MB | Resolving current-sheath structure for engineering preview |
 
 **How to choose:** The current sheath in a DPF is typically < 1 mm thick. Your grid cell size must be smaller than this to resolve it. Cell size = electrode gap / number of radial cells. For PF-1000 (45 mm gap, Fine grid = 64 radial cells): cell size = 0.7 mm — just barely resolving the sheath.
 

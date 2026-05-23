@@ -1,0 +1,98 @@
+{
+  "scaffold_id": "ss12_p1_phase6b_uq_propagation_scaffold",
+  "generated_at": "2026-05-22T11:05:00Z",
+  "phase6a_uq_budget_scaffold": "docs/SS12_P1_PHASE6A_UQ_BUDGET_SCAFFOLD_2026_05_22.json",
+  "acceptance_boundary": {
+    "accepted_propagation_claim": false,
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "note": "Phase 6-B defines propagation packet slots only. UQ budgets are incomplete; no propagated observable is accepted."
+  },
+  "propagation_packets": [
+    {
+      "id": "propagation_pf1000_recent_progress_fig6_current_waveform",
+      "figure_source_id": "pf1000_recent_progress_fig6_current_waveform",
+      "uq_budget_row_id": "uq_pf1000_recent_progress_fig6_current_waveform",
+      "digitization_packet_id": "digitization_pf1000_recent_progress_fig6_current_waveform",
+      "propagation_status": "blocked_uq_budget_incomplete",
+      "propagated_observable": null,
+      "propagated_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_propagation_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "uq_budget_incomplete",
+        "propagated_observable_missing",
+        "propagated_uncertainty_missing",
+        "review_certificate_missing",
+        "phase6b_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "propagation_pf1000_scholz_fig4_density_distribution",
+      "figure_source_id": "pf1000_scholz_fig4_density_distribution",
+      "uq_budget_row_id": "uq_pf1000_scholz_fig4_density_distribution",
+      "digitization_packet_id": "digitization_pf1000_scholz_fig4_density_distribution",
+      "propagation_status": "blocked_uq_budget_incomplete",
+      "propagated_observable": null,
+      "propagated_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_propagation_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "uq_budget_incomplete",
+        "propagated_observable_missing",
+        "propagated_uncertainty_missing",
+        "review_certificate_missing",
+        "phase6b_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "propagation_pf1000_krauz_fig8_magnetic_probe_current",
+      "figure_source_id": "pf1000_krauz_fig8_magnetic_probe_current",
+      "uq_budget_row_id": "uq_pf1000_krauz_fig8_magnetic_probe_current",
+      "digitization_packet_id": "digitization_pf1000_krauz_fig8_magnetic_probe_current",
+      "propagation_status": "blocked_uq_budget_incomplete",
+      "propagated_observable": null,
+      "propagated_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_propagation_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "uq_budget_incomplete",
+        "propagated_observable_missing",
+        "propagated_uncertainty_missing",
+        "review_certificate_missing",
+        "phase6b_no_acceptance_promotion"
+      ]
+    },
+    {
+      "id": "propagation_pf1000_scholz_fig9_neutron_timing",
+      "figure_source_id": "pf1000_scholz_fig9_neutron_timing",
+      "uq_budget_row_id": "uq_pf1000_scholz_fig9_neutron_timing",
+      "digitization_packet_id": "digitization_pf1000_scholz_fig9_neutron_timing",
+      "propagation_status": "blocked_uq_budget_incomplete",
+      "propagated_observable": null,
+      "propagated_uncertainty": null,
+      "review_certificate_status": "missing",
+      "accepted_propagation_claim": false,
+      "accepted_runtime_claim": false,
+      "promotes_acceptance": false,
+      "can_support_first_principles_acceptance": false,
+      "blocking_reasons": [
+        "uq_budget_incomplete",
+        "propagated_observable_missing",
+        "propagated_uncertainty_missing",
+        "review_certificate_missing",
+        "phase6b_no_acceptance_promotion"
+      ]
+    }
+  ]
+}

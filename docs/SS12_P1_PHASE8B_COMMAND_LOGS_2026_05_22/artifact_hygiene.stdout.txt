@@ -1,0 +1,29 @@
+{
+  "active_hit_count": 0,
+  "approved_context_keys": {
+    "exact": [
+      "source_scope_context"
+    ],
+    "suffix": [
+      "_context_sources"
+    ]
+  },
+  "authority_policy": "results/ JSON artifacts outside archive_* directories are walked by key chain; the SS11 hybrid-PIC source slugs are forbidden under any 'same_scope' key chain, 'other_scope'/'wrong_scope' tokens are forbidden under any 'same_scope_source' key chain (over both scalar values and dict key names); architecture or cross-scope evidence may otherwise appear in ordinary non-same_scope source fields, with the approved context keys (a key ending in '_context_sources' or named 'source_scope_context') the recommended home for relocated cross-scope context; stale artifacts are relocated (not rewritten) to archive_* dirs",
+  "clean": true,
+  "hybrid_pic_slugs": [
+    "llnl_like_180ka_axisymmetric_hybrid_pic",
+    "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield",
+    "hybrid_pic_architecture_order_of_magnitude_other_scope"
+  ],
+  "issues": [],
+  "ordinary_non_same_scope_source_fields": "allowed",
+  "protected_key_chains": [
+    "same_scope",
+    "same_scope_source"
+  ],
+  "scope": "active_results_artifact_hygiene",
+  "wrong_scope_tokens": [
+    "other_scope",
+    "wrong_scope"
+  ]
+}

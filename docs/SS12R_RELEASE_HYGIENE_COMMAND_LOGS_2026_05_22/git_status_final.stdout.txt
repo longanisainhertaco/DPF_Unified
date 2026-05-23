@@ -1,0 +1,256 @@
+## codex/corpus...origin/codex/corpus [ahead 91]
+ ? .claude/worktrees/agent-a2ad958720706e772
+ ? .claude/worktrees/agent-a3952355014c5bd4f
+ ? .claude/worktrees/agent-a3b51ea36c1ced428
+ ? .claude/worktrees/agent-a3dce53b5546d8744
+ ? .claude/worktrees/agent-a443e0df3202ad902
+ ? .claude/worktrees/agent-a5d79a6655e6f59ea
+ ? .claude/worktrees/agent-a92314a9ee378475a
+ ? .claude/worktrees/agent-aceb55c591dd1c51b
+ ? .claude/worktrees/agent-ad26f76c604240768
+ ? .claude/worktrees/agent-ad67a024befcb3f3c
+ ? .claude/worktrees/agent-ae1a97c45b6e34361
+ M app.py
+ M docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_21.json
+ M docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_21.md
+ M docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/10.1002@ctpp.201000046.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/10.1002@ctpp.201000047.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/10.1088@0741-3335@50@12@125006.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/10.1088@1741-4326@ab0384.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/buneman1959.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/catenacci2020.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/cikhardtova2015.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/delzanna2015.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/jednorog2014.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/klir2011-2.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/klir2011.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kortanek2014.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/krauz2012.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kubes2009.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kubes2012-2.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kubes2012.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/kubes2013.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/lee2008-2.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/lee2008.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/lee2016.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/lotz1967.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/munzar2021.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/seaton1959.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/shumlak1995.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/shumlak2001.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/springham2021.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/stepniewski2004.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/szydlowski2004.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/toro2009.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-11-user-ingest/vikhrev2007.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/10.1088@1742-6596@370@1@012059.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/A-Hybrid-Quantum-Classical-Particle-in-Cell-Method-for-Plasma-Simulations.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/A-survey-of-large-language-models-for-cyber-threat-detection.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Gradient-Based-Physics-Informed-Neural-Network.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Hybrid-Modeling-and-Simulation.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Large-Language-Models-A-Deep-Dive.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Linear-Algebra-for-Physics.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Machine-Learning-of-Forced-Convection-Heat-Transfer.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Mathematical-Modeling-and-Simulation-of-Systems.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Mathematics-for-Engineers-and-Scientists.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Monte-Carlo-Simulation-of-Neutral-Particle-Transport.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-Simulation-of-Pulsed-Plasma-Thruster.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-simulation-of-deuterium-retention-in-tungsten-under-ELM-like-conditions.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Numerical-simulation-of-equilibrium-air-plasma-flow-in-the-induction-chamber-of-a-high-power.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Poisson-Boltzmann-based-machine-learning-model-for-electrostatic-analysis.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Precalculus.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/Simulation-and-Modeling.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/The-role-of-Pauli-principle-in-simulations-of-classical-plasma.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/alexiou2002.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/apostolou2020.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/auluck2014.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/baxevanis2018.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/bilbao2006.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/chen2019.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/kasperczuk2002.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/kubes2020.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/lindemuth1982.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/matsumoto2007.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/oh2014.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/sadowski2008.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/symons1994.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/timofeev2011.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/trunk1975.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/urano2018.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-12-user-ingest/verboncoeur2005.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-14-user-ingest/2604.09032v1-fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-ingest/soto2010.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/1000284.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/2307.07715v1.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/ADA037245.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/Arnab-the-physics-of-fluids-and-plasmas_compress.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/Dense+Plasma+Focus+physics+and+applications.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/Development of dense plasma focus device.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/s41598-025-07939-x.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-15-user-validated-batch/salehizadeh2012.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/A SerbanPhD1995.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/MSR PhD thesis.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/PhD2010VermaRishi.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/PhD2012AlirezaTalebitaher.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/arwinderphdthesis.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/s41598-022-19764-7.pdf"
+ T "downloaded_books_papers/Research Papers/2026-05-16-user-validated-theses/sawsorheoh.pdf"
+ T "downloaded_books_papers/Research Papers/AD1076777_OptimizationofbDensebbPlasmabFocusDPFNeutronSources.pdf"
+ T "downloaded_books_papers/Research Papers/AD1079881_OptimizationofbDensebbPlasmabFocusDPFNeutronSources.pdf"
+ T "downloaded_books_papers/Research Papers/AD1095975_SpatialDistributionofIonEmissioninGas-PuffbZb-bPinches.pdf"
+ T "downloaded_books_papers/Research Papers/AD1098588_AccelerationofProtonsandDeuteronsUpto35MevandGenerationof1.pdf"
+ T "downloaded_books_papers/Research Papers/AD1099126_EffectsofaPreembeddedAxialMagneticFieldontheCurrentDistribut.pdf"
+ T "downloaded_books_papers/Research Papers/AD1100306_SimulationsofabDensebbPlasmabFocusonaHigh-Impedance.pdf"
+ T "downloaded_books_papers/Research Papers/AD1101079_GuestEditorialSpecialIssueonZPinchbPlasmasb.pdf"
+ T "downloaded_books_papers/Research Papers/AD1123736_CharacterizationofElectronBeamsfromabDensebbPlasmabF.pdf"
+ T "downloaded_books_papers/Research Papers/AD1148035_RubricsforChargeConservingCurrentMappinginFiniteElementElectr.pdf"
+ T "downloaded_books_papers/Research Papers/AD1156411_RobustMaxwellSolversForLargeScalebParticleb-In-bCellb.pdf"
+ T "downloaded_books_papers/Research Papers/AD1180075_MitigationofMagneto-Rayleigh-TaylorInstabilityGrowthinaTriple-N.pdf"
+ T "downloaded_books_papers/Research Papers/AD1187201_TheMFiXbParticlebinbCellbMethodMFiXPICTheoryGuide.pdf"
+ T "downloaded_books_papers/Research Papers/AD1206892_bParticleb-in-bCellbModelingofOmegaExperimentsonAblati.pdf"
+ T "downloaded_books_papers/Research Papers/AD1302183_ReducingtheComputationalComplexityofImplicitSchemesintheModel.pdf"
+ T "downloaded_books_papers/Research Papers/AD1302801_MeasurementsandApplicationsofStronglyCorrelatedbPlasmasbGe.pdf"
+ T "downloaded_books_papers/Research Papers/AD1321188_NovelCollisionalbParticleb-In-bCellbCPICMethodsforKi.pdf"
+ T "downloaded_books_papers/Research Papers/AD1321713_DirectedHighEnergyRadiationandParticleBeamsGeneratedUsingExtr.pdf"
+ T "downloaded_books_papers/Research Papers/AD1338534_AssemblingaDeep-HistoryBinaryCorpus (1).pdf"
+ T "downloaded_books_papers/Research Papers/AD1345078_EffectofCurrentSheathInitiationontheRadialCollapseandEnerget.pdf"
+ T "downloaded_books_papers/Research Papers/ADA433824_AdvancementsinDensePlasmaFocusbDPFbforSpacePropulsion.pdf"
+ T "downloaded_books_papers/Research Papers/ADA454652_AnInvestigationofBremsstrahlungReflectioninaDensePlasmaFocus.pdf"
+ T "downloaded_books_papers/Research Papers/ADA589175_HierarchicalReconstructionwithUptoSecondDegreeRemainderforSol.pdf"
+ T "downloaded_books_papers/Research Papers/ADA589371_LocalDiscontinuousGalerkinMethodsfortheGeneralizedZakharovSyst.pdf"
+ T "downloaded_books_papers/Research Papers/ADA598221_Magneto-Rayleigh-TaylorInstabilityExperimentsonabDensebZ-Pi.pdf"
+ T "downloaded_books_papers/Research Papers/ADA598893_KineticComputationalModelofExplosiveEmissionCenterInitiationby.pdf"
+ T "downloaded_books_papers/Research Papers/ADA599854_ElectrodynamicPropertiesofbDensebSemiclassicalbPlasmab.pdf"
+ T "downloaded_books_papers/Research Papers/ADA606395_bParticlebinbCellbSimulationofPlasmaThrusters.pdf"
+ T "downloaded_books_papers/Research Papers/ADA628985_MAGIC3DElectromagneticFDTD-PICCodebDensebbPlasmabModel.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/1169854.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1001263_ModelingofInelasticCollisionsinaMultifluidPlasmaExcitationan.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1095966_IonAccelerationandNeutronProductioninHybridGasPuffZPincheso.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1096219_LocalMeasurementsoftheSpatialMagneticFieldDistributioninaZ-P.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1100651_ObservationsoftheMagneto-Rayleigh-TaylorInstabilityandShockDyna.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1116543_2019NRLPlasmaFormulary.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1194691_bSimulatingbaPulsed-Power-DrivenPlasmawithIdealbMHDb.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1300646_StudiesofbPlasmabSheathPhysicsusingContinuumKineticbSim.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1330276_PhysicsandApplicationsofDustyPlasmasThePerspectives2023.pdf"
+ T "downloaded_books_papers/Research Papers/Wave 5/AD1340820_Thermo-HydrodynamicsofaStronglyCoupledPlasma.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1036184_Multi-scaleandmulti-bphysicsbbsimulationsbusingthemult.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1038890_ALEGRA-bMHDbSimulationsforMagnetizationofanEllipsoidalIncl.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1057898_3-DbALEGRAbSimulationsofMagneticFieldShieldingEffectsofC.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1096774_ALE3D-bMHDbModelingofModifiedSqueeze5MagneticFluxCompress.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1097132_Physics-Based-AdaptivebPlasmabModelforHigh-FidelityNumerical.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1105890_TowardpredictivemodelingofExBbplasmabdischarges.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1142423_TheRigid-BeamModelforbSimulatingbbPlasmasbGeneratedby.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1194307_EnablingReduced-OrderCollisional-RadiativeModelingforReactiveb.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1326156_PREDICTIVEANDPRACTICALbSIMULATIONSbOFbPLASMAbSYSTEMSA.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1331701_ExperimentModelingandbSimulationbofAdvancedMaterials-b.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1334827_AHybridModelforMultiscaleLaserbPlasmabbSimulationsbw.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1337397_Electronemissionbphysicsbbsimulationsb.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/AD1338034_ExperimentModelingandbSimulationbofAdvancedMaterials-b.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/ADA462260_DeviceDemonstration.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/ADA610142_Characterizationofa500JbDensebbPlasmabbFocusbfor.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/ADA635195_PFMA-1A1-Hz150-kJPulsedPowerSystemforPlasmaFocusGeneration.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/ADA635937_2DMHDComputerModelingofbDensebbPlasmabbFocusbAc.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/ADA636210_bSnowplowbModelingofaLong-Conduction-TimePlasmaOpeningSwit.pdf"
+ T "downloaded_books_papers/Research Papers/Wave2/DSIAC-2195387_ClassicalTrajectoryMonteCarlobSimulationbofbPlasmabFu.pdf"
+ T "downloaded_books_papers/Research Papers/Wave4/033302_1_5.0311453.pdf"
+ T "downloaded_books_papers/Research Papers/Wave4/AD1230244_DevelopingMethodsofControlofSelf-OrganizedbPlasmabStructur.pdf"
+ T "downloaded_books_papers/Research Papers/Wave4/Borges An improved weighted essentially non-oscillatory scheme for hyperbolic conservation laws.pdf"
+ T "downloaded_books_papers/Research Papers/Wave4/HDIAC-2191925_bWeightedbbEssentiallybbNonb-bOscillatorybbSc.pdf"
+ T downloaded_books_papers/papers/mhd-numerics/bosch_hale_1992_fusion_cross_sections.pdf
+ m external/athenak
+ M scripts/verify_active_results_artifact_hygiene.py
+ M scripts/verify_first_principles_module_source_vetting.py
+ M src/dpf/first_principles/numerical_fidelity.py
+ M tests/test_cli_first_principles_3d.py
+ M tests/test_gradio_claims.py
+ M tests/test_results_artifact_hygiene.py
+ T tmp/pdfs/may16_verified_batch/sawsorheoh_ocr.pdf
+?? .claude/settings.local.json
+?? artifacts/
+?? docs/DPF_UNIFIED_DURABLE_OPENAI_ANTHROPIC_WORKFLOW_2026_05_22.md
+?? docs/DPF_UNIFIED_FULL_PROJECT_KANBAN_PLAN_2026_05_22.md
+?? docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.json
+?? docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.md
+?? docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.json
+?? docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.md
+?? docs/SS12R_ACCEPTANCE_DRY_RUN_LEDGER_2026_05_22.json
+?? docs/SS12R_RELEASE_HYGIENE_COMMAND_LOGS_2026_05_22/
+?? docs/SS12_P1_0_CODEX_HANDOFF_2026_05_22.md
+?? docs/SS12_P1_FIRST_PRINCIPLES_3D_COMPLETION_MASTER_PLAN_2026_05_22.md
+?? docs/SS12_P1_PHASE0_BASELINE_2026_05_22.md
+?? docs/SS12_P1_PHASE1_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE2_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE2_REVIEW_FIXES_2026_05_22.md
+?? docs/SS12_P1_PHASE2_SOURCE_PACKET_MATRIX_2026_05_22.json
+?? docs/SS12_P1_PHASE2_SOURCE_PACKET_MATRIX_DESIGN_2026_05_22.md
+?? docs/SS12_P1_PHASE2_SOURCE_PACKET_MATRIX_EXTRACTED_2026_05_22.json
+?? docs/SS12_P1_PHASE2_VALIDATOR_CODEX_HANDOFF_2026_05_22.md
+?? docs/SS12_P1_PHASE3_BLOCKED_CHANNEL_RETRIEVAL_2026_05_22.md
+?? docs/SS12_P1_PHASE3_TRANSFER_CANDIDATE_MATRIX_2026_05_22.json
+?? docs/SS12_P1_PHASE4A_CODEX_HANDOFF_2026_05_22.md
+?? docs/SS12_P1_PHASE4A_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE4B_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE4C_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE4D_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE4_FINAL_VERIFY_AND_PHASE5_DECISION_2026_05_22.md
+?? docs/SS12_P1_PHASE4_NUMERICAL_FIDELITY_COUPLING_DESIGN_2026_05_22.md
+?? docs/SS12_P1_PHASE5B_FIGURE_ASSET_INVENTORY_2026_05_22.json
+?? docs/SS12_P1_PHASE5B_FIGURE_ASSET_INVENTORY_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE5C_PAGE_RENDER_CROP_MANIFEST_2026_05_22.json
+?? docs/SS12_P1_PHASE5C_PAGE_RENDER_CROP_MANIFEST_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE5D_CROP_ARTIFACTS_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE5D_CROP_ARTIFACT_MANIFEST_2026_05_22.json
+?? docs/SS12_P1_PHASE5D_CROP_REGION_PLAN_2026_05_22.json
+?? docs/SS12_P1_PHASE5E_DIGITIZATION_SCAFFOLD_2026_05_22.json
+?? docs/SS12_P1_PHASE5E_DIGITIZATION_SCAFFOLD_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE5_FIGURE_BACKED_SOURCE_EXTRACTION_PLAN_2026_05_22.md
+?? docs/SS12_P1_PHASE5_FIGURE_SOURCE_MANIFEST_2026_05_22.json
+?? docs/SS12_P1_PHASE5_FIGURE_SOURCE_MANIFEST_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE6A_UQ_BUDGET_SCAFFOLD_2026_05_22.json
+?? docs/SS12_P1_PHASE6A_UQ_BUDGET_SCAFFOLD_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_2026_05_22.json
+?? docs/SS12_P1_PHASE6B_UQ_PROPAGATION_SCAFFOLD_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE6C_POWER_PORT_CERTIFICATION_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE6C_POWER_PORT_CERTIFICATION_SCAFFOLD_2026_05_22.json
+?? docs/SS12_P1_PHASE7A_REVIEW_CERTIFICATE_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE7A_REVIEW_CERTIFICATE_SKELETON_2026_05_22.json
+?? docs/SS12_P1_PHASE7B_ACCEPTANCE_SHIELD_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE8A_FOCUSED_SUITE_ACCEPTANCE_SCAN_2026_05_22.md
+?? docs/SS12_P1_PHASE8B_ACCEPTANCE_DRY_RUN_LEDGER_2026_05_22.json
+?? docs/SS12_P1_PHASE8B_COMMAND_LOGS_2026_05_22/
+?? docs/SS12_P1_PHASE8B_EVALUATE_LEARN_CONTINUE_2026_05_22.md
+?? docs/SS12_P1_PHASE8C_CLAIM_SURFACE_RECONCILIATION_2026_05_22.md
+?? scripts/build_ss12_phase5c_page_render_manifest.py
+?? scripts/build_ss12_phase5d_crop_artifacts.py
+?? scripts/validate_ss12_phase2_source_packet_matrix.py
+?? scripts/validate_ss12_phase5_figure_source_manifest.py
+?? scripts/validate_ss12_phase5b_figure_asset_inventory.py
+?? scripts/validate_ss12_phase5e_digitization_schema.py
+?? scripts/validate_ss12_phase6a_uq_budget_scaffold.py
+?? scripts/validate_ss12_phase6b_uq_propagation_scaffold.py
+?? scripts/validate_ss12_phase6c_power_port_certification.py
+?? scripts/validate_ss12_phase7a_review_certificate.py
+?? src/dpf/first_principles/acceptance_shield.py
+?? src/dpf/first_principles/circuit_power_port.py
+?? src/dpf/first_principles/figure_asset_inventory.py
+?? src/dpf/first_principles/figure_candidate_staging.py
+?? src/dpf/first_principles/figure_source_manifest.py
+?? tests/test_first_principles_acceptance_shield_phase4d.py
+?? tests/test_first_principles_acceptance_shield_phase7b.py
+?? tests/test_first_principles_circuit_power_port_phase4b.py
+?? tests/test_first_principles_figure_candidate_phase4c.py
+?? tests/test_first_principles_numerical_fidelity_phase4a.py
+?? tests/test_first_principles_phase5_figure_packet_builder.py
+?? tests/test_first_principles_phase5b_figure_asset_packet_plan.py
+?? tests/test_ss12_phase2_source_packet_matrix.py
+?? tests/test_ss12_phase3_transfer_candidate_matrix.py
+?? tests/test_ss12_phase5_figure_source_manifest.py
+?? tests/test_ss12_phase5b_figure_asset_inventory.py
+?? tests/test_ss12_phase5c_page_render_crop_manifest.py
+?? tests/test_ss12_phase5d_crop_artifacts.py
+?? tests/test_ss12_phase5e_digitization_scaffold.py
+?? tests/test_ss12_phase6a_uq_budget_scaffold.py
+?? tests/test_ss12_phase6b_uq_propagation_scaffold.py
+?? tests/test_ss12_phase6c_power_port_certification.py
+?? tests/test_ss12_phase7a_review_certificate.py

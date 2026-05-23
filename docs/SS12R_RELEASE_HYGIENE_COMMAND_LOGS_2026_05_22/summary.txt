@@ -1,0 +1,121 @@
+== focused_suite ==
+exit=0
+stdout: ........................................................................ [ 10%]
+stdout: ........................................................................ [ 21%]
+stdout: ........................................................................ [ 32%]
+stdout: ........................................................................ [ 43%]
+stdout: ........................................................................ [ 54%]
+stdout: ........................................................................ [ 64%]
+stdout: ........................................................................ [ 75%]
+stdout: ........................................................................ [ 86%]
+stdout: ........................................................................ [ 97%]
+stdout: .................                                                        [100%]
+stdout: 665 passed in 49.59s
+== source_truth ==
+exit=0
+stdout: {
+stdout:   "exhausted": true,
+stdout:   "json": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.json",
+stdout:   "markdown": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.md",
+stdout:   "open_issue_count": 0
+stdout: }
+== module_vetting_strict ==
+exit=0
+stdout: {
+stdout:   "active_physics_unvetted_count": 0,
+stdout:   "json": "docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.json",
+stdout:   "markdown": "docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.md",
+stdout:   "missing_source_reference_count": 0,
+stdout:   "strict_passed": true,
+stdout:   "total_modules": 303
+stdout: }
+== artifact_hygiene ==
+exit=0
+stdout:   },
+stdout:   "authority_policy": "results/ JSON artifacts outside archive_* directories are walked by key chain; the SS11 hybrid-PIC source slugs are forbidden under any 'same_scope' key chain, 'other_scope'/'wrong_scope' tokens are forbidden under any 'same_scope_source' key chain (over both scalar values and dict key names); architecture or cross-scope evidence may otherwise appear in ordinary non-same_scope source fields, with the approved context keys (a key ending in '_context_sources' or named 'source_scope_context') the recommended home for relocated cross-scope context; stale artifacts are relocated (not rewritten) to archive_* dirs",
+stdout:   "clean": true,
+stdout:   "hybrid_pic_slugs": [
+stdout:     "llnl_like_180ka_axisymmetric_hybrid_pic",
+stdout:     "fully-electromagnetic-hybrid-pic-fluid-dpf-neutron-yield",
+stdout:     "hybrid_pic_architecture_order_of_magnitude_other_scope"
+stdout:   ],
+stdout:   "issues": [],
+stdout:   "ordinary_non_same_scope_source_fields": "allowed",
+stdout:   "protected_key_chains": [
+stdout:     "same_scope",
+stdout:     "same_scope_source"
+stdout:   ],
+stdout:   "scope": "active_results_artifact_hygiene",
+stdout:   "wrong_scope_tokens": [
+stdout:     "other_scope",
+stdout:     "wrong_scope"
+stdout:   ]
+stdout: }
+== artifact_audit ==
+exit=0
+stdout: experimental_inverse_calibration_gv_pf24_l_r_pressure_unclamped_failure_2026_05_17.json               SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_1p6us_2026_05_17.json                  SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_6us_packeted_2026_05_17.json           SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_pressure_waveform_6us_single_2026_05_17.json             SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_waveform_2p2us_lowL_tight_screen_2026_05_17.json         SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_waveform_2p6us_lowL_screen_2026_05_17.json               SKIP    not a first-principles artifact
+stdout: experimental_inverse_calibration_gv_pf24_l_r_waveform_6us_lowL_single_2026_05_17.json                 SKIP    not a first-principles artifact
+stdout: experimental_inverse_parameters_all_machines_2026_05_16.json                                          SKIP    not a first-principles artifact
+stdout: experimental_split_continuation_pf1000_probe_2026_05_16.json                                          EXEMPT  exempt: split-continuation probe: exercises segment hand-off only, carries no candidate physics ledger or source-backed manifest
+stdout: gradient_calibration_pf1000.json                                                                      SKIP    not a first-principles artifact
+stdout: grid_independence_cvg03.json                                                                          SKIP    not a first-principles artifact
+stdout: gv_pf24_l0875_r15_p1_experimental_candidate_deck_2026_05_17.json                                      SKIP    not a first-principles artifact
+stdout: mhd_backend_parity_cross_backend_current_evidence.json                                                SKIP    not a first-principles artifact
+stdout: mhd_finite_volume_mlx_shock_tubes_evidence.json                                                       SKIP    not a first-principles artifact
+stdout: mhd_restart_reproducibility_evidence.json                                                             SKIP    not a first-principles artifact
+stdout: mhd_tier3_numerical_packet.json                                                                       SKIP    not a first-principles artifact
+stdout: multi_device_calibration.json                                                                         SKIP    not a first-principles artifact
+stdout:
+stdout: audit: 82 file(s) scanned -- 39 first-principles, 32 skipped, 50 exempt, 0 passed, 0 failed.
+stdout: audit: PASS -- all first-principles artifacts pass C1-C8.
+== phase7a_certificate ==
+exit=0
+stdout: {
+stdout:   "passed": true,
+stdout:   "accepted_certificate_emitted": false,
+stdout:   "issue_count": 0,
+stdout:   "issues": [],
+stdout:   "scaffold": "docs/SS12_P1_PHASE7A_REVIEW_CERTIFICATE_SKELETON_2026_05_22.json"
+stdout: }
+== acceptance_dry_run ==
+exit=0
+stdout: {'ledger_path': 'docs/SS12R_ACCEPTANCE_DRY_RUN_LEDGER_2026_05_22.json', 'runtime_status': 'engineering_candidate_not_validation', 'is_fail_closed': True, 'summary': {'deck_preset': 'pf1000_scholz_2001_24rod_full_energy', 'gate_count': 8, 'blocked_count': 8, 'pass_count': 0, 'blocked_gates': ['numerical_fidelity', 'same_scope_comparator', 'uq', 'certificate', 'geometry', 'startup', 'power_port', 'neutron'], 'pass_gates': [], 'runtime_can_support_first_principles_acceptance': False}, 'acceptance_flags': {'report_only': True, 'promotes_acceptance': False, 'accepted_runtime_claim': False, 'can_support_first_principles_acceptance': False}}
+== json_acceptance_scan ==
+exit=0
+stdout: {
+stdout:   "files_scanned": 43,
+stdout:   "acceptance_true_hits": [],
+stdout:   "hit_count": 0
+stdout: }
+== ruff_focus ==
+exit=0
+stdout: All checks passed!
+== diff_check ==
+exit=0
+== git_status_final ==
+exit=0
+stdout: ?? src/dpf/first_principles/figure_candidate_staging.py
+stdout: ?? src/dpf/first_principles/figure_source_manifest.py
+stdout: ?? tests/test_first_principles_acceptance_shield_phase4d.py
+stdout: ?? tests/test_first_principles_acceptance_shield_phase7b.py
+stdout: ?? tests/test_first_principles_circuit_power_port_phase4b.py
+stdout: ?? tests/test_first_principles_figure_candidate_phase4c.py
+stdout: ?? tests/test_first_principles_numerical_fidelity_phase4a.py
+stdout: ?? tests/test_first_principles_phase5_figure_packet_builder.py
+stdout: ?? tests/test_first_principles_phase5b_figure_asset_packet_plan.py
+stdout: ?? tests/test_ss12_phase2_source_packet_matrix.py
+stdout: ?? tests/test_ss12_phase3_transfer_candidate_matrix.py
+stdout: ?? tests/test_ss12_phase5_figure_source_manifest.py
+stdout: ?? tests/test_ss12_phase5b_figure_asset_inventory.py
+stdout: ?? tests/test_ss12_phase5c_page_render_crop_manifest.py
+stdout: ?? tests/test_ss12_phase5d_crop_artifacts.py
+stdout: ?? tests/test_ss12_phase5e_digitization_scaffold.py
+stdout: ?? tests/test_ss12_phase6a_uq_budget_scaffold.py
+stdout: ?? tests/test_ss12_phase6b_uq_propagation_scaffold.py
+stdout: ?? tests/test_ss12_phase6c_power_port_certification.py
+stdout: ?? tests/test_ss12_phase7a_review_certificate.py

@@ -4206,6 +4206,31 @@
       "status": "module_vetted_nonpromoting"
     },
     {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "collections.abc.Sequence",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.acceptance_shield",
+      "path": "src/dpf/first_principles/acceptance_shield.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
       "active_first_principles_closure": true,
       "can_support_first_principles_acceptance": false,
       "capability_tags": [
@@ -4328,6 +4353,37 @@
       "physics_facing": true,
       "source_reference_count": 3,
       "status": "active_module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "dpf.first_principles.numerical_fidelity",
+        "dpf.first_principles.numerical_fidelity.DEFAULT_PHASE3_TRANSFER_MATRIX_PATH",
+        "dpf.first_principles.numerical_fidelity.load_phase3_transfer_candidate_linkage",
+        "dpf.validation.circuit_field_coupling",
+        "dpf.validation.circuit_field_coupling.field_coupling_evidence_from_result",
+        "pathlib",
+        "pathlib.Path",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.circuit_power_port",
+      "path": "src/dpf/first_principles/circuit_power_port.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
+      "status": "module_vetted_nonpromoting"
     },
     {
       "active_first_principles_closure": true,
@@ -4760,6 +4816,86 @@
       "status": "active_module_vetted_nonpromoting"
     },
     {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "json",
+        "pathlib",
+        "pathlib.Path",
+        "scripts.validate_ss12_phase5b_figure_asset_inventory",
+        "scripts.validate_ss12_phase5b_figure_asset_inventory.validate_inventory",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.figure_asset_inventory",
+      "path": "src/dpf/first_principles/figure_asset_inventory.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "collections.abc",
+        "collections.abc.Mapping",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.figure_candidate_staging",
+      "path": "src/dpf/first_principles/figure_candidate_staging.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
+      "active_first_principles_closure": false,
+      "can_support_first_principles_acceptance": false,
+      "capability_tags": [],
+      "claim_without_source": false,
+      "classification": "nonphysics_infrastructure",
+      "docs_reference_paths": [],
+      "first_principles_verdicts": [],
+      "imports": [
+        "__future__",
+        "__future__.annotations",
+        "dpf.first_principles.figure_candidate_staging",
+        "dpf.first_principles.figure_candidate_staging.stage_figure_observable_candidate",
+        "json",
+        "pathlib",
+        "pathlib.Path",
+        "scripts.validate_ss12_phase5_figure_source_manifest",
+        "scripts.validate_ss12_phase5_figure_source_manifest.validate_manifest",
+        "typing",
+        "typing.Any"
+      ],
+      "knowledge_reference_paths": [],
+      "missing_source_paths": [],
+      "module": "dpf.first_principles.figure_source_manifest",
+      "path": "src/dpf/first_principles/figure_source_manifest.py",
+      "physics_facing": true,
+      "source_reference_count": 0,
+      "status": "module_vetted_nonpromoting"
+    },
+    {
       "active_first_principles_closure": true,
       "can_support_first_principles_acceptance": false,
       "capability_tags": [
@@ -5180,6 +5316,9 @@
         "dpf.first_principles.channel_state.ChannelState",
         "dpf.first_principles.channel_state.channel_state_map",
         "dpf.first_principles.channel_state.channel_state_summary",
+        "json",
+        "pathlib",
+        "pathlib.Path",
         "typing",
         "typing.Any"
       ],
@@ -11801,7 +11940,7 @@
       "inactive_backend_numerical_utility_not_first_principles_authority": 36,
       "inactive_diagnostic_surface_not_first_principles_authority": 15,
       "inactive_legacy_physics_not_first_principles_authority": 20,
-      "nonphysics_infrastructure": 64,
+      "nonphysics_infrastructure": 69,
       "package_export_surface": 32,
       "physics_source_referenced": 5,
       "reduced_or_baseline_only_not_first_principles_authority": 31,
@@ -11811,16 +11950,16 @@
     "inactive_physics_unvetted_count": 0,
     "missing_source_reference_count": 0,
     "module_role_review_required_count": 0,
-    "physics_facing_count": 185,
+    "physics_facing_count": 190,
     "source_referenced_count": 72,
     "status_counts": {
       "active_module_vetted_nonpromoting": 51,
       "baseline_only_nonpromoting": 31,
-      "module_vetted_nonpromoting": 171,
+      "module_vetted_nonpromoting": 176,
       "out_of_active_first_principles_path": 44,
       "source_vetted_by_external_constants_api_not_kr_evidence": 1
     },
-    "total_modules": 298,
+    "total_modules": 303,
     "unsafe_claim_surface_count": 0
   }
 }

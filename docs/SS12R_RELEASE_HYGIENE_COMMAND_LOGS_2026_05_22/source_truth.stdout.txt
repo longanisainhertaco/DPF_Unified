@@ -1,0 +1,6 @@
+{
+  "exhausted": true,
+  "json": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.json",
+  "markdown": "docs/FIRST_PRINCIPLES_SOURCE_TRUTH_EXHAUSTION_2026_05_22.md",
+  "open_issue_count": 0
+}

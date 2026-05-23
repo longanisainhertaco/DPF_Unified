@@ -1,0 +1,1 @@
+.venv312/bin/python scripts/verify_first_principles_module_source_vetting.py --strict --check --date 2026_05_22

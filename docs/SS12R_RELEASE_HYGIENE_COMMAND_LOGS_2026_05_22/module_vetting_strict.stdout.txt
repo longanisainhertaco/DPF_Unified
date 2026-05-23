@@ -1,0 +1,8 @@
+{
+  "active_physics_unvetted_count": 0,
+  "json": "docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.json",
+  "markdown": "docs/FIRST_PRINCIPLES_MODULE_SOURCE_VETTING_2026_05_22.md",
+  "missing_source_reference_count": 0,
+  "strict_passed": true,
+  "total_modules": 303
+}
