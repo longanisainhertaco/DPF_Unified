@@ -59,6 +59,32 @@ No scientific acceptance is promoted by this update. Akel Fig. 1 remains
 `blocked_by_review`, Lee/snowplow remains baseline-only, and the current
 `dpf first-principles` run remains engineering-probe evidence.
 
+2026-05-23 SS22 research/ops packaging update: the sustained research package is
+now recorded in `docs/SS22_RESEARCH_OPS_RUNBOOK_2026_05_23.md`,
+`docs/SS22_EVIDENCE_INDEX_2026_05_23.md`,
+`docs/SS22_LONG_RUN_RESEARCH_ROADMAP_2026_05_23.md`,
+`docs/SS22_FUTURE_SPRINT_QUEUE_2026_05_23.md`, and
+`docs/SS22_RESEARCH_OPS_PACKAGING_STATUS_2026_05_23.md`. The package keeps
+publication packet status deferred, records the SS22 board chain with no
+orphaned active work, and guards resource contention, scope explosion, and claim
+drift. The post-review fix/reverify pass consumed independent review PASS from
+`t_f9ba10c9`, with implementation and review lanes done and no active SS22 work
+outside the current fix/reverify lane. This update is operations packaging only;
+`accepted_runtime_claim`,
+`can_support_first_principles_acceptance`, and `promotes_acceptance` remain
+false.
+
+2026-05-23 SS21 product claim surface update: the release decision is now
+recorded as HONEST-BLOCKED / SOURCE-GATED PREVIEW in
+`docs/SS21_PRODUCT_CLAIM_SURFACE_RELEASE_DECISION_2026_05_23.md` and surfaced
+in `README.md`. Product copy is limited to source-gated preview / engineering
+probe wording; `accepted_runtime_claim`,
+`can_support_first_principles_acceptance`, and `promotes_acceptance` remain
+false. `tests/test_ss21_product_claim_surface.py` guards the memo and README
+against public-claim drift. Post-review fix/reverify task `t_98d289df` recorded
+independent focused review PASS as approval of the honest-blocked wording only;
+no accepted production/runtime/full-3D/end-to-end predictive claim was promoted.
+
 2026-05-23 SS19 UQ/comparator/certificate update: the certificate gate now has
 an executable SS19 pipeline evaluator that checks comparator mapping,
 uncertainty-budget terms, source/run hashes, upstream packet blockers, negative

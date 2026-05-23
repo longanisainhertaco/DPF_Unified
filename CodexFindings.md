@@ -4,6 +4,43 @@ Date: 2026-05-05
 
 Scope reviewed: `/Users/anthonyzamora/dpf-unified`, including the README, engine/circuit/fluid/MLX paths, diagnostics, radiation modules, validation tests, and the local `KnowledgeReference/*.md` corpus. Scientific judgments below use only the local KnowledgeReference files as source of truth.
 
+Ratchet update 2026-05-23, SS22 research/ops packaging and long-run roadmap:
+
+- Added SS22 sustained-research package docs:
+  `docs/SS22_RESEARCH_OPS_RUNBOOK_2026_05_23.md`,
+  `docs/SS22_EVIDENCE_INDEX_2026_05_23.md`,
+  `docs/SS22_LONG_RUN_RESEARCH_ROADMAP_2026_05_23.md`,
+  `docs/SS22_FUTURE_SPRINT_QUEUE_2026_05_23.md`, and
+  `docs/SS22_RESEARCH_OPS_PACKAGING_STATUS_2026_05_23.md`.
+- Added `tests/test_ss22_research_ops_packaging.py` to lock the ops package,
+  docs link resolution, future queue, evidence index, board-cleanup note, and
+  fail-closed claim posture.
+- Board hygiene: active SS22 chain is linked as
+  `t_ac939060 -> t_f9ba10c9 -> t_d78850af`; read-only board check found
+  `orphaned_active_work=0`. Post-review fix/reverify consumed independent
+  review PASS from `t_f9ba10c9`; `t_ac939060=done`, `t_f9ba10c9=done`, and
+  `active_ss22_work_excluding_current_fix_reverify=0` during reverify.
+- Boundary: SS22 is research/operations packaging only. Publication packet status
+  remains deferred; `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, and
+  `promotes_acceptance=false` remain the active claim posture.
+
+Ratchet update 2026-05-23, SS21 product claim surface and release decision:
+
+- Added `docs/SS21_PRODUCT_CLAIM_SURFACE_RELEASE_DECISION_2026_05_23.md`
+  as the release-decision memo for the post-SS20 product surface.
+- Updated `README.md` with explicit HONEST-BLOCKED / SOURCE-GATED PREVIEW
+  release posture and the three fail-closed acceptance flags.
+- Added `tests/test_ss21_product_claim_surface.py` to lock the release memo,
+  README posture, and high-risk public claim phrases against drift.
+- Post-review fix/reverify task `t_98d289df` consumed the independent focused
+  review PASS, updated the SS21 memo to `review-approved` for the honest-blocked
+  wording only, and reran the claim-hygiene suite plus acceptance scans.
+- Boundary: the release is allowed only as a source-gated preview / engineering
+  probe workbench; `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, and
+  `promotes_acceptance=false` remain the public claim posture.
+
 Ratchet update 2026-05-23, SS19 UQ/comparator/certificate pipeline:
 
 - Added `build_ss19_certificate_pipeline(...)` in

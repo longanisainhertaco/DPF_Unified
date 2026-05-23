@@ -145,6 +145,7 @@ source review, and task sizing before implementation.
 | SGC-006 | Complete 2026-05-09 | Extend local-first audit to renderer HTML, CSP, and external assets. |
 | SGC-007 | Complete 2026-05-09 | Align visible UI version/package version semantics. |
 | SGC-008 | Complete 2026-05-09 | Label PF-1000 defaults and presets by source scope so broad PF-1000 values are not confused with Akel shot-12581 values. |
+| SGC-009 | Complete 2026-05-23 | Add SS21 product-claim/release-posture guardrails. `docs/SS21_PRODUCT_CLAIM_SURFACE_RELEASE_DECISION_2026_05_23.md` records HONEST-BLOCKED / SOURCE-GATED PREVIEW; `README.md` exposes the fail-closed flags; `tests/test_ss21_product_claim_surface.py` prevents public-copy drift into accepted production first-principles/full-3D claims. Post-review fix/reverify recorded independent focused review PASS as approval of the honest-blocked wording only; all acceptance flags remain false. |
 
 ## Supplemental Physics Helpers
 
@@ -162,3 +163,4 @@ source review, and task sizing before implementation.
 | ID | Status | Task |
 | --- | --- | --- |
 | AGT-001 | Complete 2026-05-11 | Add root `AGENTS.md` as the project-level operating contract for future agent work. It records required first reads, `KnowledgeReference/`-only science source rules, evidence-state vocabulary, non-promotion lanes, hard blockers, verification command matrix, module routing, delegation rules, and maintenance triggers. This is process scaffolding only and does not promote any scientific evidence. |
+| AGT-002 | Complete 2026-05-23 | Add SS22 research/ops packaging for sustained work. `docs/SS22_RESEARCH_OPS_RUNBOOK_2026_05_23.md`, `docs/SS22_EVIDENCE_INDEX_2026_05_23.md`, `docs/SS22_LONG_RUN_RESEARCH_ROADMAP_2026_05_23.md`, `docs/SS22_FUTURE_SPRINT_QUEUE_2026_05_23.md`, and `docs/SS22_RESEARCH_OPS_PACKAGING_STATUS_2026_05_23.md` package the honest-blocked release posture, board cleanup plan, resource/scope/claim guards, and future sprint queue; `tests/test_ss22_research_ops_packaging.py` keeps those docs linkable and non-promoting. Post-review fix/reverify consumed independent review PASS, recorded the closed implementation/review lanes, and preserved the fail-closed claim posture. |

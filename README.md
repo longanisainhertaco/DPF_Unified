@@ -6,6 +6,21 @@ infrastructure, but it is not yet an end-to-end predictive DPF simulator.
 
 MIT License. Python 3.10+. Runs on Apple Silicon (MLX Metal) or CPU.
 
+## Release posture
+
+Current release decision: **HONEST-BLOCKED / SOURCE-GATED PREVIEW**. See
+[`docs/SS21_PRODUCT_CLAIM_SURFACE_RELEASE_DECISION_2026_05_23.md`](docs/SS21_PRODUCT_CLAIM_SURFACE_RELEASE_DECISION_2026_05_23.md).
+
+The first-principles and full-3D surfaces remain engineering probe paths with
+fail-closed acceptance metadata; engineering probe outputs are not validation evidence:
+
+- `accepted_runtime_claim=false`
+- `can_support_first_principles_acceptance=false`
+- `promotes_acceptance=false`
+
+No production first-principles, full-3D, or end-to-end predictive DPF acceptance
+claim is authorized by the current evidence stack.
+
 ## What it solves
 
 The resistive MHD system in conservative form:
