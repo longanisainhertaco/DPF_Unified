@@ -1,0 +1,386 @@
+{
+  "packet_id": "ss16_startup_bvp_evidence_closure",
+  "generated_at": "2026-05-23T00:00:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv_startup_bvp",
+  "source_scope": "PF-1000 full/upper-energy startup evidence from local KnowledgeReference; cross-scope startup method sources retained only as non-promoting candidates",
+  "kb_support_path": "/Users/anthonyzamora/Desktop/heliosmatrix_kb",
+  "authority_rule": "local_knowledge_reference_line_cited_sources_only",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "channels": [
+    {
+      "channel": "d2_breakdown",
+      "status": "candidate",
+      "scope_match": "same_scope_context_plus_unclosed_model",
+      "observables": [
+        {
+          "name": "pf1000_d2_fill_pressure_context",
+          "value": [
+            1,
+            5
+          ],
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 42,
+              "line_end": 47,
+              "quote": "cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1\u20135 torr. The condenser bank was charged up to 40 kV. The total energy stored in the bank was in the range of 900\u20131000 kJ, while the maximum of the discharge current was 3 MA.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same-scope operating gas context; not a breakdown threshold or preionization state"
+        },
+        {
+          "name": "pf1000_large_electrode_low_pressure_fast_ion_context",
+          "value": [
+            1,
+            2
+          ],
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 74,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2\u00d71011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from shots performed at a low filling pressure (1-2 Torr).",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same PF-1000 large-electrode D2 pressure context; does not close a breakdown BVP"
+        },
+        {
+          "name": "generic_pf1000_surface_breakdown_sequence",
+          "value": "gas_breakdown_along_cylindrical_insulator_surface_discharge",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 55,
+              "line_end": 68,
+              "quote": "Dense plasma-focus (DPF) [1] is a gas-discharge installation with two cylinder metallic coaxial electrodes. It belongs to the Z-pinch class and operates with a cylindrical insulator positioned at the lower part of the internal electrode (anode). Initial pressure of the working gas is equal to a few torr. Temporal evolution of the discharge undergoes as a rule the following several phases. The \ufb01rst stage is gas breakdown developing along the exterior of a cylindrical insulator. This surface discharge [2] takes from a few to a hundred nanoseconds and bears non-equilibrium kinetic (K) character (acceleration of initial charged particles, streamers, avalanche, etc [3]). The second stage is of a magnetohydrodynamic (MHD)",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "PF-1000 phase description supports existence and kinetic character of breakdown; not a quantitative D2 BVP closure"
+        }
+      ],
+      "blocked_reason": "D2 pressure and surface-breakdown context are line-cited, but no reviewed same-scope breakdown threshold, Townsend/streamer closure, prebreakdown E-field, or uncertainty packet exists."
+    },
+    {
+      "channel": "preionization_state",
+      "status": "blocked",
+      "scope_match": "not_same_scope_quantitative",
+      "observables": [
+        {
+          "name": "wrong_scope_initial_temperature_context",
+          "value": 4,
+          "unit": "eV",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
+              "line_start": 642,
+              "line_end": 660,
+              "quote": "As a final consideration, the breakdown physics will depend on the evolving temperature of the initial plasma (typically a few eV) which define the mean free electron paths. Assuming a Te~4 eV for all fill pressures, and using the relationships between ionization path length and pressure, Liz(P), derived by Figure 11: Structure of initial plasma sheath at the beginning of the axial rundown phase (~1 \u03bcs). From left to right the effect of fill pressure can be observed, i.e. increasing filamentation effects with increasing pressure. DISTRIBUTION A: Distribution approved for public release  ## Page 16  _pp. 16-16_  14 Bennett et al.[12], it is found to agree remarkably well with Liz(P)/Li = 2.4 when using the optimal pressure for each of the three insulator lengths considered in our study. These ionization path lengths are larger than expected for optimal breakdown based a neutral fill gas \u2013 indicative of a significant contribution of the insulator material surface effects. The fixed ratio of Liz to Li is supportive of the concept that the optimal insulator length for breakdown/lift-off may scale with the ionization path length and provides a direct means to optimize DPF operations moving forward as geometries are changed.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "Bennett/UCSD context is not PF-1000 full-energy same-scope and cannot set initial electron temperature or ionization fraction for the runtime BVP"
+        },
+        {
+          "name": "ionization_process_importance_context",
+          "value": "ionization_processes_important_in_rundown_sheath",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/the-dense-plasma-focus-a-versatile-dense-pinch-for-diverse-applications.md",
+              "line_start": 558,
+              "line_end": 570,
+              "quote": "Kwek et al. [59] presented detailed Schlieren images of the current sheath in the coaxial run-down phase. Their studies showed the signi\ufb01cance of the current sheath structure in the run-down phase on the neutron production in the PF. Different \ufb01lling pressures show structural changes in the sheath as re- vealed by their Schlieren images. Their results indicated that ionization processes during the propagation of the sheath in the run-down phase play an important role in determining the optimum-pressure regime. In most successful PF devices, the optimum operating pressures seemed to be centered around 10 mbar regardless of the energy of the devices. They also observed that the speed of propagation of the sheath in the run- down phase was seldom greater than 10 cm/\u03bcs (100 km/s). This",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "review/context source motivates the channel but supplies no same-scope PF-1000 initial preionization value"
+        }
+      ],
+      "blocked_reason": "No PF-1000 same-scope preionization density, ionization fraction, charge-state, or initial electron/ion temperature packet with uncertainty and review exists."
+    },
+    {
+      "channel": "insulator_flashover",
+      "status": "candidate",
+      "scope_match": "same_scope_geometry_plus_unclosed_flashover_physics",
+      "observables": [
+        {
+          "name": "pf1000_alumina_insulator_length_and_gas",
+          "value": {
+            "material": "alumina",
+            "operating_length_mm": 113,
+            "fill_pressure_torr": [
+              1,
+              5
+            ]
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 38,
+              "line_end": 47,
+              "quote": "with Mather-type electrodes. The outer grounded electrode of the 368-mm diameter is made of 24 stainless steel rods. The inner copper electrode (240-mm diameter and 450 mm in ac- tive length) is dynamically charged by a positive voltage. The cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1\u20135 torr. The condenser bank was charged up to 40 kV. The total energy stored in the bank was in the range of 900\u20131000 kJ, while the maximum of the discharge current was 3 MA.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same-scope insulator material/length context; no flashover model constants or surface-conditioning state"
+        },
+        {
+          "name": "pf1000_surface_discharge_streamer_avalanche_context",
+          "value": "surface_discharge_streamers_avalanche_kinetic_character",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 62,
+              "line_end": 68,
+              "quote": "The \ufb01rst stage is gas breakdown developing along the exterior of a cylindrical insulator. This surface discharge [2] takes from a few to a hundred nanoseconds and bears non-equilibrium kinetic (K) character (acceleration of initial charged particles, streamers, avalanche, etc [3]). The second stage is of a magnetohydrodynamic (MHD)",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "supports surface-discharge character but not a reviewed flashover equation set"
+        }
+      ],
+      "blocked_reason": "PF-1000 insulator material/length and qualitative surface discharge are cited, but flashover thresholds, material/surface conditioning, secondary-emission data, and review are absent."
+    },
+    {
+      "channel": "sheath_liftoff",
+      "status": "candidate",
+      "scope_match": "same_scope_phase_context_plus_cross_scope_method_context",
+      "observables": [
+        {
+          "name": "pf1000_inverse_pinch_sheath_expansion_phase",
+          "value": "plasma_sheath_expands_from_insulator_to_cathode_bars",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 68,
+              "line_end": 76,
+              "quote": "The second stage is of a magnetohydrodynamic (MHD) nature. It is an inverse pinch, when the plasma sheath expands from the insulator to the cathode bars, being stable all the time. The third stage, being relatively long (several microsec- onds for medium- and large-scale facilities), is also mainly of an MHD nature [4]. It starts after the second stage with supersonic plasma acceleration by an azimuth magnetic \ufb01eld",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same-scope phase sequence, not a liftoff time or handoff state vector"
+        },
+        {
+          "name": "cross_scope_liftoff_pressure_filamentation_context",
+          "value": "filamentation_observed_at_upper_pressure_bound_during_initial_sheath_formation_and_liftoff",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/effect-of-current-sheath-initiation-on-the-radial-collapse-and-energetic-particle-accelera-b2e95b88.md",
+              "line_start": 662,
+              "line_end": 670,
+              "quote": "There exists an optimal intermediate pressure regime wherein neutron production is increased, the lower boundary of this pressure determined predominantly by the drive parameter of the system. An upper bound on pressure is identified whereafter significant filamentation is observed as related to the partial ionization of the system during initial sheath formation and liftoff. Increasing insulator length requires lower fill pressures to optimize the average neutron yield, in contrast to what is expected based on maintaining pinch timing. These factors in concert represent the careful balance between the electrode-insulator geometries and the operating pressure range. Future studies will evaluate specific shot-to-shot variations observed and changes to the anode-cathode geometry as they relate to efforts towards the further optimization of neutron generation.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "method/context only; wrong-scope for PF-1000 full-energy acceptance"
+        }
+      ],
+      "blocked_reason": "Liftoff phase and pressure sensitivity are line-cited, but no reviewed same-scope liftoff delay, sheath thickness/current partition, velocity distribution, or BVP handoff state exists."
+    },
+    {
+      "channel": "early_circuit_handoff",
+      "status": "candidate",
+      "scope_match": "same_scope_circuit_context_without_power_port_closure",
+      "observables": [
+        {
+          "name": "pf1000_bank_parameters",
+          "value": {
+            "U0_kV": [
+              20,
+              40
+            ],
+            "C0_mF": 1.332,
+            "E0_kJ": [
+              266,
+              1064
+            ],
+            "Tquarter_us": 5.4
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 148,
+              "line_end": 155,
+              "quote": "\u2013 the charging voltage \u2013 U0 = 20\u00f740 kV, \u2013 the condenser bank capacitance \u2013 C0 = 1.332 mF, \u2013 the initial capacitor bank energy \u2013 E0 = 266\u00f71064 kJ, \u2013 the nominal inductance \u2013 L0 = 8.9 nH, \u2013 the quarter discharge time \u2013 T1/4 = 5.4 \u00b5s, \u2013 the short-circuit current \u2013 ISC = 15 MA, \u2013 the characteristic impedance \u2013 Z0 = 2.6 m\u2126. At present we start to work at 500 to 800 kJ energy levels and",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same-scope bank context; not a startup power-port waveform or field handoff"
+        },
+        {
+          "name": "pf1000_current_voltage_diagnostics",
+          "value": "current_didt_voltage_waveforms_available_as_diagnostics",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 160,
+              "line_end": 177,
+              "quote": "Diagnostic systems The basic diagnostics applied in the studies of any plasma focus device are usually measurements of a discharge current and a voltage drop across its electrodes. The discharge cur- rent of the plasma focus is measured using a Rogowski coil (total current) or a magnetic probe (localized current dis- tribution). Resistive probes are used in many systems to measure a transient voltage during the plasma focus dis- charge, due to their ease of the installation and operation. Since it is not possible to connect the probe to measure the voltage drop across the plasma directly, this measurement is usually made externally across the electrodes of the device. The current, the time derivative of the current and voltage waveforms of typically plasma focus discharge registered on the PF-1000 device are shown in Fig. 4. The sharp voltage spike and current dip are characteristic for a focusing dis- charge in which a large increase of the plasma column impedance has occurred.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "diagnostic capability/context; no accepted early-time waveform digitization with uncertainty"
+        }
+      ],
+      "blocked_reason": "Bank parameters and diagnostics are cited, but early circuit-to-plasma power-port handoff lacks reviewed waveform, sign/time-centering convention, field-derived load, residual, and uncertainty."
+    },
+    {
+      "channel": "same_scope_material_geometry",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "pf1000_electrode_materials_and_insulator",
+          "value": {
+            "outer_electrode_material": "stainless_steel_rods",
+            "inner_electrode_material": "copper",
+            "insulator_material": "alumina"
+          },
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 35,
+              "line_end": 44,
+              "quote": "HE MEASUREMENTS were performed on the PF1000 plasma-focus device, installed at the Institute of Plasma Physics and Laser Microfusion, Warsaw, Poland. It is equipped with Mather-type electrodes. The outer grounded electrode of the 368-mm diameter is made of 24 stainless steel rods. The inner copper electrode (240-mm diameter and 450 mm in ac- tive length) is dynamically charged by a positive voltage. The cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1\u20135 torr. The",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same-scope material/geometry context for startup boundaries; incomplete for wall thickness/full 3-D mask"
+        },
+        {
+          "name": "pf1000_large_electrode_dimensions",
+          "value": {
+            "outer_electrode_diameter_mm": 400,
+            "inner_electrode_diameter_mm": 230,
+            "electrode_length_mm": 600
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 81,
+              "line_end": 86,
+              "quote": "larger dimensions. The outer electrode is 400 mm in diam- eter and the inner one is 230 mm in diameter. Both the elec- trodes are about 600 mm in length. These new large elec- trodes seem to be better matched to transmit electrical energy (up to 1 MJ stored in the condenser battery) to plas- ma discharges. This paper reports on neutron emission,",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "large-electrode PF-1000 source; revision mapping and full runtime mask remain open"
+        }
+      ],
+      "blocked_reason": "Same-scope material/geometry inputs are partially source-available, but full boundary mask, insulator wall thickness, surface state, uncertainty, and review are incomplete."
+    },
+    {
+      "channel": "startup_bvp_payload",
+      "status": "blocked",
+      "scope_match": "payload_absent",
+      "observables": [
+        {
+          "name": "alegra_pic_to_mhd_import_requirement_context",
+          "value": "PIC-derived sheath creation data may initialize MHD simulations",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/unlimited-release-printed-september-2009-alegra-hedp-simulations-of-the-dense-plasma-focus.md",
+              "line_start": 265,
+              "line_end": 274,
+              "quote": "Several aspects of DPF function are still poorly understood. Optimal neutron production requires the creation of a uniform, relatively thin sheath [8,9]. Choosing the correct gas fill to achieve this for new geometries is a still matter of trial and error. Outside of the ideal range the sheath may appear diffuse and reach across the cavity, or secondary sheaths or filaments may appear [8], both apparently harmful to performance. Voss Scientific has recently carried out 2D, fully electromagnetic particle-in-cell (PIC) simulations of sheath creation [10] using their code LSP, modeling the creation of the plasma sheath for arbitrary operating conditions. This is an important step toward a design tool for choosing DPF operating conditions. The ALEGRA team is completing work on a new capability to directly import data derived from these PIC simulations and use it to initiate our MHD simulations.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "context-only requirement for imported PIC-derived startup; no same-scope payload artifact is present"
+        },
+        {
+          "name": "bvp_state_vector_required_fields",
+          "value": [
+            "electron_density",
+            "ion_density",
+            "temperature",
+            "velocity",
+            "electric_field",
+            "magnetic_field",
+            "current_density",
+            "charge_current_energy_consistency"
+          ],
+          "unit": "schema",
+          "uncertainty": null,
+          "source_refs": [],
+          "note": "project/runtime-required payload remains absent; schema cannot be accepted without line-cited source values and review"
+        }
+      ],
+      "blocked_reason": "No same-scope startup payload exists with density/temperature/charge/current/field/velocity state, hashes, units, conservation checks, uncertainty, and independent review."
+    },
+    {
+      "channel": "uncertainty_budget",
+      "status": "blocked",
+      "scope_match": "missing",
+      "observables": [],
+      "blocked_reason": "No startup-specific uncertainty budget exists for breakdown/preionization/flashover/liftoff/circuit handoff/material geometry inputs."
+    },
+    {
+      "channel": "review_certificate",
+      "status": "candidate",
+      "scope_match": "independent_review_pass_non_promoting",
+      "observables": [
+        {
+          "name": "independent_review_pass_non_promoting_packet",
+          "value": "PASS: SS16 startup BVP evidence closure is correctly fail-closed and source-grounded.",
+          "unit": "review_verdict",
+          "uncertainty": null,
+          "review_artifact": "/tmp/dpf_claude_bridge_t_5e6556b8_2026-05-23T054142.418751Z0000.txt",
+          "note": "Review accepts the fail-closed packet posture only; it does not close missing startup payload or uncertainty evidence."
+        }
+      ],
+      "blocked_reason": "Independent review passed the fail-closed SS16 packet posture, but a runtime startup BVP acceptance certificate remains blocked because same-scope startup payload and uncertainty budget are still missing."
+    }
+  ],
+  "runtime_bridge": {
+    "module": "dpf.first_principles.startup_bvp",
+    "status": "blocked_runtime_startup_bvp_not_closed",
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false,
+    "blocking_channels": [
+      "preionization_state",
+      "startup_bvp_payload",
+      "uncertainty_budget",
+      "review_certificate"
+    ],
+    "decision": "keep build_startup_bvp_packet and first-principles readiness fail-closed; current runtime CIV/Paschen audit remains engineering-only candidate telemetry"
+  },
+  "evaluate_learn_continue": {
+    "evaluate": "startup packet validator and focused tests require required channels, exact KR quote matching, false acceptance flags, and runtime bridge non-promotion",
+    "learn": "PF-1000 same-scope material/geometry, D2 pressure, bank context, and qualitative surface-discharge/sheath phases are source-available, but preionization values, flashover model constants, liftoff state, BVP payload, UQ, and review remain open",
+    "continue": "next executable phase is target extraction/review for a same-scope startup payload or explicit review-backed rejection/narrowing of the accepted startup scope; do not promote runtime startup claims before that closes"
+  }
+}

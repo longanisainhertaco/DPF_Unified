@@ -1,0 +1,1 @@
+python3 scripts/audit_first_principles_artifacts.py results/**/*.json

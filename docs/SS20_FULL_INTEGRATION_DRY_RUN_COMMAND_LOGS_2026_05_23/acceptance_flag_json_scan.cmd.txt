@@ -1,0 +1,32 @@
+python3 - <<'PY'
+import json
+from pathlib import Path
+keys={'accepted_runtime_claim','can_support_first_principles_acceptance','promotes_acceptance'}
+allowed_true_status={'accepted_synthetic_complete_fixture'}
+findings=[]
+for root in [Path('docs'), Path('results')]:
+    for path in root.rglob('*.json'):
+        if 'SS20_FULL_INTEGRATION_DRY_RUN_COMMAND_LOGS' in path.parts:
+            continue
+        try:
+            data=json.loads(path.read_text())
+        except Exception:
+            continue
+        stack=[('$',data)]
+        while stack:
+            loc,obj=stack.pop()
+            if isinstance(obj, dict):
+                status=str(obj.get('status',''))
+                for k,v in obj.items():
+                    child=f'{loc}.{k}'
+                    if k in keys and v is True and status not in allowed_true_status:
+                        findings.append({'path':str(path),'json_path':child,'status':status,'key':k})
+                    if isinstance(v,(dict,list)):
+                        stack.append((child,v))
+            elif isinstance(obj, list):
+                for i,v in enumerate(obj):
+                    if isinstance(v,(dict,list)):
+                        stack.append((f'{loc}[{i}]',v))
+print(json.dumps({'unexpected_promoting_true_count':len(findings),'findings':findings[:100]}, indent=2))
+raise SystemExit(1 if findings else 0)
+PY

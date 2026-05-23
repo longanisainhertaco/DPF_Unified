@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from typing import Any
 
@@ -118,6 +120,40 @@ REQUIRED_NEGATIVE_TEST_CHANNELS = (
     "negative_test_app_only_or_reduced_model_fallback",
 )
 
+SS19_REQUIRED_SOURCE_PACKET_HASH_IDS = (
+    "ss14",
+    "ss16",
+    "ss17",
+    "ss18",
+)
+
+SS19_COMPARATOR_MAPPING_FIELDS = (
+    "output_path",
+    "source_target_id",
+    "metric",
+    "unit_conversion",
+    "time_alignment",
+    "tolerance_id",
+)
+
+SS19_UNCERTAINTY_BUDGET_FIELDS = (
+    "measurement_uncertainty",
+    "model_uncertainty",
+    "numerical_uncertainty",
+    "propagation_method",
+    "observable_uncertainties",
+)
+
+SS19_NEGATIVE_CONTROLS = (
+    "draft_evidence",
+    "blocked_evidence",
+    "cross_scope_evidence",
+    "missing_uq",
+    "missing_review",
+    "hidden_limiter",
+    "app_only_or_reduced_model_fallback",
+)
+
 
 def build_first_principles_certificate_gate_packet(
     *,
@@ -177,6 +213,210 @@ def build_first_principles_certificate_gate_packet(
         "can_release_first_principles_claim": False,
         "can_support_first_principles_acceptance": False,
     }
+
+
+def build_ss19_certificate_pipeline(
+    *,
+    declared_scope: str,
+    device_name: str | None = None,
+    run_manifest_hash: str | None = None,
+    source_packet_hashes: Mapping[str, str] | None = None,
+    comparator_mapping: Mapping[str, Mapping[str, Any]] | None = None,
+    uncertainty_budget: Mapping[str, Any] | None = None,
+    upstream_packets: Mapping[str, Mapping[str, Any]] | None = None,
+    negative_controls: Mapping[str, bool] | None = None,
+    review_certificate: Mapping[str, Any] | None = None,
+    synthetic_complete_fixture: bool = False,
+) -> dict[str, Any]:
+    """Evaluate the SS19 comparator/UQ/certificate pipeline fail-closed.
+
+    The only positive emission path is an explicitly marked synthetic complete
+    fixture. Production inputs, even when structurally complete, remain refused
+    until a later review gate deliberately enables real acceptance.
+    """
+
+    source_hash_matrix = _ss19_source_hash_matrix(source_packet_hashes)
+    comparator_matrix = _ss19_comparator_mapping_matrix(comparator_mapping)
+    uncertainty_matrix = _ss19_uncertainty_budget_matrix(uncertainty_budget)
+    negative_matrix = _ss19_negative_control_matrix(negative_controls)
+    upstream_statuses = _upstream_statuses(upstream_packets)
+    upstream_blockers = {
+        name: status
+        for name, status in upstream_statuses.items()
+        if _status_blocks_certificate(status)
+    }
+    review_status = None if review_certificate is None else str(
+        review_certificate.get("status", "")
+    )
+    review_accepted = bool(
+        review_status
+        and (
+            review_status.startswith("accepted_synthetic_fixture")
+            or review_status in {"reviewed_accepted", "accepted"}
+        )
+    )
+
+    refusal_reasons: list[str] = []
+    if not _ss19_hash_present(run_manifest_hash):
+        refusal_reasons.append("missing_run_manifest_hash")
+    if not all(item["present"] for item in source_hash_matrix.values()):
+        refusal_reasons.append("incomplete_source_packet_hashes")
+    if not comparator_matrix["complete"]:
+        refusal_reasons.append("incomplete_comparator_mapping")
+    if not uncertainty_matrix["complete"]:
+        refusal_reasons.append("incomplete_uncertainty_budget")
+    if not all(item["passed"] for item in negative_matrix.values()):
+        refusal_reasons.append("incomplete_negative_controls")
+    if upstream_blockers:
+        refusal_reasons.append("blocked_upstream_packets")
+    if not review_accepted:
+        refusal_reasons.append("missing_or_unaccepted_review_certificate")
+
+    stack_complete = not refusal_reasons
+    certificate_kind = "synthetic_fixture" if synthetic_complete_fixture else "production"
+    if stack_complete and synthetic_complete_fixture:
+        status = "accepted_synthetic_complete_fixture"
+        can_emit_certificate = True
+    elif stack_complete:
+        status = "refused_production_acceptance_disabled"
+        can_emit_certificate = False
+        refusal_reasons = ["production_acceptance_requires_real_review_gate"]
+    else:
+        status = "refused_incomplete_certificate_stack"
+        can_emit_certificate = False
+
+    artifact_payload = {
+        "declared_scope": declared_scope,
+        "device_name": device_name or "not_declared",
+        "run_manifest_hash": run_manifest_hash,
+        "source_packet_hashes": dict(source_packet_hashes or {}),
+        "comparator_mapping": dict(comparator_mapping or {}),
+        "uncertainty_budget": dict(uncertainty_budget or {}),
+        "negative_controls": dict(negative_controls or {}),
+        "review_certificate": dict(review_certificate or {}),
+        "synthetic_complete_fixture": synthetic_complete_fixture,
+    }
+    certificate_artifact_hash = "sha256:" + hashlib.sha256(
+        json.dumps(artifact_payload, sort_keys=True, default=str).encode("utf-8")
+    ).hexdigest()
+
+    return {
+        "status": status,
+        "certificate_kind": certificate_kind,
+        "declared_scope": declared_scope,
+        "device_name": device_name or "not_declared",
+        "stack_complete": stack_complete,
+        "can_emit_certificate": can_emit_certificate,
+        "refusal_reasons": refusal_reasons,
+        "run_manifest_hash": run_manifest_hash,
+        "source_packet_hash_matrix": source_hash_matrix,
+        "comparator_mapping_matrix": comparator_matrix,
+        "uncertainty_budget_matrix": uncertainty_matrix,
+        "negative_control_matrix": negative_matrix,
+        "upstream_packet_statuses": upstream_statuses,
+        "upstream_certificate_blockers": upstream_blockers,
+        "review_certificate_status": review_status,
+        "certificate_artifact_hash": certificate_artifact_hash,
+        "accepted_runtime_claim": False,
+        "can_support_first_principles_acceptance": False,
+        "promotes_acceptance": False,
+    }
+
+
+def _ss19_hash_present(value: str | None) -> bool:
+    if value is None:
+        return False
+    normalized = value.strip()
+    if not normalized.startswith("sha256:"):
+        return False
+    digest = normalized.removeprefix("sha256:")
+    return len(digest) == 64 and all(ch in "0123456789abcdefABCDEF" for ch in digest)
+
+
+def _ss19_source_hash_matrix(
+    source_packet_hashes: Mapping[str, str] | None,
+) -> dict[str, dict[str, Any]]:
+    hashes = source_packet_hashes or {}
+    return {
+        source_id: {
+            "hash": hashes.get(source_id),
+            "present": _ss19_hash_present(hashes.get(source_id)),
+            "decision": (
+                "hash_present"
+                if _ss19_hash_present(hashes.get(source_id))
+                else "missing_or_invalid_source_packet_hash"
+            ),
+        }
+        for source_id in SS19_REQUIRED_SOURCE_PACKET_HASH_IDS
+    }
+
+
+def _ss19_comparator_mapping_matrix(
+    comparator_mapping: Mapping[str, Mapping[str, Any]] | None,
+) -> dict[str, Any]:
+    mapping = comparator_mapping or {}
+    observable_rows: dict[str, dict[str, Any]] = {}
+    for observable, row in mapping.items():
+        missing = [
+            field for field in SS19_COMPARATOR_MAPPING_FIELDS
+            if not _ss19_nonempty(row.get(field))
+        ]
+        observable_rows[str(observable)] = {
+            "missing_fields": missing,
+            "complete": not missing,
+            "decision": "mapped" if not missing else "incomplete_mapping",
+        }
+    complete = bool(observable_rows) and all(
+        row["complete"] for row in observable_rows.values()
+    )
+    return {
+        "complete": complete,
+        "required_fields": list(SS19_COMPARATOR_MAPPING_FIELDS),
+        "observable_rows": observable_rows,
+    }
+
+
+def _ss19_uncertainty_budget_matrix(
+    uncertainty_budget: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    budget = uncertainty_budget or {}
+    missing = [
+        field for field in SS19_UNCERTAINTY_BUDGET_FIELDS
+        if not _ss19_nonempty(budget.get(field))
+    ]
+    return {
+        "complete": not missing,
+        "required_fields": list(SS19_UNCERTAINTY_BUDGET_FIELDS),
+        "missing_fields": missing,
+        "decision": "complete" if not missing else "incomplete_uncertainty_budget",
+    }
+
+
+def _ss19_negative_control_matrix(
+    negative_controls: Mapping[str, bool] | None,
+) -> dict[str, dict[str, Any]]:
+    controls = negative_controls or {}
+    return {
+        control: {
+            "passed": controls.get(control) is True,
+            "decision": (
+                "negative_control_passed"
+                if controls.get(control) is True
+                else "missing_required_negative_control"
+            ),
+        }
+        for control in SS19_NEGATIVE_CONTROLS
+    }
+
+
+def _ss19_nonempty(value: object) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, Mapping):
+        return bool(value)
+    if isinstance(value, (str, bytes, bytearray)):
+        return bool(value.strip() if isinstance(value, str) else value)
+    return True
 
 
 def _upstream_statuses(

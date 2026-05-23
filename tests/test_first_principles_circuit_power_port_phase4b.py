@@ -65,6 +65,36 @@ def test_phase4b_waveform_without_power_port_conventions_remains_blocked() -> No
     assert "review_certificate_missing" in packet["blocking_reasons"]
 
 
+def test_phase4b_unreviewed_power_port_residual_remains_blocked() -> None:
+    coupled = circuit_coupled_energy_evidence_from_history(
+        times_s=[0.0, 1.0, 2.0],
+        current_A=[2.0, 2.0, 2.0],
+        voltage_V=[5.0, 5.0, 5.0],
+        poynting_power_W=[10.0, 10.0, 10.0],
+        stored_energy_J=[0.0, 10.0, 20.0],
+        verification_scope=PF1000_SCOPE,
+        interval_labels=["field_derived_candidate"],
+    )
+    packet = build_circuit_power_port_packet(
+        validation_scope=PF1000_SCOPE,
+        coupling_result={"circuit_coupled_energy_verification": coupled},
+        waveform_packet={
+            "source_path": "KnowledgeReference/example.md",
+            "figure_id": "synthetic",
+            "extraction_method": "unit_test",
+            "digitization_hash": "abc123",
+            "uncertainty": {"relative": 0.05},
+            "sign_convention": "positive_poynting_power_is_load_absorbed_power",
+            "time_centering": "implicit_midpoint",
+            "poynting_or_j_dot_e_residual": {"passed": True},
+        },
+    )
+
+    assert packet["accepted_power_port_claim"] is False
+    assert "poynting_or_j_dot_e_residual_review_missing" in packet["blocking_reasons"]
+    assert packet["waveform_review_status"]["can_support_acceptance"] is False
+
+
 def test_phase4b_transfer_candidate_matrix_links_without_promotion() -> None:
     packet = build_circuit_power_port_packet(validation_scope=PF1000_SCOPE)
 

@@ -59,6 +59,15 @@ No scientific acceptance is promoted by this update. Akel Fig. 1 remains
 `blocked_by_review`, Lee/snowplow remains baseline-only, and the current
 `dpf first-principles` run remains engineering-probe evidence.
 
+2026-05-23 SS19 UQ/comparator/certificate update: the certificate gate now has
+an executable SS19 pipeline evaluator that checks comparator mapping,
+uncertainty-budget terms, source/run hashes, upstream packet blockers, negative
+controls, review status, and emits a deterministic certificate artifact hash.
+The production branch still refuses even when structurally complete; the only
+positive path is `accepted_synthetic_complete_fixture` for wiring tests, with
+`accepted_runtime_claim`, `can_support_first_principles_acceptance`, and
+`promotes_acceptance` all false.
+
 2026-05-14 FP-2 status: the first limiter-ledger slice is implemented for the
 app-level PF-1000/Akel first-principles path. Run results now expose
 `first_principles_limiter_ledger`, readiness blocks on missing or active
@@ -120,6 +129,16 @@ work is now source-scoped ionization/recombination, electron-neutral transport,
 anomalous resistivity, full-vector resistive operator scope if `B_r/B_z`
 becomes material, and the same-scope validation packets.
 
+2026-05-23 SS15 power-port update: the field-coupling evidence path now exposes
+axisymmetric `J·E` power-port diagnostics with explicit sign convention,
+cell-centered time-centering, and Poynting/`J·E` residual metrics, and the
+Tier-3 circuit-energy verifier fails unrecognized interval labels instead of
+silently accepting them. The Phase 4-B circuit power-port packet also requires
+an explicitly reviewed/accepted residual before treating the review key as
+present. This is tighter evidence closure only: `results/mhd_tier3_numerical_packet.json`
+remains blocked/non-promoting, and the same-scope waveform/review certificate
+and first-principles acceptance gates remain closed.
+
 2026-05-14 source-of-truth ingestion update: the user-validated arXiv
 `2604.09032v1` paper, "A Fully Electromagnetic Hybrid PIC-Fluid Model for
 Predictive Fusion Neutron Yield in Dense Plasma Focus", is now represented in
@@ -160,6 +179,45 @@ reviewed dimensionality, and same-scope 3-D evidence. A revision-specific
 `PF1000GeometryPacket.scholz_2001_24rod_large_electrode()` constructor now
 consumes the Scholz 2000/2001 hardware values without mutating Akel/Krauz
 constructors.
+
+2026-05-23 SS18 neutron diagnostic stack update: `docs/SS18_NEUTRON_DIAGNOSTIC_VALIDATION_STACK_2026_05_23.json`
+and `docs/SS18_NEUTRON_DIAGNOSTIC_VALIDATION_STACK_2026_05_23.md`
+now separate PF-1000 neutron diagnostic evidence into yield, timing, spectrum,
+anisotropy, detector/activation response, diagnostic mapping, and uncertainty
+blocker mechanisms. The live validator enforces exact `KnowledgeReference/`
+source refs, narrow quote windows, diagnostic completeness, and fail-closed
+acceptance flags. The packet deliberately keeps every mechanism `candidate` or
+`blocked`; no neutron spectrum, detector response matrix, uncertainty budget,
+review certificate, runtime claim, or first-principles acceptance is promoted.
+
+2026-05-23 SS17 spatial/thermodynamic packet update: `docs/SS17_SPATIAL_THERMO_VALIDATION_PACKET_MATRIX_2026_05_23.json`
+and `docs/SS17_SPATIAL_THERMO_VALIDATION_PACKET_REPORT_2026_05_23.md`
+now stage PF-1000 full/upper-energy local KR candidates for density/emission
+geometry, phase timing, EM-field history, and temperature/distribution history.
+The live validator enforces exact KnowledgeReference line/quote provenance,
+required SS17 channels, non-promoting comparator stubs, scalar-only shortcut
+rejection, uncertainty gates, review gates, and fail-closed acceptance flags.
+The update deliberately keeps all channels `candidate` or `blocked`; no spatial,
+thermodynamic, EM-field, timing, uncertainty, review-certificate, runtime,
+full-3D, or first-principles acceptance is promoted.
+
+2026-05-23 SS14 source-packet expansion update: `docs/SS14_PF1000_SAME_SCOPE_SOURCE_PACKET_MATRIX_2026_05_23.json`
+and `docs/SS14_PF1000_SAME_SCOPE_SOURCE_PACKET_EXPANSION_2026_05_23.md`
+now expand PF-1000 full/upper-energy local KR candidates across the required
+SS14 channels with exact source path/line/quote validation and explicit
+non-promoting transfer rows. The update deliberately keeps all rows
+`candidate`, `cross_scope_candidate`, or `blocked`; no uncertainty budget,
+review certificate, neutron-spectrum authority, or first-principles/runtime
+acceptance is promoted.
+
+2026-05-23 SS16 startup BVP evidence update: `docs/SS16_STARTUP_BVP_EVIDENCE_PACKET_MATRIX_2026_05_23.json`
+and `docs/SS16_STARTUP_BVP_EVIDENCE_CLOSURE_2026_05_23.md` now enumerate the
+startup evidence closure state for PF-1000 full/upper-energy startup scope.
+Same-scope material/geometry, D2 pressure, bank context, and qualitative
+surface-discharge/sheath phase evidence are line-cited candidates; preionization
+state, reviewed flashover/liftoff equations, startup state payload,
+uncertainty budget, and review certificate remain blocked. Runtime startup BVP
+and first-principles acceptance flags remain false.
 
 2026-05-20 package-native 3-D gate update: the package-native
 `first-principles-3d` runner now exposes the shared `hybrid_pic_3d_readiness`

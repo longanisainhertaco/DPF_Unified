@@ -4,9 +4,120 @@ Date: 2026-05-05
 
 Scope reviewed: `/Users/anthonyzamora/dpf-unified`, including the README, engine/circuit/fluid/MLX paths, diagnostics, radiation modules, validation tests, and the local `KnowledgeReference/*.md` corpus. Scientific judgments below use only the local KnowledgeReference files as source of truth.
 
+Ratchet update 2026-05-23, SS19 UQ/comparator/certificate pipeline:
+
+- Added `build_ss19_certificate_pipeline(...)` in
+  `src/dpf/first_principles/certificate_gate.py` to evaluate comparator mapping,
+  uncertainty-budget completeness, run/source hashes, upstream blockers,
+  negative controls, review status, and deterministic certificate artifact hash.
+- Added `tests/test_ss19_certificate_pipeline.py` to prove incomplete production
+  refusal, complete-production refusal, synthetic complete fixture acceptance for
+  wiring only, and synthetic fixture refusal when a negative control is missing.
+- Boundary: production acceptance remains disabled; `accepted_runtime_claim`,
+  `can_support_first_principles_acceptance`, and `promotes_acceptance` remain
+  false on every SS19 path. The only positive status is
+  `accepted_synthetic_complete_fixture`, which is not validation evidence.
+
 Plan note 2026-05-05:
 
 - The detailed forward plan requested as `CortexFindings.md` has been created in the repository. `CodexFindings.md` remains the running findings and ratchet log, while `CortexFindings.md` records the reviewed plan sequence from target authority through end-to-end high-fidelity demonstration.
+
+Ratchet update 2026-05-23, SS15 power-port and circuit coupling evidence closure:
+
+- Tightened the circuit/field coupling diagnostics to explicitly expose the
+  axisymmetric `J·E` volume-integral power-port method, load-positive terminal
+  voltage orientation, instantaneous cell-centered field time-centering, and
+  exact Poynting/`J·E` residual metrics while preserving
+  `validation_status="not_validation_evidence"`.
+- Extended Tier-3 circuit-coupled energy evidence with recognized interval-label
+  checks for `snowplow_loaded`, `blended`, `field_derived_candidate`, and
+  `validated_field_coupled`; unrecognized labels fail the packet metric instead
+  of disappearing into prose.
+- Tightened the Phase 4-B circuit power-port packet so a residual field must be
+  explicitly reviewed/accepted before the power-port review gate is considered
+  present. A raw `{passed: true}` residual remains blocked.
+- Regenerated `results/mhd_tier3_numerical_packet.json`; the numerical packet
+  remains `production_packet_status=blocked`, with no runtime, first-principles,
+  or acceptance promotion.
+
+Ratchet update 2026-05-23, SS16 startup BVP evidence closure:
+
+- Added `docs/SS16_STARTUP_BVP_EVIDENCE_PACKET_MATRIX_2026_05_23.json`
+  and companion report
+  `docs/SS16_STARTUP_BVP_EVIDENCE_CLOSURE_2026_05_23.md`.
+  The matrix closes or explicitly blocks startup evidence channels for D2
+  breakdown/preionization, insulator flashover, sheath liftoff, early circuit
+  handoff, same-scope material/geometry inputs, startup payload, uncertainty,
+  and review.
+- Added `scripts/validate_ss16_startup_bvp_evidence_packet.py` and
+  `tests/test_ss16_startup_bvp_evidence_packet.py` to require exact
+  KnowledgeReference path/line/quote matches, required channel order, false
+  acceptance flags, and a non-promoting runtime bridge to
+  `dpf.first_principles.startup_bvp`.
+- Boundary: SS16 exposes PF-1000 material/geometry, D2 pressure, bank, and
+  qualitative surface-discharge/sheath candidates, but keeps preionization,
+  startup payload, uncertainty, and review blocked. No startup BVP,
+  first-principles runtime, or whole-shot acceptance claim was promoted.
+
+Ratchet update 2026-05-23, SS18 neutron diagnostic validation stack:
+
+- Added `docs/SS18_NEUTRON_DIAGNOSTIC_VALIDATION_STACK_2026_05_23.json`
+  and companion report
+  `docs/SS18_NEUTRON_DIAGNOSTIC_VALIDATION_STACK_2026_05_23.md`.
+  The packet separates PF-1000 neutron diagnostic evidence into yield, timing,
+  spectrum, anisotropy, detector/activation response, diagnostic mapping, and
+  uncertainty-blocker mechanisms.
+- Added `scripts/validate_ss18_neutron_diagnostic_packet.py` and
+  `tests/test_ss18_neutron_diagnostic_validation_stack.py` to require exact
+  `KnowledgeReference/` source refs, narrow line-window quote matches,
+  mechanism completeness, diagnostic-channel mapping, and fail-closed
+  acceptance flags.
+- Boundary: all SS18 mechanisms remain `candidate` or `blocked`;
+  `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, and
+  `promotes_acceptance=false`. No neutron spectrum, detector response,
+  uncertainty budget, review certificate, runtime, or first-principles
+  acceptance was promoted.
+
+Ratchet update 2026-05-23, SS17 spatial/thermodynamic validation packets:
+
+- Added `docs/SS17_SPATIAL_THERMO_VALIDATION_PACKET_MATRIX_2026_05_23.json`
+  and companion report
+  `docs/SS17_SPATIAL_THERMO_VALIDATION_PACKET_REPORT_2026_05_23.md`.
+  The matrix stages PF-1000 full/upper-energy density/emission geometry,
+  phase-timing, EM-field-history, and temperature/distribution candidate rows
+  with exact local `KnowledgeReference/` line/quote validation.
+- Added `scripts/validate_ss17_spatial_thermo_packet_matrix.py` and
+  `tests/test_ss17_spatial_thermo_validation_packets.py` to require required
+  SS17 channels, fail-closed acceptance flags, KnowledgeReference-only source
+  refs, non-promoting comparator stubs, scalar-only shortcut rejection,
+  uncertainty gates, and review gates.
+- Boundary: all SS17 channels remain `candidate` or `blocked`;
+  `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, and
+  `promotes_acceptance=false`. No spatial, thermodynamic, EM-field, timing,
+  runtime, first-principles, full-3D, uncertainty, or review-certificate
+  acceptance was promoted.
+
+Ratchet update 2026-05-23, SS14 PF-1000 same-scope packet expansion:
+
+- Added `docs/SS14_PF1000_SAME_SCOPE_SOURCE_PACKET_MATRIX_2026_05_23.json`
+  and companion report
+  `docs/SS14_PF1000_SAME_SCOPE_SOURCE_PACKET_EXPANSION_2026_05_23.md`.
+  The matrix expands PF-1000 full/upper-energy line-cited candidates across
+  geometry, bank/circuit, gas fill, current waveform, startup, density,
+  EM/current-sheath, temperature/distribution, neutron yield/timing/spectrum/
+  anisotropy, detector response, uncertainty, and review-certificate channels.
+- Added `scripts/validate_ss14_pf1000_source_packet_matrix.py` and
+  `tests/test_ss14_pf1000_source_packet_matrix.py` to require exact source
+  path/line/quote matches, required channel coverage, non-promoting transfer
+  rows, and fail-closed acceptance flags.
+- Boundary: all SS14 rows remain `candidate`, `cross_scope_candidate`, or
+  `blocked`; `accepted_runtime_claim=false`,
+  `can_support_first_principles_acceptance=false`, and
+  `promotes_acceptance=false`. No runtime/first-principles/full-3D acceptance,
+  uncertainty budget, neutron-spectrum authority, or review certificate was
+  promoted.
 
 Ratchet update 2026-05-20, Sprint 6 blocker cleanup and package-native gate:
 

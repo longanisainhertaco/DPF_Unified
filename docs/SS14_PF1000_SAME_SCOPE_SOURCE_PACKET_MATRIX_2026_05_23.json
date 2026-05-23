@@ -1,0 +1,878 @@
+{
+  "packet_id": "ss14_pf1000_same_scope_source_packet_expansion",
+  "generated_at": "2026-05-23T00:00:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "source_scope": "PF-1000 full-energy / upper-energy local KnowledgeReference line-cited evidence; HeliosMatrix KB used for discovery only",
+  "kb_support_path": "/Users/anthonyzamora/Desktop/heliosmatrix_kb",
+  "authority_rule": "local_line_cited_sources_only_retrieval_is_not_authority",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "channels": [
+    {
+      "channel": "geometry",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "large_electrode_dimensions_new_large_electrodes",
+          "value": {
+            "outer_electrode_diameter_mm": 400,
+            "inner_electrode_diameter_mm": 230,
+            "electrode_length_mm": 600
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 81,
+              "line_end": 83,
+              "quote": "larger dimensions. The outer electrode is 400 mm in diam- eter and the inner one is 230 mm in diameter. Both the elec- trodes are about 600 mm in length. These new large elec-",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "same PF-1000 large-electrode source used by SS12; still lacks full mask/review"
+        },
+        {
+          "name": "insulator_operating_length",
+          "value": 113,
+          "unit": "mm",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 41,
+              "line_end": 44,
+              "quote": "tive length) is dynamically charged by a positive voltage. The cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1–5 torr. The",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "supports a PF-1000 full-energy context but not full insulator wall thickness"
+        },
+        {
+          "name": "experimental_chamber_length",
+          "value": 3.5,
+          "unit": "m",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 122,
+              "line_end": 129,
+              "quote": "to 1.2 MJ of electrical energy. The problem is how to transmit this energy to plasma discharges effectively. Recently, the PF-1000 facility has been modernized, and new experiments (aimed at the optimization of PF dis- charges) have been carried out. The mega-joule PF-1000 facility, equipped with a 3.5 m long experimental chamber, is shown in Fig. 2. This facility was equipped with various diagnostic",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "facility/chamber context, not a runtime mask"
+        },
+        {
+          "name": "pinch_geometry_interferometer_capability",
+          "value": "pinch_geometry_evolution_and_density_distribution",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 166,
+              "line_end": 174,
+              "quote": "• reconstruct evolution of pinch geometry; • determine linear density of particles; • determine distribution of plasma density in the pinch column; • correlate in time all this phenomena with evolution of X-ray and neutron production; • characterize the MHD instabilities in the processes of plasma development; • connect speed of development of the MHD m=0 instability of the plasma string with efﬁciency of neutron production; • analyze connections between processes of rising and decay of the plasma string with neutrons efﬁciency; • determine the plasma density during the PF phenomena development;",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "diagnostic capability for geometry evolution; not reviewed target values"
+        }
+      ],
+      "blocked_reason": "Geometry is line-cited across PF-1000 sources, but full runtime 3-D mask, uncertainty, and independent review remain open."
+    },
+    {
+      "channel": "bank_circuit",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "charging_voltage_range",
+          "value": [
+            20,
+            40
+          ],
+          "unit": "kV",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 148,
+              "line_end": 155,
+              "quote": "– the charging voltage – U0 = 20÷40 kV, – the condenser bank capacitance – C0 = 1.332 mF, – the initial capacitor bank energy – E0 = 266÷1064 kJ, – the nominal inductance – L0 = 8.9 nH, – the quarter discharge time – T1/4 = 5.4 µs, – the short-circuit current – ISC = 15 MA, – the characteristic impedance – Z0 = 2.6 mΩ. At present we start to work at 500 to 800 kJ energy levels and",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "bank_capacitance",
+          "value": 1.332,
+          "unit": "mF",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 148,
+              "line_end": 155,
+              "quote": "– the charging voltage – U0 = 20÷40 kV, – the condenser bank capacitance – C0 = 1.332 mF, – the initial capacitor bank energy – E0 = 266÷1064 kJ, – the nominal inductance – L0 = 8.9 nH, – the quarter discharge time – T1/4 = 5.4 µs, – the short-circuit current – ISC = 15 MA, – the characteristic impedance – Z0 = 2.6 mΩ. At present we start to work at 500 to 800 kJ energy levels and",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "bank_energy_range",
+          "value": [
+            266,
+            1064
+          ],
+          "unit": "kJ",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 148,
+              "line_end": 155,
+              "quote": "– the charging voltage – U0 = 20÷40 kV, – the condenser bank capacitance – C0 = 1.332 mF, – the initial capacitor bank energy – E0 = 266÷1064 kJ, – the nominal inductance – L0 = 8.9 nH, – the quarter discharge time – T1/4 = 5.4 µs, – the short-circuit current – ISC = 15 MA, – the characteristic impedance – Z0 = 2.6 mΩ. At present we start to work at 500 to 800 kJ energy levels and",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "short_circuit_current",
+          "value": 15,
+          "unit": "MA",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 148,
+              "line_end": 155,
+              "quote": "– the charging voltage – U0 = 20÷40 kV, – the condenser bank capacitance – C0 = 1.332 mF, – the initial capacitor bank energy – E0 = 266÷1064 kJ, – the nominal inductance – L0 = 8.9 nH, – the quarter discharge time – T1/4 = 5.4 µs, – the short-circuit current – ISC = 15 MA, – the characteristic impedance – Z0 = 2.6 mΩ. At present we start to work at 500 to 800 kJ energy levels and",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "upper_energy_operation",
+          "value": [
+            480,
+            850
+          ],
+          "unit": "kJ",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 227,
+              "line_end": 240,
+              "quote": "each) is charged in these experiments to voltage U0 ranging between 27 and 36 kV. It corresponds to discharge energies Ec within the limits from 480 kJ to 850 kJ. Usually its energy and voltage are equal to 810 kJ and 35 kV, respectively. The energy increase in this set of experiments with PF-1000 compared with the previous ones (see, e.g., [10]) was made by the bank capacitance increase (not by the voltage change as in other previous experiments made in Frascati, Stuttgart and D¨usseldorf). And as usual the electrode sizes were increased in comparison with previous experiments to match the external and internal inductances of the gun and to equalize the current quarter of the period with the plasma collapse time at this energy magnitude. Typical oscilloscope traces of current and voltage taken at the charging voltage of battery equal to 27 kV",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "experiment subset at 27-36 kV; not complete circuit closure"
+        }
+      ],
+      "blocked_reason": "Bank/circuit values are candidate targets; no full circuit waveform uncertainty, power-port evidence, or review certificate."
+    },
+    {
+      "channel": "gas_fill",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "deuterium_pressure_fast_ion_low_pressure",
+          "value": [
+            1,
+            2
+          ],
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 74,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2×1011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from shots performed at a low filling pressure (1-2 Torr).",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "chamber_deuterium_pressure_range",
+          "value": [
+            1,
+            5
+          ],
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 41,
+              "line_end": 47,
+              "quote": "tive length) is dynamically charged by a positive voltage. The cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1–5 torr. The condenser bank was charged up to 40 kV. The total energy stored in the bank was in the range of 900–1000 kJ, while the maximum of the discharge current was 3 MA.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "initial_working_gas_few_torr",
+          "value": "few",
+          "unit": "Torr",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 57,
+              "line_end": 65,
+              "quote": "the Z-pinch class and operates with a cylindrical insulator positioned at the lower part of the internal electrode (anode). Initial pressure of the working gas is equal to a few torr. Temporal evolution of the discharge undergoes as a rule the following several phases. The ﬁrst stage is gas breakdown developing along the exterior of a cylindrical insulator. This surface discharge [2] takes from a few to a hundred nanoseconds and bears",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Gas-fill evidence is candidate; shot conditioning, pressure uncertainty, and scope-specific review remain missing."
+    },
+    {
+      "channel": "current_waveform",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "typical_waveform_diagnostics",
+          "value": "rogowski_total_current_magnetic_probe_local_current_voltage_waveforms",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/pf-1000-device-a2d6bc15.md",
+              "line_start": 162,
+              "line_end": 175,
+              "quote": "focus device are usually measurements of a discharge current and a voltage drop across its electrodes. The discharge cur- rent of the plasma focus is measured using a Rogowski coil (total current) or a magnetic probe (localized current dis- tribution). Resistive probes are used in many systems to measure a transient voltage during the plasma focus dis- charge, due to their ease of the installation and operation. Since it is not possible to connect the probe to measure the voltage drop across the plasma directly, this measurement is usually made externally across the electrodes of the device. The current, the time derivative of the current and voltage waveforms of typically plasma focus discharge registered on the PF-1000 device are shown in Fig. 4. The sharp voltage spike and current dip are characteristic for a focusing dis-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "current_voltage_waveforms_27kv",
+          "value": "figure_2_current_voltage_waveforms_at_u0_27kv",
+          "unit": "figure_candidate",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 293,
+              "line_end": 305,
+              "quote": "Figure 2. Current (a) and voltage (b) waveforms of the PF-1000 taken at U0 = 27 kV. another just a time-integrated pinhole camera with an x-ray ﬁlm registration—have been applied in order to obtain plasma images in the SXR range (see details in paper I [6]). Fast electron beams generated in the DPF were investi- gated registering HXR radiation produced by them on the an- ode. This was done with the help of photomultiplier (PM) tubes plus scintillators (PM+S). These beams were also regis- tered directly by means of Cerenkov-type detectors (ﬁgure 3) positioned down-stream in relation to the principal e-beam direction of propagation (i.e. at the backside of the anode). 3594",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "recorded_vs_computed_waveform_disagreement",
+          "value": "computed_recorded_current_waveform_differences",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 314,
+              "line_end": 328,
+              "quote": "Our investigations of the current sheath (CS) collapse dynamics performed by means of a streak camera for the shots with low and high neutron yield are presented in Figs. 6a and 6b, correspondingly. One may see easily two main features distinguishing the “good” shot from the “poor” one: very different implosion velocities of CS and the degree of their symmetry. Both are much better in the case of high neutron yield (Fig. 6b). As for the speed we have received the best figure equal to 5 × 107 cm/s. But in any good shot the velocity of a shock wave and the current sheath (SW + SC) at the final stage of the pinch collapse was not less than 2 × 107 cm/s. Another problem is some disagreement between the computed and recorded current waveforms, as shown in Fig. 7. These differences could be induced by wrong",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "max_discharge_current_context",
+          "value": 3,
+          "unit": "MA",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 41,
+              "line_end": 47,
+              "quote": "tive length) is dynamically charged by a positive voltage. The cylindrical alumina insulator is fixed between the electrodes and is 113 mm in operating length. These parts are located inside the experimental chamber filled with deuterium of 1–5 torr. The condenser bank was charged up to 40 kV. The total energy stored in the bank was in the range of 900–1000 kJ, while the maximum of the discharge current was 3 MA.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Current evidence includes diagnostics and figure candidates but no digitized waveform, uncertainty, or accepted comparator."
+    },
+    {
+      "channel": "startup",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "breakdown_phase_description",
+          "value": "surface_discharge_along_cylindrical_insulator_few_to_hundred_ns",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 57,
+              "line_end": 65,
+              "quote": "the Z-pinch class and operates with a cylindrical insulator positioned at the lower part of the internal electrode (anode). Initial pressure of the working gas is equal to a few torr. Temporal evolution of the discharge undergoes as a rule the following several phases. The ﬁrst stage is gas breakdown developing along the exterior of a cylindrical insulator. This surface discharge [2] takes from a few to a hundred nanoseconds and bears",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "current_sheath_collapse_good_shot_velocity_min",
+          "value": 20000000.0,
+          "unit": "cm/s",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 314,
+              "line_end": 328,
+              "quote": "Our investigations of the current sheath (CS) collapse dynamics performed by means of a streak camera for the shots with low and high neutron yield are presented in Figs. 6a and 6b, correspondingly. One may see easily two main features distinguishing the “good” shot from the “poor” one: very different implosion velocities of CS and the degree of their symmetry. Both are much better in the case of high neutron yield (Fig. 6b). As for the speed we have received the best figure equal to 5 × 107 cm/s. But in any good shot the velocity of a shock wave and the current sheath (SW + SC) at the final stage of the pinch collapse was not less than 2 × 107 cm/s. Another problem is some disagreement between the computed and recorded current waveforms, as shown in Fig. 7. These differences could be induced by wrong",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Startup/sheath-liftoff evidence is qualitative/candidate; no boundary-value initial condition packet or reviewed handoff."
+    },
+    {
+      "channel": "density_history",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "interferometer_shot_pressure_and_yield",
+          "value": {
+            "pressure_hpa": 2.6,
+            "yield_neutrons": 130000000000.0
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 126,
+              "line_end": 134,
+              "quote": "E. Zieli´nska et al.: Sixteen-frame interferometer for a study of a pinch dynamics in PF-1000 device 3 Results Below we present 16 interferograms (Fig. 6). These experimental results were obtained for one discharge in PF-1000 device. Vacuum chamber initially was under pressure of 2×10−5 hPa, ﬁlled with deuterium gas under pressure of 2,6 hPa. Total neutron yield in this shot was 1,3×1011. Fig. 6 Sixteen interferograms from one shot from PF-1000. 4",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "electron_density_distribution_capability",
+          "value": "space_time_electron_density_distribution",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 137,
+              "line_end": 142,
+              "quote": "density distribution from time developed interferograms is giving the information about: • space-time evolution of the electrons density distribution in the inspected conﬁguration; • efﬁciency of the gas gathering by the plasma sheath; • degree of compression of plasma; • the total plasma volume in the pinch area; • plasma leakage from pinch area.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "final_stage_electron_density_figure_candidate",
+          "value": "frame_images_and_electron_density_distributions",
+          "unit": "figure_candidate",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 146,
+              "line_end": 151,
+              "quote": "radiation, t = 0 refers to maximum compression. (a) Two-frames sequences obtained in shots with completely different neutron yield. (b) Typical course of the plasma column creation and disruption for E = 930 kJ, p = 2, Tr and average Y \u00188 \u0002 10 . (c) Frame images and corresponding electron density distributions for two kinds of the plasma sheath disturbances recorded at shots with comparable neutron yield.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Density history has PF-1000 diagnostic candidates; numeric density fields and reviewed digitization are missing."
+    },
+    {
+      "channel": "em_field_history",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "magnetic_probe_current_sheath_measurement",
+          "value": "calibrated_magnetic_probes_current_at_40mm_from_axis",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+              "line_start": 59,
+              "line_end": 69,
+              "quote": "The results of studies of the plasma-current sheath structure on the PF-1000 facility in the stage close to the instant of pinch formation are presented. The measurements were performed using various modiﬁcations of the calibrated magnetic probes. Studies of the inﬂuence of the probe shape and dimensions on the measurements accuracy were done. The current ﬂowing in the converging sheath at a distance of 40 mm from the axis of the facility electrodes was measured. In the optimal operating modes, this current is equal to the total discharge current, which indicates the high efﬁciency of current transportation toward the axis. In such shots a compact high-quality sheath forms with shock wave in front of the magnetic piston. It is shown that the neutron yield depends on the current compressed onto the axis. This dependence agrees well with the known scaling, Yn ∼I 4. The use of the total discharge current in constructing the current scaling, especially for facilities with a large stored energy, is unjustiﬁed.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "pcs_current_measurement_setup",
+          "value": "absolutely_calibrated_magnetic_probes_and_rogowski_total_current",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+              "line_start": 203,
+              "line_end": 215,
+              "quote": "PCS current in the stage close to the instant of pinch formation on the PF-1000 facility [29] operating with deuterium at an energy stored in the capacitor bank of 250–500 kJ. The measurements were performed using absolutely calibrated magnetic probes. The PCS structure was studied using original magneto-optical probes simultaneously recording the dB/dt signal and the plasma optical glow. Along with magneto- optical probes, a Rogowski coil recording the total discharge current and three magnetic probes located inside the PF-1000 collector were also used. The main objective of this paper was to study the dependence of the neutron yield on the total discharge current and the current ﬂowing in the PCS in the",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "current_distribution_pinch_context",
+          "value": "current_density_distribution_paramount",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 396,
+              "line_end": 401,
+              "quote": "efficiency of energy transfer from the source of the magnetic energy stored in the system, as the distribution of current densities in the plasma column, are of paramount importance. PF emission characteristics The start of X-rays, electrons and neutrons correlated",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Magnetic/current-sheath evidence is candidate and partly lower-energy; no full EM field history with uncertainty/review."
+    },
+    {
+      "channel": "temperature_or_distribution_history",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "hot_pinch_target_bounds",
+          "value": {
+            "temperature_keV_lte": 1,
+            "density_cm3_lte": 1e+19
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 152,
+              "line_end": 174,
+              "quote": "‘current abruption’ phenomenon when the pinch is disturbed by the Rayleigh–Taylor instability provoking in turn various micro-instabilities. These non-linearly coupled instabilities, practically instant (during a time period much shorter than 1 ns), substitute the classical collisional current within the pinch by the collisionless stream of fast electrons having characteristic energy of several hundred keV. The latter fast electron beam generates hard x-ray radiation on the anode [4, 7, 8, 11, 12]. Then these fast electrons are magnetized and the whole current is carried mainly by fast ions [13] having a spectrum extended to several MeV. The ﬁrst MHD phase forms a ‘target’—hot (⩽1 keV) compressed (⩽1019 cm−3) plasma, whereas during the second one (K) the powerful beams of fast electrons and ions are generated and start to interact with plasma and electrodes. A noticeable part of the fast ion stream composed of ‘medium’ energy particles (usually in the range 50–150 keV) is captured by a magnetic ﬁeld of the pinch and conﬁned within the plasma ‘target’ for a period of about 10 drift times [14]. Interactions of these ions—both Coulomb and direct fusion ones—with the above-mentioned plasma target (at the operation of DPF with deuteriumordeuterium–tritium—(DT)—mixtureasaworking gas) result in neutron emission [14, 15]. Energy Ec, released",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "mechanism context; symbols are upper-bound-like OCR text and require review before target use"
+        },
+        {
+          "name": "electron_and_ion_beam_dynamics_upper_energy",
+          "value": "upper_energy_limit_neutron_emission_target_characteristics",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 37,
+              "line_end": 55,
+              "quote": "Published 4 June 2007 Online at stacks.iop.org/JPhysD/40/3592 Abstract Electron and ion beam dynamics of the PF-1000 facility were investigated for the ﬁrst time at its upper energy limit (≈1 MJ) in relation to neutron emission, the pinch’s plasma (‘target’) characteristics and some other parameters with the help of a number of diagnostics with ns temporal resolution. Special attention was paid to the temporal and the spatial cross correlations of different phenomena. Results of these experiments are in favour of a neutron emission model based on ion beam–plasma interaction with three important features: (1) the plasma target is hot and conﬁned during a few ‘inertial conﬁnement times’; (2) the ions of the main part of the beam are magnetized and entrapped around the pinch plasma target for a period longer than the characteristic time of the plasma inductive storage system and (3) ion–ion collisions (both fusion collisions, due to head-on impacts and Coulomb collisions) are responsible for neutron emission. Analysis has shown that one of the ways for achieving a future improvement in the neutron yield of the PF-1000 facility may by changing the geometry of the device. It may ensure an increase in both the discharge current and the",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "hard_xray_electron_energy_context",
+          "value": "electrons_above_70keV_and_hard_xrays_100keV",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 417,
+              "line_end": 422,
+              "quote": "Fig. 9. Records of signals of current derivative (trace 1), soft X-rays above 4 keV (trace 2), electrons 180 deg with energies above 70 keV (trace 3), electrons 90 deg (trace 4), hard X-rays 100 keV (trace 5), and neutrons (trace 6). Fig. 8. High-speed pictures of the pinch phase in the PF-1000 experiment performed at p0 = 4 hPa, W0 = 734 kJ 1.66 MA. The images correspond to instants indicated by broken lines.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Temperature/distribution evidence remains mechanism/context level; no reviewed Te/Ti/distribution time history."
+    },
+    {
+      "channel": "neutron_scalar_yield",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "max_neutron_yield_new_large_electrodes",
+          "value": 200000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 74,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2×1011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from shots performed at a low filling pressure (1-2 Torr).",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 145,
+              "line_end": 147,
+              "quote": "emission decreases. One can see (Table 1) that the highest neutron yield registered so far was about 2×1011 neutrons/shot, but it is expected that still higher neutron",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "series_yield_order",
+          "value": 200000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 362,
+              "line_end": 366,
+              "quote": "1. For the first time the neutron yield and neutron emission anisotropy have been measured for PF shots performed at about 1 MJ discharge energy. 2. Neutron yield of the order of 2×1011 neutrons/shot was registered in the series of shots carried out within the PF-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "interferometer_shot_yield",
+          "value": 130000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 126,
+              "line_end": 134,
+              "quote": "E. Zieli´nska et al.: Sixteen-frame interferometer for a study of a pinch dynamics in PF-1000 device 3 Results Below we present 16 interferograms (Fig. 6). These experimental results were obtained for one discharge in PF-1000 device. Vacuum chamber initially was under pressure of 2×10−5 hPa, ﬁlled with deuterium gas under pressure of 2,6 hPa. Total neutron yield in this shot was 1,3×1011. Fig. 6 Sixteen interferograms from one shot from PF-1000. 4",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Scalar yield candidates exist, but detector calibration, uncertainty propagation, and review are not closed."
+    },
+    {
+      "channel": "neutron_timing",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "scintillation_peak_interpretation",
+          "value": "first_peak_hard_xray_second_peak_2p45mev_neutrons",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "neutron_pulse_timing_vs_xray",
+          "value": {
+            "first_pulse_before_xray_peak_ns": [
+              20,
+              30
+            ],
+            "max_after_xray_peak_ns": 30,
+            "fwhm_ns": [
+              50,
+              70
+            ]
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 401,
+              "line_end": 411,
+              "quote": "The start of X-rays, electrons and neutrons correlated with forming of the intensively radiating part of the pinch located 2 cm in front of the anode top (Fig. 8). The production of neutrons correlates with X-ray activity (Fig. 9), mainly with hard X-rays above a few tens keV. The first neutron pulse starts together with the X-rays, i.e. 20−30 ns before the X-ray peak. The maximum of neutrons is observed ~ 30 ns after the X-ray peak. The FWHM of the first pulse is 50−70 ns. The second neutron pulse is dominant with 3−10 times higher number of neutrons than the first one. The onset",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "time_resolved_neutron_pulse_methods",
+          "value": "neutron_pulses_at_different_angles_compared_with_sxr_hxr_beams",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 354,
+              "line_end": 365,
+              "quote": "We investigated the neutron production process by measuring its time evolution, absolute neutron yield and its Figure 4. Scheme of track detectors mounting. Figure 5. Electrode set-up also showing the positions of the neutron activation counters (SCs) and the fast probe (PM+ scintillator) detectors (SPD) in relation to the Z-axis of the facility. anisotropy on the basis of both time-integrated methods and time-resolved registration of neutron pulses at different angles to the electrode axis as well as by their comparison with time- resolved and time-integrated measurements of SXR and HXR radiation and the fast electron and ion beams. The total neutron yield (Ytot), i.e. the number of neutrons produced during a",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Timing evidence is candidate; raw traces/digitization, detector response, and uncertainty remain missing."
+    },
+    {
+      "channel": "neutron_spectrum",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "neutron_energy_signature",
+          "value": 2.45,
+          "unit": "MeV",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "signature of D-D neutron peak, not a spectrum"
+        },
+        {
+          "name": "tof_spectrum_future_method",
+          "value": "future_experiments_move_probes_for_time_of_flight_spectra",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 95,
+              "line_end": 103,
+              "quote": "Am-Be neutron source of precisely defined activity equal to 1.5×107 neutrons/sec 4π. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight method.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "No same-scope measured spectrum packet exists; 2.45 MeV and future ToF language are non-promoting candidates only."
+    },
+    {
+      "channel": "neutron_anisotropy",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "anisotropy_definition",
+          "value": "Yn(25deg)/Yn(90deg)",
+          "unit": "ratio",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 132,
+              "line_end": 137,
+              "quote": "the initial charging voltage (U0), the electrical energy stored in the condenser battery (W0), the D2 filling pressure (p0), the maximum current amplitude (Imax), and a coefficient describing the neutron emission anisotropy defined in this work as (Yn(25°)/Yn(90°). The neutron emission was inves- tigated as a function of the initial charging voltage for sev-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "anisotropy_pressure_trend",
+          "value": "decreases_with_initial_filling_pressure",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 150,
+              "line_end": 155,
+              "quote": "Fig. 3 shows that an averaged coefficient of the neutron emission anisotropy decreases monotonically with an increase in the initial filling pressure. Relatively low values of this coefficient, even for the discharge pressure of 1 Torr, are interesting results. One could assume that energetic deuterons considerably contribute to the total neutron",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "large_electrode_anisotropy_conclusion",
+          "value": "more_isotropic_than_other_pf_experiments",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 362,
+              "line_end": 373,
+              "quote": "1. For the first time the neutron yield and neutron emission anisotropy have been measured for PF shots performed at about 1 MJ discharge energy. 2. Neutron yield of the order of 2×1011 neutrons/shot was registered in the series of shots carried out within the PF- 1000 facility equipped with new (large) electrodes. 3. Angular distribution of the neutron emission is more isotropic in the PF-1000 facility than that observed in other PF experiments. 4. Noticeable fast ion emission was observed only in the discharges carried out at a relatively low filling pressure p0 (1–2) Torrs.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Anisotropy evidence is candidate; angular detector response and uncertainty are not reviewed."
+    },
+    {
+      "channel": "detector_response",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "activation_counter_calibration_source",
+          "value": {
+            "source": "Am-Be",
+            "activity": 15000000.0
+          },
+          "unit": "neutrons_per_sec_4pi",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 95,
+              "line_end": 98,
+              "quote": "Am-Be neutron source of precisely defined activity equal to 1.5×107 neutrons/sec 4π. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi-",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "scintillation_probe_distance",
+          "value": 15,
+          "unit": "m",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 95,
+              "line_end": 103,
+              "quote": "Am-Be neutron source of precisely defined activity equal to 1.5×107 neutrons/sec 4π. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight method.",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "diagnostic_suite_upper_energy",
+          "value": "rogowski_visual_streak_sxr_pinhole_pin_scintillators_activation_counters",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 37,
+              "line_end": 48,
+              "quote": "facility for the ﬁrst time at its upper energy limit (≈1 MJ). Special attention is paid here to plasma (‘pinch’) dynamics, which was investigated in relation to its electro-technical and radiation (especially neutron) characteristics with the help of a number of diagnostics, both time-integrated and with nanosecond temporal resolution. In these methods we utilized a Rogowski coil for the routine electro-technical measurements, visual multi-frame and streak cameras, soft x-ray pin-hole multi-frame cameras, PIN-diode assembly and PM tubes with scintillators for soft and hard x-rays as well as for neutron investigations together with a set of activation counters. In particular, the temporal cross correlation of different phenomena taking place during the discharge was investigated. The pinch’s longevity appears to be 10–15 times larger than the ideal magnetohydrodynamic growth time (ratio of the pinch radius to the ion thermal velocity). It is demonstrated",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Detector response has calibration/context candidates but no reviewed response matrix/uncertainty packet."
+    },
+    {
+      "channel": "uncertainty_budget",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "observables": [],
+      "blocked_reason": "No complete same-scope uncertainty budget covering source extraction, digitization, detector response, comparator, and model uncertainty exists."
+    },
+    {
+      "channel": "review_certificate",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "observables": [],
+      "blocked_reason": "No independent review certificate exists for SS14 matrix rows; all rows stay non-accepted."
+    }
+  ],
+  "transfer_rows": [
+    {
+      "name": "pf1000_pf400_lee_model_current_fit",
+      "status": "cross_scope_candidate",
+      "scope_match": "cross_scope_pf1000_pf400_model_comparison",
+      "observables": [
+        "PF1000/PF400 fitted current waveform and computed plasma quantities"
+      ],
+      "source_refs": [
+        {
+          "source_path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+          "line_start": 77,
+          "line_end": 84,
+          "quote": "focus device in operation at the Atomic Energy Commissionin Chile and PF1000, a 1 MJ deviceat the International Centre for Dense Magnetised Plasmas (ICDMP) in Warsaw, Poland. Our aim is to compare the plasma dynamics observed in two different sizes of the devices. We compare the experimentally obtained data with the data predicted from our numerical experiments using the Lee model code. It has been observed that the peak current of the total current waveform, pinch current calculated from total current, and neutron yield agreereasonably well with published experimental data, however, slight differences are found in other parameters. Keywords: Plasma focus, Lee model code, Total current waveform, Peak current, Pinch current, Neutron",
+          "review_status": "target_extraction_candidate"
+        },
+        {
+          "source_path": "KnowledgeReference/comparison-of-plasma-dynamics-in-plasma-focus-devices-pf1000-and-pf400-9094f12f.md",
+          "line_start": 383,
+          "line_end": 390,
+          "quote": "(PF1000) and a small one (PF400). The current trace was compared with the experimentally measured current waveform of the respective devices for given operational parameters. For both of the devices we obtained a good fit up to the end of radial phases; giving confidence that all the computed results including trajectories and speeds, densities, temperatures and neutron",
+          "review_status": "target_extraction_candidate"
+        }
+      ],
+      "promotes_acceptance": false,
+      "blocked_reason": "PF1000/PF400 Lee-model comparison includes PF-400 and computed quantities; useful transfer/method context but cannot promote PF-1000 same-scope acceptance."
+    },
+    {
+      "name": "lower_energy_pcs_current_scaling",
+      "status": "candidate",
+      "scope_match": "pf1000_lower_energy_250_to_500_kj",
+      "observables": [
+        "PCS current near pinch formation and neutron-yield dependence"
+      ],
+      "source_refs": [
+        {
+          "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+          "line_start": 203,
+          "line_end": 215,
+          "quote": "PCS current in the stage close to the instant of pinch formation on the PF-1000 facility [29] operating with deuterium at an energy stored in the capacitor bank of 250–500 kJ. The measurements were performed using absolutely calibrated magnetic probes. The PCS structure was studied using original magneto-optical probes simultaneously recording the dB/dt signal and the plasma optical glow. Along with magneto- optical probes, a Rogowski coil recording the total discharge current and three magnetic probes located inside the PF-1000 collector were also used. The main objective of this paper was to study the dependence of the neutron yield on the total discharge current and the current ﬂowing in the PCS in the",
+          "review_status": "target_extraction_candidate"
+        }
+      ],
+      "promotes_acceptance": false,
+      "blocked_reason": "PF-1000 source but lower capacitor-bank energy (250-500 kJ), below SS14 full-energy scope; non-promoting candidate for later transfer rule."
+    },
+    {
+      "name": "future_tof_spectrum_measurement",
+      "status": "rejected",
+      "scope_match": "future_measurement_not_existing_target",
+      "observables": [
+        "future ToF spectrum plan"
+      ],
+      "source_refs": [
+        {
+          "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+          "line_start": 95,
+          "line_end": 103,
+          "quote": "Am-Be neutron source of precisely defined activity equal to 1.5×107 neutrons/sec 4π. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight method.",
+          "review_status": "target_extraction_candidate"
+        }
+      ],
+      "promotes_acceptance": false,
+      "blocked_reason": "The cited source says future experiments will move probes for ToF spectra; it is not an existing same-scope neutron-spectrum measurement."
+    }
+  ],
+  "evaluate_learn_continue": {
+    "evaluate": "Matrix expands PF-1000 full/upper-energy candidates across 15 required channels, exact line-window quote validation, transfer-row non-promotion, and fail-closed acceptance boundary.",
+    "learn": "Local KR has useful PF-1000 geometry, bank, gas, current, density, sheath/magnetic-probe, neutron yield/timing/anisotropy, and detector context, but no complete uncertainty budget or independent review certificate; neutron spectrum remains especially blocked.",
+    "continue": "Independent review should spot-check quotes/scope and decide which SS15-SS18 child packets should target digitization/uncertainty first; keep acceptance flags false."
+  }
+}

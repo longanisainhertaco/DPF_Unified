@@ -1,0 +1,260 @@
+{
+  "matches": [
+    {
+      "path": "docs/CODEX_FIRST_PRINCIPLES_V2_HANDOFF_AUDIT_AND_NEXT_PLAN_2026_05_20.md",
+      "line": 266,
+      "text": "- No row has `accepted_runtime_claim = true`."
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT8_AUDIT_AND_SUPER_SPRINT9_INSTRUCTIONS_2026_05_20.md",
+      "line": 174,
+      "text": "4. No workstream may set `accepted_runtime_claim=true` or `can_support_first_principles_acceptance=true`."
+    },
+    {
+      "path": "docs/SS12_P1_PHASE5_FIGURE_SOURCE_MANIFEST_EVALUATE_LEARN_CONTINUE_2026_05_22.md",
+      "line": 55,
+      "text": "1. Validator did not reject row-level `accepted_figure_claim=true` or `accepted_runtime_claim=true`."
+    },
+    {
+      "path": "docs/SPRINT8_SUPER_SPRINT_SOURCE_TO_RUNTIME_INSTRUCTIONS_2026_05_20.md",
+      "line": 7,
+      "text": "`accepted_runtime_claim=true` or `can_support_first_principles_acceptance=true`."
+    },
+    {
+      "path": "docs/SS12_P1_PHASE5_FIGURE_BACKED_SOURCE_EXTRACTION_PLAN_2026_05_22.md",
+      "line": 34,
+      "text": "- `promotes_acceptance=true`"
+    },
+    {
+      "path": "docs/SS12_P1_PHASE5_FIGURE_BACKED_SOURCE_EXTRACTION_PLAN_2026_05_22.md",
+      "line": 35,
+      "text": "- `can_support_first_principles_acceptance=true`"
+    },
+    {
+      "path": "docs/SS12_P1_PHASE8A_FOCUSED_SUITE_ACCEPTANCE_SCAN_2026_05_22.md",
+      "line": 191,
+      "text": "Interpretation: active first-principles artifact scan found no artifact that violates C6 (`can_support_first_principles_acceptance: true`) or the other provenance/hygiene checks. Most historical first-principles artifact"
+    },
+    {
+      "path": "docs/SS12_P1_PHASE8A_FOCUSED_SUITE_ACCEPTANCE_SCAN_2026_05_22.md",
+      "line": 242,
+      "text": "3. Artifact hygiene is fail-closed: scanned active/archived first-principles result artifacts do not promote `can_support_first_principles_acceptance=true`."
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT11_AUDIT_AND_SUPER_SPRINT12_INSTRUCTIONS_2026_05_21.md",
+      "line": 449,
+      "text": "- Do not set `accepted_runtime_claim=True`."
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT11_AUDIT_AND_SUPER_SPRINT12_INSTRUCTIONS_2026_05_21.md",
+      "line": 450,
+      "text": "- Do not set top-level `can_support_first_principles_acceptance=True`."
+    },
+    {
+      "path": "docs/DPF_UNIFIED_FULL_PROJECT_KANBAN_PLAN_2026_05_22.md",
+      "line": 107,
+      "text": "- **Triggers:** README/UI/PR language says predictive, publication-grade, validated, or full-3D accepted too early."
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_SSR_SUBMISSION_2026_05_18.md",
+      "line": 217,
+      "text": "`can_support_first_principles_acceptance: True`. The `startup_payload_review`"
+    },
+    {
+      "path": "docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_2026_05_20.md",
+      "line": 20,
+      "text": "`accepted_runtime_claim=true` or"
+    },
+    {
+      "path": "docs/SPRINT7_FIRST_PRINCIPLES_RUNTIME_CONTRACT_INSTRUCTIONS_2026_05_20.md",
+      "line": 21,
+      "text": "`can_support_first_principles_acceptance=true`."
+    },
+    {
+      "path": "docs/SPRINT10_COMPLETION_MEMO_2026_05_21.md",
+      "line": 35,
+      "text": "`status=accepted` and no explicit `can_support_first_principles_acceptance=True`"
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_EXTERNAL_TEAM_AUDIT_AND_NEXT_INSTRUCTIONS_2026_05_18.md",
+      "line": 376,
+      "text": "- `can_support_first_principles_acceptance: true`."
+    },
+    {
+      "path": "docs/paper-ai-driven-dpf-development.md",
+      "line": 42,
+      "text": "Higher-fidelity MHD codes exist but typically require HPC clusters, specialized licensing, and deep expertise in computational fluid dynamics. The gap between Lee's accessible-but-limited 0D model and publication-grade M"
+    },
+    {
+      "path": "docs/SPRINT8_WS2_RUNTIME_DEMONSTRATOR_SCOPE_LOCK_2026_05_20.md",
+      "line": 8,
+      "text": "`accepted_runtime_claim=true` or `is_scientific_authority=true`."
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_SPRINT3_COMPLETION_HANDOFF_2026_05_19.md",
+      "line": 632,
+      "text": "| \"Startup is first-principles accepted\" | all startup BVP channels computed or source-bounded with review |"
+    },
+    {
+      "path": "docs/SPRINT5_FREE_ACQUISITIONS_2026_05_20.md",
+      "line": 10,
+      "text": "consumption before any blocker moves toward `accepted_runtime_claim = true`."
+    },
+    {
+      "path": "docs/SPRINT6_WS5_CLAIM_LIMITED_TE_TI_OBSERVABLE_EXCLUSION_DESIGN_2026_05_20.md",
+      "line": 300,
+      "text": "NOT assert that `can_support_first_principles_acceptance=True`. The overall"
+    },
+    {
+      "path": "docs/SPRINT6_WS5_CLAIM_LIMITED_TE_TI_OBSERVABLE_EXCLUSION_DESIGN_2026_05_20.md",
+      "line": 312,
+      "text": "### 6.5 Regression: exclusion mechanism cannot set `can_support_first_principles_acceptance=True`"
+    },
+    {
+      "path": "docs/SPRINT6_WS5_CLAIM_LIMITED_TE_TI_OBSERVABLE_EXCLUSION_DESIGN_2026_05_20.md",
+      "line": 316,
+      "text": "`can_support_first_principles_acceptance: True`. That flag is set only by the"
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
+      "line": 519,
+      "text": "Any row with `can_support_first_principles_acceptance=true` will be rejected"
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_CODEX_AUDIT_WP_N1_N4_2026_05_18.md",
+      "line": 880,
+      "text": "- Any artifact contains `can_support_first_principles_acceptance: true`."
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT12_P0_AUDIT_AND_P1_AUTHORIZATION_2026_05_21.md",
+      "line": 286,
+      "text": "- Do not set `accepted_runtime_claim=True`."
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT12_P0_AUDIT_AND_P1_AUTHORIZATION_2026_05_21.md",
+      "line": 287,
+      "text": "- Do not set top-level `can_support_first_principles_acceptance=True`."
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md",
+      "line": 44,
+      "text": "No row may set `accepted_physics_allowed=true`, `accepted_runtime_claim=true`,"
+    },
+    {
+      "path": "docs/FIRST_PRINCIPLES_PHYSICS_ACCEPTANCE_PROMOTION_PROTOCOL_2026_05_20.md",
+      "line": 45,
+      "text": "or `can_support_first_principles_acceptance=true` unless all three lanes pass"
+    },
+    {
+      "path": "docs/SS12_P1_PHASE8C_CLAIM_SURFACE_RECONCILIATION_2026_05_22.md",
+      "line": 39,
+      "text": "publication-grade"
+    },
+    {
+      "path": "docs/CODEX_SUPER_SPRINT10_AUDIT_AND_SUPER_SPRINT11_INSTRUCTIONS_2026_05_21.md",
+      "line": 212,
+      "text": "`can_support_first_principles_acceptance=True` is reported as `pass`."
+    },
+    {
+      "path": "docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_1/CONTROL_GATE_PROPOSAL.md",
+      "line": 94,
+      "text": "Reject if: any artifact carries `can_support_first_principles_acceptance: true`;"
+    },
+    {
+      "path": "docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md",
+      "line": 336,
+      "text": "| N7-NEG-06 | Certificate submitted with any upstream packet having `can_support_first_principles_acceptance: True` | Gate must reject \u2014 this is currently impossible by `manifest.py` `__post_init__` enforcement, but the "
+    },
+    {
+      "path": "docs/external_team_submissions/2026_05_18_three_sprint_blocker_packet/sprint_3/WP_N7_COMPARATOR_UQ_CERTIFICATE_SPEC.md",
+      "line": 347,
+      "text": "- C6: any artifact containing `can_support_first_principles_acceptance: true`"
+    },
+    {
+      "path": "docs/MODULE_AUDIT/server_gui_cli.md",
+      "line": 44,
+      "text": "\"publication-grade\", \"WORKING\", and \"97x demonstrated\" has been downgraded"
+    },
+    {
+      "path": "docs/MODULE_AUDIT/server_gui_cli.md",
+      "line": 104,
+      "text": "- \"WORKING\", \"validated\", \"publication-grade\", and \"97x demonstrated\" are now"
+    },
+    {
+      "path": "docs/MODULE_AUDIT/BACKLOG.md",
+      "line": 144,
+      "text": "| SGC-005 | Complete 2026-05-09 | Replace Gradio \"validated\", \"publication-grade\", \"WORKING\", and \"97x demonstrated\" claims with KR-supported labels or explicit Preview wording. |"
+    },
+    {
+      "path": "docs/ssr_audit_2026_05_18/WP-2_startup_bvp.md",
+      "line": 35,
+      "text": "`status=\"accepted_startup_bvp_packet\"` and `can_support_first_principles_acceptance=True`"
+    },
+    {
+      "path": "docs/ssr_audit_2026_05_18/WP-2_startup_bvp.md",
+      "line": 131,
+      "text": "-> can_support_first_principles_acceptance = True"
+    },
+    {
+      "path": "docs/ssr_audit_2026_05_18/WP-2_startup_bvp.md",
+      "line": 137,
+      "text": "`status=accepted_startup_bvp_packet`, `can_support_first_principles_acceptance=True`, while"
+    },
+    {
+      "path": "docs/ssr_audit_2026_05_18/WP-2_startup_bvp.md",
+      "line": 577,
+      "text": "`accepted_startup_bvp_packet` / `can_support_first_principles_acceptance=True` for accepted"
+    },
+    {
+      "path": "docs/SS20_FULL_INTEGRATION_DRY_RUN_COMMAND_LOGS_2026_05_23/claim_scan.cmd.txt",
+      "line": 4,
+      "text": "terms = re.compile(r'\\b(publication-grade|fully validated|predictive(?:ly)? validated|first-principles accepted|full-3D accepted|accepted_runtime_claim\\s*[:=]\\s*true|can_support_first_principles_acceptance\\s*[:=]\\s*true|"
+    },
+    {
+      "path": "src/dpf/first_principles/deck.py",
+      "line": 1112,
+      "text": "and does not set ``accepted_runtime_claim=True``."
+    },
+    {
+      "path": "tests/test_source_geometry_packet.py",
+      "line": 471,
+      "text": "can_support_first_principles_acceptance=True,"
+    },
+    {
+      "path": "tests/test_runtime_demonstrator_scope.py",
+      "line": 6,
+      "text": "3. Scope packet does NOT carry accepted_runtime_claim=True."
+    },
+    {
+      "path": "tests/test_sprint6_user_supplied_extractions.py",
+      "line": 111,
+      "text": "assert \"accepted_runtime_claim=True\" not in text"
+    },
+    {
+      "path": "tests/test_sprint6_user_supplied_extractions.py",
+      "line": 112,
+      "text": "assert \"can_support_first_principles_acceptance=True\" not in text"
+    },
+    {
+      "path": "tests/test_first_principles_power_port.py",
+      "line": 1003,
+      "text": "_dc_replace(sp, can_support_first_principles_acceptance=True)"
+    },
+    {
+      "path": "tests/test_first_principles_certificate_negative_controls.py",
+      "line": 290,
+      "text": "\"\"\"manifest structural control: can_support_first_principles_acceptance=True"
+    },
+    {
+      "path": "tests/test_first_principles_certificate_negative_controls.py",
+      "line": 293,
+      "text": "FirstPrinciplesRunManifest(can_support_first_principles_acceptance=True)"
+    },
+    {
+      "path": "tests/test_gradio_claims.py",
+      "line": 13,
+      "text": "\"publication-grade accuracy\","
+    }
+  ],
+  "match_count": 51
+}

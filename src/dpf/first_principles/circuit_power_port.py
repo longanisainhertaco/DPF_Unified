@@ -74,6 +74,10 @@ def build_circuit_power_port_packet(
                 blocking_reasons.append("poynting_or_j_dot_e_residual_review_missing")
             else:
                 blocking_reasons.append(f"{key}_missing")
+    if waveform and not _power_port_residual_reviewed(
+        waveform.get("poynting_or_j_dot_e_residual")
+    ):
+        blocking_reasons.append("poynting_or_j_dot_e_residual_review_missing")
 
     if certificate.get("accepted") is not True:
         blocking_reasons.append("review_certificate_missing")
@@ -126,6 +130,14 @@ def build_circuit_power_port_packet(
             "accepted independent review certificate."
         ),
     }
+
+
+def _power_port_residual_reviewed(residual: Any) -> bool:
+    if not isinstance(residual, Mapping):
+        return False
+    if residual.get("passed") is not True:
+        return False
+    return residual.get("reviewed") is True or residual.get("review_status") == "accepted"
 
 
 def _has_density_weighted_or_metadata_only_coupling(

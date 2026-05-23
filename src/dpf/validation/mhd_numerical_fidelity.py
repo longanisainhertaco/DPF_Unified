@@ -7,6 +7,7 @@ from collections.abc import Mapping, Sequence
 from numbers import Real
 
 _KR_SOURCE_BASIS = {
+    "first_principles_finish_line_plan": "docs/FIRST_PRINCIPLES_FINISH_LINE_PLAN.md",
     "auluck_circuit_element": "KnowledgeReference/auluck-2021-dpf-circuit-element.md",
     "beresnyak_mhd_coupling": (
         "KnowledgeReference/beresnyak_2022_pulsed_power_ideal_mhd.md"
@@ -90,6 +91,16 @@ _REQUIRED_EVIDENCE = {
             "Production MHD verification needs checkpoint/restart "
             "reproducibility evidence so long runs and backend comparisons are "
             "not artifacts of one uninterrupted execution path."
+        ),
+    },
+    "limiter_zero_acceptance": {
+        "source_key": "first_principles_finish_line_plan",
+        "source_lines": "268-280",
+        "requirement": (
+            "First-principles numerical fidelity must prove that no "
+            "acceptance-blocking limiter activations were hidden in the run "
+            "scope; runtime limiter probes remain non-accepting until the rest "
+            "of the certificate stack closes."
         ),
     },
     "dpf_scope_limit": {
@@ -930,6 +941,125 @@ def _restart_reproducibility_evidence(
     return None, []
 
 
+def limiter_zero_evidence_from_limiter_ledger(
+    ledger: Mapping[str, object],
+    *,
+    verification_scope: str = "",
+) -> dict[str, object]:
+    """Build Tier-3 evidence that no acceptance-blocking limiters fired."""
+    entry_count = _as_finite_float(ledger.get("entry_count"))
+    blocking_count = _as_finite_float(
+        ledger.get("acceptance_blocking_activation_count")
+    )
+    blocker_ids = ledger.get("acceptance_blocking_limiter_ids")
+    blocker_id_list = (
+        [str(item) for item in blocker_ids]
+        if isinstance(blocker_ids, Sequence)
+        and not isinstance(blocker_ids, (str, bytes, bytearray))
+        else []
+    )
+    status = str(ledger.get("status") or "").strip().lower()
+
+    metrics = {
+        "ledger_present": bool(ledger),
+        "entry_count_declared": entry_count is not None and entry_count >= 0.0,
+        "acceptance_blocking_count_declared": (
+            blocking_count is not None and blocking_count >= 0.0
+        ),
+        "no_acceptance_blocking_limiter_activations": blocking_count == 0.0,
+        "acceptance_blocking_limiter_ids_empty": not blocker_id_list,
+        "ledger_status_not_blocked": status not in {"blocked", "active_blockers"},
+    }
+    passed = all(metrics.values())
+    return {
+        "passed": passed,
+        "validation_tier": 3,
+        "model_role": "code_verification_limiter_zero_acceptance",
+        **_numerical_verification_claim_boundary(),
+        "verification_scope": verification_scope
+        or str(ledger.get("verification_scope", "")),
+        "source": _KR_SOURCE_BASIS["first_principles_finish_line_plan"],
+        "source_lines": "268-280",
+        "source_basis": {
+            "limiter_zero_runtime_probe_boundary": (
+                _KR_SOURCE_BASIS["first_principles_finish_line_plan"]
+            ),
+        },
+        "source_line_basis": {
+            "limiter_zero_runtime_probe_boundary": "268-280",
+        },
+        "metrics": metrics,
+        "missing_or_failed_metrics": [
+            name for name, ok in metrics.items() if not ok
+        ],
+        "details": {
+            "ledger_status": status,
+            "entry_count": entry_count,
+            "acceptance_blocking_activation_count": blocking_count,
+            "acceptance_blocking_limiter_ids": blocker_id_list,
+            "verified_numerical_method_activation_count": _as_finite_float(
+                ledger.get("verified_numerical_method_activation_count")
+            ),
+        },
+        "validity_notes": {
+            "claim_scope": (
+                "Supports only the absence of acceptance-blocking limiter "
+                "activations in the supplied ledger. It does not validate the "
+                "physics model, power-port coupling, convergence, or experiment."
+            ),
+            "acceptance_boundary": (
+                "The cited runtime limiter-proof milestone is explicitly "
+                "non-promoting until the broader certificate stack closes."
+            ),
+        },
+    }
+
+
+def _valid_limiter_zero_evidence(
+    evidence: object,
+) -> Mapping[str, object] | None:
+    if not isinstance(evidence, Mapping):
+        return None
+    if evidence.get("passed") is not True:
+        return None
+    if evidence.get("model_role") != "code_verification_limiter_zero_acceptance":
+        return None
+    if _as_finite_float(evidence.get("validation_tier")) != 3.0:
+        return None
+    return (
+        evidence
+        if evidence.get("source") == _KR_SOURCE_BASIS["first_principles_finish_line_plan"]
+        else None
+    )
+
+
+def _limiter_zero_evidence(
+    result: Mapping[str, object],
+) -> tuple[Mapping[str, object] | None, list[str]]:
+    for key in (
+        "limiter_zero_verification",
+        "limiter_zero_evidence",
+        "limiter_zero_acceptance",
+    ):
+        evidence = _valid_limiter_zero_evidence(result.get(key))
+        if evidence is not None:
+            return evidence, [key]
+
+    for key in (
+        "first_principles_limiter_ledger",
+        "limiter_ledger",
+        "limiter_zero_ledger",
+    ):
+        raw = result.get(key)
+        if not isinstance(raw, Mapping):
+            continue
+        evidence = limiter_zero_evidence_from_limiter_ledger(raw)
+        if evidence["passed"] is True:
+            return evidence, [key]
+
+    return None, []
+
+
 def mhd_scope_limit_evidence_from_phases(
     applicable_phases: Sequence[str],
     invalid_phases: Sequence[str],
@@ -1389,6 +1519,51 @@ def mhd_numerical_fidelity_evidence_from_result(
         ),
     )
 
+    limiter_evidence, limiter_evidence_keys = _limiter_zero_evidence(result)
+    limiter_validated = limiter_evidence is not None
+    if limiter_validated:
+        validated_evidence_scopes["limiter_zero_acceptance"] = (
+            _verification_scope(limiter_evidence)
+        )
+
+    limiter_present, limiter_keys = _has_any(
+        result,
+        "limiter_zero_verification",
+        "limiter_zero_evidence",
+        "limiter_zero_acceptance",
+        "first_principles_limiter_ledger",
+        "limiter_ledger",
+        "limiter_zero_ledger",
+        "first_principles_limiter_summary",
+    )
+    if limiter_validated:
+        limiter_present = True
+        limiter_keys = sorted(set(limiter_keys + limiter_evidence_keys))
+    evidence["limiter_zero_acceptance"] = _record(
+        "limiter_zero_acceptance",
+        status=(
+            "supported"
+            if limiter_validated else
+            "diagnostic_not_validated"
+            if limiter_present else
+            "absent"
+        ),
+        present=limiter_present,
+        validated=limiter_validated,
+        evidence_keys=limiter_keys,
+        notes=(
+            "Limiter ledger evidence shows zero acceptance-blocking limiter "
+            "activations for the supplied scope. This remains Tier-3 code "
+            "verification only, not experimental acceptance."
+            if limiter_validated
+            else
+            "Limiter telemetry is present, but no complete zero "
+            "acceptance-blocking limiter proof is attached."
+            if limiter_present
+            else "No limiter-zero evidence is attached."
+        ),
+    )
+
     scope_evidence, scope_evidence_keys = _mhd_scope_limit_evidence(result)
     scope_validated = scope_evidence is not None
     if scope_validated:
@@ -1460,8 +1635,9 @@ def mhd_numerical_fidelity_evidence_from_result(
             "claim_scope": (
                 "Tier-3 MHD evidence is not high-fidelity complete unless "
                 "finite-volume, cylindrical, circuit-coupled, resistive, "
-                "convergence, backend-parity, restart reproducibility, and "
-                "scope-limit evidence are validated for the claimed DPF phase."
+                "convergence, backend-parity, restart reproducibility, "
+                "limiter-zero, and scope-limit evidence are validated for the "
+                "claimed DPF phase."
             ),
             "audit_role": (
                 "This audit separates generic MHD backend presence from "
@@ -1490,6 +1666,7 @@ def build_mhd_numerical_verification_packet(
     resistive_diffusion_convergence: object | None = None,
     backend_parity_results: Mapping[str, object] | None = None,
     restart_reproducibility_results: Mapping[str, object] | None = None,
+    limiter_zero_ledger: Mapping[str, object] | None = None,
     mhd_scope_limit: Mapping[str, object] | None = None,
     applicable_phases: Sequence[str] = (),
     invalid_phases: Sequence[str] = (),
@@ -1551,6 +1728,13 @@ def build_mhd_numerical_verification_packet(
         assembled["restart_reproducibility_verification"] = (
             restart_reproducibility_evidence_from_results(
                 restart_reproducibility_results,
+                verification_scope=verification_scope,
+            )
+        )
+    if limiter_zero_ledger is not None:
+        assembled["limiter_zero_verification"] = (
+            limiter_zero_evidence_from_limiter_ledger(
+                limiter_zero_ledger,
                 verification_scope=verification_scope,
             )
         )
@@ -1640,6 +1824,10 @@ def mhd_numerical_verification_packet_status(
         "restart_reproducibility": (
             "Attach checkpoint/restart evidence with matching config hashes, "
             "restart marker, and tolerance-bounded observables."
+        ),
+        "limiter_zero_acceptance": (
+            "Attach limiter-ledger evidence proving zero acceptance-blocking "
+            "limiter activations for the claimed numerical scope."
         ),
         "dpf_scope_limit": (
             "Attach explicit DPF phase/scope-limit evidence for where MHD "

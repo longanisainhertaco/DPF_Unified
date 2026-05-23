@@ -1288,11 +1288,26 @@ in ordinary non-`same_scope` source fields. P1-0 took option 2 (current
 behavior): the linter docstring, the `authority_policy` JSON, and
 `docs/SPRINT12_P0_COMPLETION_MEMO_2026_05_21.md` were corrected to state the
 enforced safety property accurately. Linter behavior is unchanged;
-`active_hit_count` remains 0. The P1-0 commit (hash assigned at commit time)
-lands this change.
+`active_hit_count` remains 0.
+
+`2ebe07d` — SS12-P1-0 active-results linter policy wording reconciliation. Adds
+`docs/CODEX_SUPER_SPRINT12_P0_AUDIT_AND_P1_AUTHORIZATION_2026_05_21.md`,
+updates `CodexFindings.md` / `CortexFindings.md`, corrects the Sprint 12 P0
+completion memo wording, and keeps the linter safety property limited to banning
+cross-scope/architecture evidence under same-scope key chains. No scientific,
+runtime, or first-principles acceptance claim was promoted.
 
 `accepted_runtime_claim` and `can_support_first_principles_acceptance` remain
 `false` everywhere. P1-0 promoted nothing.
+
+### SS12 fail-closed release hygiene packaging (2026-05-22)
+
+`b7e3f5b` — package SS12 fail-closed release hygiene. Adds the full-project
+Kanban plan, SS12/SS12R dry-run ledgers and command logs, 2026-05-22
+source-truth/module-vetting baselines, figure-candidate page/crop artifacts,
+and Phase 5/SS12 handoff reports. The commit records a blocked release posture
+and keeps runtime/first-principles acceptance flags false; generated figure
+assets and dry-run logs are packaging evidence, not validation promotion.
 
 ## Notes on CHANGELOG conventions
 

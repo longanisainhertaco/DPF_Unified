@@ -1,0 +1,383 @@
+{
+  "packet_id": "ss17_spatial_thermo_validation_packets",
+  "generated_at": "2026-05-23T00:00:00Z",
+  "validation_scope": "pf1000_full_energy_27_to_40_kv",
+  "source_scope": "PF-1000 full-energy / upper-energy local KnowledgeReference line-cited evidence; HeliosMatrix KB used for discovery only",
+  "kb_support_path": "/Users/anthonyzamora/Desktop/heliosmatrix_kb",
+  "authority_rule": "local_line_cited_sources_only_retrieval_is_not_authority",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "channels": [
+    {
+      "channel": "density_emission_geometry",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "pinch_geometry_interferometer_capability",
+          "value": "pinch_geometry_evolution_and_density_distribution",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 166,
+              "line_end": 174,
+              "quote": "• reconstruct evolution of pinch geometry; • determine linear density of particles; • determine distribution of plasma density in the pinch column; • correlate in time all this phenomena with evolution of X-ray and neutron production; • characterize the MHD instabilities in the processes of plasma development; • connect speed of development of the MHD m=0 instability of the plasma string with efﬁciency of neutron production; • analyze connections between processes of rising and decay of the plasma string with neutrons efﬁciency; • determine the plasma density during the PF phenomena development;",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "diagnostic capability for geometry evolution; not reviewed target values"
+        },
+        {
+          "name": "interferometer_shot_pressure_and_yield",
+          "value": {
+            "pressure_hpa": 2.6,
+            "yield_neutrons": 130000000000.0
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 126,
+              "line_end": 134,
+              "quote": "E. Zieli´nska et al.: Sixteen-frame interferometer for a study of a pinch dynamics in PF-1000 device 3 Results Below we present 16 interferograms (Fig. 6). These experimental results were obtained for one discharge in PF-1000 device. Vacuum chamber initially was under pressure of 2×10−5 hPa, ﬁlled with deuterium gas under pressure of 2,6 hPa. Total neutron yield in this shot was 1,3×1011. Fig. 6 Sixteen interferograms from one shot from PF-1000. 4",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "electron_density_distribution_capability",
+          "value": "space_time_electron_density_distribution",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 137,
+              "line_end": 142,
+              "quote": "density distribution from time developed interferograms is giving the information about: • space-time evolution of the electrons density distribution in the inspected conﬁguration; • efﬁciency of the gas gathering by the plasma sheath; • degree of compression of plasma; • the total plasma volume in the pinch area; • plasma leakage from pinch area.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "final_stage_electron_density_figure_candidate",
+          "value": "frame_images_and_electron_density_distributions",
+          "unit": "figure_candidate",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/final-stages-of-the-plasma-column-evolution-in-the-plasma-focus-pf1000-device-plasma-scien-fa128cfd.md",
+              "line_start": 146,
+              "line_end": 151,
+              "quote": "radiation, t = 0 refers to maximum compression. (a) Two-frames sequences obtained in shots with completely different neutron yield. (b) Typical course of the plasma column creation and disruption for E = 930 kJ, p = 2, Tr and average Y \u00188 \u0002 10 . (c) Frame images and corresponding electron density distributions for two kinds of the plasma sheath disturbances recorded at shots with comparable neutron yield.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "PF-1000 density/emission geometry evidence is line-cited but remains diagnostic-capability/figure-candidate level; numeric spatial fields, digitization uncertainty, comparator mapping, and independent review are missing."
+    },
+    {
+      "channel": "phase_timing",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "breakdown_phase_description",
+          "value": "surface_discharge_along_cylindrical_insulator_few_to_hundred_ns",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 57,
+              "line_end": 65,
+              "quote": "the Z-pinch class and operates with a cylindrical insulator positioned at the lower part of the internal electrode (anode). Initial pressure of the working gas is equal to a few torr. Temporal evolution of the discharge undergoes as a rule the following several phases. The ﬁrst stage is gas breakdown developing along the exterior of a cylindrical insulator. This surface discharge [2] takes from a few to a hundred nanoseconds and bears",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "current_sheath_collapse_good_shot_velocity_min",
+          "value": 20000000.0,
+          "unit": "cm/s",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 314,
+              "line_end": 328,
+              "quote": "Our investigations of the current sheath (CS) collapse dynamics performed by means of a streak camera for the shots with low and high neutron yield are presented in Figs. 6a and 6b, correspondingly. One may see easily two main features distinguishing the “good” shot from the “poor” one: very different implosion velocities of CS and the degree of their symmetry. Both are much better in the case of high neutron yield (Fig. 6b). As for the speed we have received the best figure equal to 5 × 107 cm/s. But in any good shot the velocity of a shock wave and the current sheath (SW + SC) at the final stage of the pinch collapse was not less than 2 × 107 cm/s. Another problem is some disagreement between the computed and recorded current waveforms, as shown in Fig. 7. These differences could be induced by wrong",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "neutron_pulse_timing_vs_xray",
+          "value": {
+            "first_pulse_before_xray_peak_ns": [
+              20,
+              30
+            ],
+            "max_after_xray_peak_ns": 30,
+            "fwhm_ns": [
+              50,
+              70
+            ]
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 401,
+              "line_end": 411,
+              "quote": "The start of X-rays, electrons and neutrons correlated with forming of the intensively radiating part of the pinch located 2 cm in front of the anode top (Fig. 8). The production of neutrons correlates with X-ray activity (Fig. 9), mainly with hard X-rays above a few tens keV. The first neutron pulse starts together with the X-rays, i.e. 20−30 ns before the X-ray peak. The maximum of neutrons is observed ~ 30 ns after the X-ray peak. The FWHM of the first pulse is 50−70 ns. The second neutron pulse is dominant with 3−10 times higher number of neutrons than the first one. The onset",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Timing rows provide candidate phase/neutron-X-ray context only; raw traces, synchronization uncertainty, reviewed phase alignment, and comparator inputs are absent."
+    },
+    {
+      "channel": "em_field_history",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "magnetic_probe_current_sheath_measurement",
+          "value": "calibrated_magnetic_probes_current_at_40mm_from_axis",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+              "line_start": 59,
+              "line_end": 69,
+              "quote": "The results of studies of the plasma-current sheath structure on the PF-1000 facility in the stage close to the instant of pinch formation are presented. The measurements were performed using various modiﬁcations of the calibrated magnetic probes. Studies of the inﬂuence of the probe shape and dimensions on the measurements accuracy were done. The current ﬂowing in the converging sheath at a distance of 40 mm from the axis of the facility electrodes was measured. In the optimal operating modes, this current is equal to the total discharge current, which indicates the high efﬁciency of current transportation toward the axis. In such shots a compact high-quality sheath forms with shock wave in front of the magnetic piston. It is shown that the neutron yield depends on the current compressed onto the axis. This dependence agrees well with the known scaling, Yn ∼I 4. The use of the total discharge current in constructing the current scaling, especially for facilities with a large stored energy, is unjustiﬁed.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "pcs_current_measurement_setup",
+          "value": "absolutely_calibrated_magnetic_probes_and_rogowski_total_current",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/experimental-study-of-the-structure-of-the-plasma-current-sheath-on-the-pf-1000-facility-705bcc83.md",
+              "line_start": 203,
+              "line_end": 215,
+              "quote": "PCS current in the stage close to the instant of pinch formation on the PF-1000 facility [29] operating with deuterium at an energy stored in the capacitor bank of 250–500 kJ. The measurements were performed using absolutely calibrated magnetic probes. The PCS structure was studied using original magneto-optical probes simultaneously recording the dB/dt signal and the plasma optical glow. Along with magneto- optical probes, a Rogowski coil recording the total discharge current and three magnetic probes located inside the PF-1000 collector were also used. The main objective of this paper was to study the dependence of the neutron yield on the total discharge current and the current ﬂowing in the PCS in the",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "current_distribution_pinch_context",
+          "value": "current_density_distribution_paramount",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 396,
+              "line_end": 401,
+              "quote": "efficiency of energy transfer from the source of the magnetic energy stored in the system, as the distribution of current densities in the plasma column, are of paramount importance. PF emission characteristics The start of X-rays, electrons and neutrons correlated",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "EM field/current-sheath rows are line-cited diagnostic candidates but do not provide reviewed field histories, calibration uncertainty, or same-scope comparator-ready arrays."
+    },
+    {
+      "channel": "temperature_or_distribution_history",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "observables": [
+        {
+          "name": "hot_pinch_target_bounds",
+          "value": {
+            "temperature_keV_lte": 1,
+            "density_cm3_lte": 1e+19
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/gribkov-2007-pf1000-jphysd-part2.md",
+              "line_start": 152,
+              "line_end": 174,
+              "quote": "‘current abruption’ phenomenon when the pinch is disturbed by the Rayleigh–Taylor instability provoking in turn various micro-instabilities. These non-linearly coupled instabilities, practically instant (during a time period much shorter than 1 ns), substitute the classical collisional current within the pinch by the collisionless stream of fast electrons having characteristic energy of several hundred keV. The latter fast electron beam generates hard x-ray radiation on the anode [4, 7, 8, 11, 12]. Then these fast electrons are magnetized and the whole current is carried mainly by fast ions [13] having a spectrum extended to several MeV. The ﬁrst MHD phase forms a ‘target’—hot (⩽1 keV) compressed (⩽1019 cm−3) plasma, whereas during the second one (K) the powerful beams of fast electrons and ions are generated and start to interact with plasma and electrodes. A noticeable part of the fast ion stream composed of ‘medium’ energy particles (usually in the range 50–150 keV) is captured by a magnetic ﬁeld of the pinch and conﬁned within the plasma ‘target’ for a period of about 10 drift times [14]. Interactions of these ions—both Coulomb and direct fusion ones—with the above-mentioned plasma target (at the operation of DPF with deuteriumordeuterium–tritium—(DT)—mixtureasaworking gas) result in neutron emission [14, 15]. Energy Ec, released",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "mechanism context; symbols are upper-bound-like OCR text and require review before target use"
+        },
+        {
+          "name": "electron_and_ion_beam_dynamics_upper_energy",
+          "value": "upper_energy_limit_neutron_emission_target_characteristics",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 37,
+              "line_end": 55,
+              "quote": "Published 4 June 2007 Online at stacks.iop.org/JPhysD/40/3592 Abstract Electron and ion beam dynamics of the PF-1000 facility were investigated for the ﬁrst time at its upper energy limit (≈1 MJ) in relation to neutron emission, the pinch’s plasma (‘target’) characteristics and some other parameters with the help of a number of diagnostics with ns temporal resolution. Special attention was paid to the temporal and the spatial cross correlations of different phenomena. Results of these experiments are in favour of a neutron emission model based on ion beam–plasma interaction with three important features: (1) the plasma target is hot and conﬁned during a few ‘inertial conﬁnement times’; (2) the ions of the main part of the beam are magnetized and entrapped around the pinch plasma target for a period longer than the characteristic time of the plasma inductive storage system and (3) ion–ion collisions (both fusion collisions, due to head-on impacts and Coulomb collisions) are responsible for neutron emission. Analysis has shown that one of the ways for achieving a future improvement in the neutron yield of the PF-1000 facility may by changing the geometry of the device. It may ensure an increase in both the discharge current and the",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        },
+        {
+          "name": "hard_xray_electron_energy_context",
+          "value": "electrons_above_70keV_and_hard_xrays_100keV",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 417,
+              "line_end": 422,
+              "quote": "Fig. 9. Records of signals of current derivative (trace 1), soft X-rays above 4 keV (trace 2), electrons 180 deg with energies above 70 keV (trace 3), electrons 90 deg (trace 4), hard X-rays 100 keV (trace 5), and neutrons (trace 6). Fig. 8. High-speed pictures of the pinch phase in the PF-1000 experiment performed at p0 = 4 hPa, W0 = 734 kJ 1.66 MA. The images correspond to instants indicated by broken lines.",
+              "review_status": "target_extraction_candidate"
+            }
+          ]
+        }
+      ],
+      "blocked_reason": "Temperature/distribution evidence remains bounded/contextual; no reviewed Te/Ti/distribution time history, uncertainty propagation, or same-scope acceptance comparator exists."
+    },
+    {
+      "channel": "comparator_stubs",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "comparators": [
+        {
+          "name": "density_field_geometry_comparator",
+          "implementation_status": "stub_blocked_by_missing_reviewed_inputs",
+          "accepts_scalar_only_input": false,
+          "promotes_acceptance": false,
+          "requires_uncertainty": true,
+          "requires_review_certificate": true,
+          "required_model_outputs": [
+            "electron_density_rz_or_image_plane",
+            "emission_geometry_or_synthetic_interferogram",
+            "time_axis"
+          ],
+          "required_evidence_inputs": [
+            "reviewed_density_or_interferometry_digitization",
+            "image_plane_geometry",
+            "spatial_uncertainty",
+            "timing_uncertainty"
+          ],
+          "blocked_reason": "SS17 has diagnostic capability and figure candidates, not reviewed density/emission arrays with uncertainty."
+        },
+        {
+          "name": "em_field_history_comparator",
+          "implementation_status": "stub_blocked_by_missing_reviewed_inputs",
+          "accepts_scalar_only_input": false,
+          "promotes_acceptance": false,
+          "requires_uncertainty": true,
+          "requires_review_certificate": true,
+          "required_model_outputs": [
+            "B_theta_or_current_density_history",
+            "probe_location_mapping",
+            "time_axis"
+          ],
+          "required_evidence_inputs": [
+            "reviewed_magnetic_probe_waveforms",
+            "probe_calibration_uncertainty",
+            "geometry_mapping",
+            "timing_uncertainty"
+          ],
+          "blocked_reason": "Available magnetic-probe/current-sheath evidence is candidate text, not reviewed waveform/field-history evidence."
+        },
+        {
+          "name": "temperature_distribution_comparator",
+          "implementation_status": "stub_blocked_by_missing_reviewed_inputs",
+          "accepts_scalar_only_input": false,
+          "promotes_acceptance": false,
+          "requires_uncertainty": true,
+          "requires_review_certificate": true,
+          "required_model_outputs": [
+            "electron_temperature_history",
+            "ion_temperature_or_distribution_history",
+            "diagnostic_projection"
+          ],
+          "required_evidence_inputs": [
+            "reviewed_temperature_or_distribution_diagnostic",
+            "instrument_response",
+            "uncertainty_budget"
+          ],
+          "blocked_reason": "Current temperature/distribution rows are bounds/context and hard-X-ray/beam qualitative evidence, not reviewed histories."
+        },
+        {
+          "name": "phase_timing_comparator",
+          "implementation_status": "stub_blocked_by_missing_reviewed_inputs",
+          "accepts_scalar_only_input": false,
+          "promotes_acceptance": false,
+          "requires_uncertainty": true,
+          "requires_review_certificate": true,
+          "required_model_outputs": [
+            "breakdown_to_liftoff_phase_times",
+            "pinch_or_neutron_xray_phase_times",
+            "time_axis"
+          ],
+          "required_evidence_inputs": [
+            "reviewed_phase_timing_traces",
+            "trigger_alignment",
+            "timing_uncertainty"
+          ],
+          "blocked_reason": "Candidate phase and neutron/X-ray timing text cannot support scalar-only phase acceptance without reviewed traces and uncertainty."
+        }
+      ],
+      "blocked_reason": "Comparator stubs are deliberately non-executing acceptance gates until reviewed spatial/thermal/field/timing inputs and uncertainties exist."
+    },
+    {
+      "channel": "uncertainty_annotations",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "observables": [],
+      "required_terms": [
+        "source_extraction_uncertainty",
+        "digitization_uncertainty",
+        "diagnostic_calibration_uncertainty",
+        "geometry_registration_uncertainty",
+        "timing_alignment_uncertainty",
+        "model_projection_uncertainty",
+        "review_certificate"
+      ],
+      "blocked_reason": "No complete same-scope uncertainty budget covers spatial registration, diagnostic calibration, digitization, timing, model projection, and review."
+    },
+    {
+      "channel": "review_certificate",
+      "status": "blocked",
+      "scope_match": "same_scope_candidate",
+      "observables": [],
+      "blocked_reason": "No independent review certificate exists for SS17 spatial/thermodynamic packet rows; all rows remain non-accepted."
+    }
+  ],
+  "evaluate_learn_continue": {
+    "evaluate": [
+      "Validator requires required channels, exact KnowledgeReference line/quote matches, fail-closed acceptance flags, and comparator gates that reject scalar-only inputs.",
+      "Focused tests exercise live matrix validity plus forged acceptance, fabricated quote, non-KR source, scalar-only comparator, missing uncertainty, and missing review mutations."
+    ],
+    "learn": [
+      "PF-1000 local sources provide useful candidate density/emission geometry, phase timing, EM probe, and temperature/distribution context.",
+      "The evidence is not comparator-ready: reviewed spatial arrays/traces, uncertainty terms, and independent review are absent, so accepted_runtime_claim remains false."
+    ],
+    "continue": [
+      "SS18 can build neutron diagnostic packets using the same fail-closed pattern.",
+      "SS19 must convert these stubs into certificate-refusal comparators before any accepted fixture can be considered."
+    ]
+  }
+}

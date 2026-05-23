@@ -1,0 +1,357 @@
+{
+  "packet_id": "ss18_neutron_diagnostic_validation_stack",
+  "generated_at": "2026-05-23T00:00:00Z",
+  "validation_scope": "pf1000_neutron_diagnostics_full_energy_27_to_40_kv",
+  "source_scope": "PF-1000 neutron diagnostics local KnowledgeReference line-cited evidence; SS14 source packet used as candidate staging only",
+  "authority_rule": "local_line_cited_sources_only_retrieval_is_not_authority",
+  "acceptance_boundary": {
+    "accepted_runtime_claim": false,
+    "can_support_first_principles_acceptance": false,
+    "promotes_acceptance": false
+  },
+  "mechanisms": [
+    {
+      "mechanism": "yield",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "diagnostic_channel": "activation_counters_and_neutron_yield_reporting",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "max_neutron_yield_new_large_electrodes",
+          "value": 200000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 72,
+              "line_end": 74,
+              "quote": "Abstract A PF-1000 facility was operated for the first time at an energy level of up to 1 MJ. The maximal emission of 2\u00d71011 neutrons/shot was registered. Relatively low emission anisotropy was observed. Fast ion beams were generated only from shots performed at a low filling pressure (1-2 Torr).",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 145,
+              "line_end": 147,
+              "quote": "emission decreases. One can see (Table 1) that the highest neutron yield registered so far was about 2\u00d71011 neutrons/shot, but it is expected that still higher neutron",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "scalar yield exists as candidate; calibration/review/UQ incomplete"
+        },
+        {
+          "name": "series_yield_order",
+          "value": 200000000000.0,
+          "unit": "neutrons_per_shot",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 362,
+              "line_end": 366,
+              "quote": "1. For the first time the neutron yield and neutron emission anisotropy have been measured for PF shots performed at about 1 MJ discharge energy. 2. Neutron yield of the order of 2\u00d71011 neutrons/shot was registered in the series of shots carried out within the PF-",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "series trend is useful but remains non-promoting without shot-resolved uncertainty"
+        }
+      ],
+      "blocked_reason": "Yield has line-cited PF-1000 candidates, but detector calibration, activation response, shot selection, uncertainty propagation, and independent review are incomplete."
+    },
+    {
+      "mechanism": "timing",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "diagnostic_channel": "scintillator_time_of_flight_and_xray_correlation",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "neutron_pulse_timing_vs_xray",
+          "value": {
+            "first_pulse_before_xray_peak_ns": [
+              20,
+              30
+            ],
+            "max_after_xray_peak_ns": 30,
+            "fwhm_ns": [
+              50,
+              70
+            ]
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2006-pf1000-mega-joule.md",
+              "line_start": 401,
+              "line_end": 411,
+              "quote": "The start of X-rays, electrons and neutrons correlated with forming of the intensively radiating part of the pinch located 2 cm in front of the anode top (Fig. 8). The production of neutrons correlates with X-ray activity (Fig. 9), mainly with hard X-rays above a few tens keV. The first neutron pulse starts together with the X-rays, i.e. 20\u221230 ns before the X-ray peak. The maximum of neutrons is observed ~ 30 ns after the X-ray peak. The FWHM of the first pulse is 50\u221270 ns. The second neutron pulse is dominant with 3\u221210 times higher number of neutrons than the first one. The onset",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "timing values are candidate extracted text, not a reviewed digitized comparator"
+        },
+        {
+          "name": "scintillation_peak_interpretation",
+          "value": "first_peak_hard_xray_second_peak_2p45mev_neutrons",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "signal interpretation requires detector-response/UQ review before acceptance"
+        }
+      ],
+      "blocked_reason": "Timing evidence lacks reviewed raw traces/digitization, detector impulse response, propagation correction, and uncertainty."
+    },
+    {
+      "mechanism": "spectrum",
+      "status": "blocked",
+      "scope_match": "same_scope_blocked",
+      "diagnostic_channel": "time_of_flight_spectrum",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "neutron_energy_signature",
+          "value": "2.45 MeV",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "DD energy signature context is not a measured spectrum packet"
+        },
+        {
+          "name": "tof_spectrum_future_method_blocker",
+          "value": "future_experiments_move_probes_for_time_of_flight_spectra",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 95,
+              "line_end": 103,
+              "quote": "Am-Be neutron source of precisely defined activity equal to 1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi- ment described, these probes were located ~15 m from the electrode outlet. For future experiments the probes will be moved to a distance of a few dozen meters in order to meas- ure neutron energy spectra by means of the time-of-flight method.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "source states future ToF spectrum work; this is a blocker, not same-scope spectrum evidence"
+        }
+      ],
+      "blocked_reason": "No same-scope measured neutron energy spectrum packet exists; future ToF language and 2.45 MeV identification cannot support acceptance."
+    },
+    {
+      "mechanism": "anisotropy",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "diagnostic_channel": "angular_activation_counter_yield_ratio",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "anisotropy_definition",
+          "value": "Yn(25deg)/Yn(90deg)",
+          "unit": "ratio",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 132,
+              "line_end": 137,
+              "quote": "the initial charging voltage (U0), the electrical energy stored in the condenser battery (W0), the D2 filling pressure (p0), the maximum current amplitude (Imax), and a coefficient describing the neutron emission anisotropy defined in this work as (Yn(25\u00b0)/Yn(90\u00b0). The neutron emission was inves- tigated as a function of the initial charging voltage for sev-",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "ratio definition requires angular detector response and UQ"
+        },
+        {
+          "name": "anisotropy_pressure_trend",
+          "value": "decreases_with_initial_filling_pressure",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 150,
+              "line_end": 155,
+              "quote": "Fig. 3 shows that an averaged coefficient of the neutron emission anisotropy decreases monotonically with an increase in the initial filling pressure. Relatively low values of this coefficient, even for the discharge pressure of 1 Torr, are interesting results. One could assume that energetic deuterons considerably contribute to the total neutron",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "trend is candidate only; not a reviewed angular response matrix"
+        },
+        {
+          "name": "large_electrode_anisotropy_conclusion",
+          "value": "more_isotropic_than_other_pf_experiments",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 362,
+              "line_end": 373,
+              "quote": "1. For the first time the neutron yield and neutron emission anisotropy have been measured for PF shots performed at about 1 MJ discharge energy. 2. Neutron yield of the order of 2\u00d71011 neutrons/shot was registered in the series of shots carried out within the PF- 1000 facility equipped with new (large) electrodes. 3. Angular distribution of the neutron emission is more isotropic in the PF-1000 facility than that observed in other PF experiments. 4. Noticeable fast ion emission was observed only in the discharges carried out at a relatively low filling pressure p0 (1\u20132) Torrs.",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "conclusion does not close mechanism-separated acceptance"
+        }
+      ],
+      "blocked_reason": "Anisotropy candidates lack reviewed angular detector response, scatter correction, shot-resolved uncertainty, and certificate review."
+    },
+    {
+      "mechanism": "detector_activation_response",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "diagnostic_channel": "silver_activation_counters_scintillation_probes_track_detectors",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "activation_counter_calibration_source",
+          "value": {
+            "source": "Am-Be",
+            "activity": 15000000.0
+          },
+          "unit": "neutrons_per_sec_4pi",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 95,
+              "line_end": 98,
+              "quote": "Am-Be neutron source of precisely defined activity equal to 1.5\u00d7107 neutrons/sec 4\u03c0. In order to perform time-resolved measurements of the hard X-ray radiation and fast neu- trons also scintillation probes were used. For the experi-",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "calibration source exists but response matrix and uncertainty remain missing"
+        },
+        {
+          "name": "diagnostic_suite_upper_energy",
+          "value": "rogowski_visual_streak_sxr_pinhole_pin_scintillators_activation_counters",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 37,
+              "line_end": 48,
+              "quote": "Published 4 June 2007 Online at stacks.iop.org/JPhysD/40/3592 Abstract Electron and ion beam dynamics of the PF-1000 facility were investigated for the \ufb01rst time at its upper energy limit (\u22481 MJ) in relation to neutron emission, the pinch\u2019s plasma (\u2018target\u2019) characteristics and some other parameters with the help of a number of diagnostics with ns temporal resolution. Special attention was paid to the temporal and the spatial cross correlations of different phenomena. Results of these experiments are in favour of a neutron emission model based on ion beam\u2013plasma interaction with three important features: (1) the plasma target is hot and con\ufb01ned during a few \u2018inertial con\ufb01nement times\u2019; (2) the ions of the main part of the",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "diagnostic suite context only, non-promoting"
+        }
+      ],
+      "blocked_reason": "Detector/activation response has calibration and diagnostic-suite context, but no reviewed response matrix, efficiency curve, scatter correction, or uncertainty budget."
+    },
+    {
+      "mechanism": "diagnostic_mapping",
+      "status": "candidate",
+      "scope_match": "same_scope_candidate",
+      "diagnostic_channel": "detector_geometry_to_observable_mapping",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "tof_scintillator_distance_and_angle_mapping",
+          "value": {
+            "scintillator_distance": "15 m",
+            "axis_location": "electrode_axis",
+            "angular_neutron_pulse_measurement": "different_angles"
+          },
+          "unit": "mixed",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/neutron-and-fast-ion-emission-from-pf-1000-facility-equipped-with-new-large-electrodes-dc61e78e.md",
+              "line_start": 355,
+              "line_end": 358,
+              "quote": "signals from the scintillation probe which was located on the electrode axis at a distance of 15 m from the electrode outlet. The first peak corresponds to the hard X-ray radia- tion and the second one was induced by 2.45 MeV neutrons.",
+              "review_status": "target_extraction_candidate"
+            },
+            {
+              "source_path": "KnowledgeReference/scholz-2007-pf1000-part2-jphysd.md",
+              "line_start": 354,
+              "line_end": 365,
+              "quote": "We investigated the neutron production process by measuring its time evolution, absolute neutron yield and its Figure 4. Scheme of track detectors mounting. Figure 5. Electrode set-up also showing the positions of the neutron activation counters (SCs) and the fast probe (PM+ scintillator) detectors (SPD) in relation to the Z-axis of the facility. anisotropy on the basis of both time-integrated methods and time-resolved registration of neutron pulses at different angles to the electrode axis as well as by their comparison with time- resolved and time-integrated measurements of SXR and HXR radiation and the fast electron and ion beams. The total neutron yield (Ytot), i.e. the number of neutrons produced during a",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "geometry mapping candidate for downstream comparator; not reviewed sufficient"
+        },
+        {
+          "name": "interferometer_neutron_correlation_mapping",
+          "value": "correlate_interferometry_with_xray_and_neutron_production",
+          "unit": "qualitative",
+          "uncertainty": null,
+          "source_refs": [
+            {
+              "source_path": "KnowledgeReference/sixteenframe-interferometer-for-a-study-of-a-pinch-dynamics-in-pf1000-device-f8dc9d1b.md",
+              "line_start": 166,
+              "line_end": 174,
+              "quote": "\u2022 reconstruct evolution of pinch geometry; \u2022 determine linear density of particles; \u2022 determine distribution of plasma density in the pinch column; \u2022 correlate in time all this phenomena with evolution of X-ray and neutron production; \u2022 characterize the MHD instabilities in the processes of plasma development; \u2022 connect speed of development of the MHD m=0 instability of the plasma string with ef\ufb01ciency of neutron production; \u2022 analyze connections between processes of rising and decay of the plasma string with neutrons ef\ufb01ciency; \u2022 determine the plasma density during the PF phenomena development;",
+              "review_status": "target_extraction_candidate"
+            }
+          ],
+          "note": "diagnostic capability mapping only"
+        }
+      ],
+      "blocked_reason": "Mapping from source observables to runtime/comparator channels is incomplete: detector geometry, timing offsets, efficiencies, and response kernels are not reviewed."
+    },
+    {
+      "mechanism": "uncertainty_blockers",
+      "status": "blocked",
+      "scope_match": "same_scope_blocked",
+      "diagnostic_channel": "uncertainty_budget_and_review_certificate",
+      "promotes_acceptance": false,
+      "observables": [
+        {
+          "name": "missing_same_scope_uncertainty_budget",
+          "value": null,
+          "unit": "not_applicable",
+          "uncertainty": null,
+          "source_refs": [],
+          "note": "No complete source-extraction, digitization, detector-response, comparator, and model uncertainty budget is available."
+        },
+        {
+          "name": "missing_independent_review_certificate",
+          "value": null,
+          "unit": "not_applicable",
+          "uncertainty": null,
+          "source_refs": [],
+          "note": "No independent review certificate accepts SS18 neutron rows."
+        }
+      ],
+      "blocked_reason": "The uncertainty budget and independent review certificate are missing, so every neutron diagnostic mechanism remains non-promoting."
+    }
+  ],
+  "diagnostic_completeness_check": {
+    "required_mechanisms": [
+      "yield",
+      "timing",
+      "spectrum",
+      "anisotropy",
+      "detector_activation_response",
+      "diagnostic_mapping",
+      "uncertainty_blockers"
+    ],
+    "complete_for_acceptance": false,
+    "blocking_reasons": [
+      "neutron_spectrum_packet_missing",
+      "detector_response_matrix_missing",
+      "same_scope_uncertainty_budget_missing",
+      "independent_review_certificate_missing"
+    ]
+  }
+}

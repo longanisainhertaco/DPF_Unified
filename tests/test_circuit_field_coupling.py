@@ -7,6 +7,7 @@ from dpf.validation.circuit_field_coupling import (
     dynamic_inductance_power_balance_from_waveforms,
     field_coupling_component_evidence,
     field_coupling_evidence_from_result,
+    field_power_diagnostics_from_cylindrical_state,
     implicit_midpoint_power_port_back_emf,
 )
 from dpf.validation.quality_assessment import scientific_accuracy_gap_report
@@ -179,6 +180,29 @@ def test_circuit_coupled_energy_evidence_rejects_power_mismatch():
     )
 
 
+def test_field_power_diagnostics_records_sign_time_centering_and_residual():
+    import numpy as np
+
+    B = np.zeros((3, 2, 2), dtype=float)
+    B[1, :, :] = 2.0
+    state = {"B": B, "velocity": np.zeros_like(B)}
+
+    diagnostic = field_power_diagnostics_from_cylindrical_state(
+        state,
+        dr=0.01,
+        dz=0.02,
+        current_A=1.0e5,
+        eta_ohm_m=2.5e-6,
+    )
+
+    assert diagnostic["validation_status"] == "not_validation_evidence"
+    assert diagnostic["power_port_method"] == "axisymmetric_j_dot_e_volume_integral"
+    assert diagnostic["time_centering"] == "instantaneous_cell_centered_fields"
+    assert diagnostic["terminal_voltage_orientation"] == "load_positive_opposes_source_current"
+    assert diagnostic["poynting_j_dot_e_residual_W"] == 0.0
+    assert diagnostic["poynting_j_dot_e_relative_residual"] == 0.0
+
+
 def test_circuit_coupled_energy_evidence_supports_two_audit_channels():
     coupled = circuit_coupled_energy_evidence_from_history(
         times_s=[0.0, 1.0, 2.0],
@@ -198,6 +222,34 @@ def test_circuit_coupled_energy_evidence_supports_two_audit_channels():
     assert required["circuit_energy_balance"]["status"] == "supported"
     assert required["circuit_energy_balance"]["validated"] is True
     assert "kr_experimental_comparison" in evidence["missing_or_unvalidated_evidence"]
+
+
+def test_circuit_coupled_energy_evidence_requires_valid_interval_labels():
+    invalid = circuit_coupled_energy_evidence_from_history(
+        times_s=[0.0, 1.0, 2.0],
+        current_A=[2.0, 2.0, 2.0],
+        voltage_V=[5.0, 5.0, 5.0],
+        poynting_power_W=[10.0, 10.0, 10.0],
+        stored_energy_J=[0.0, 10.0, 20.0],
+        interval_labels=["snowplow_loaded", "unsupported_magic"],
+    )
+    valid = circuit_coupled_energy_evidence_from_history(
+        times_s=[0.0, 1.0, 2.0],
+        current_A=[2.0, 2.0, 2.0],
+        voltage_V=[5.0, 5.0, 5.0],
+        poynting_power_W=[10.0, 10.0, 10.0],
+        stored_energy_J=[0.0, 10.0, 20.0],
+        interval_labels=["snowplow_loaded", "field_derived_candidate"],
+    )
+
+    assert invalid["passed"] is False
+    assert "recognized_interval_labels" in invalid["missing_or_failed_metrics"]
+    assert invalid["details"]["interval_labels"] == [
+        "snowplow_loaded",
+        "unsupported_magic",
+    ]
+    assert valid["passed"] is True
+    assert valid["metrics"]["recognized_interval_labels"] is True
 
 
 def test_field_coupling_component_evidence_supports_one_component():

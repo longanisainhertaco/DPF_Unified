@@ -9,6 +9,7 @@ from dpf.validation.mhd_numerical_fidelity import (
     backend_parity_evidence_from_results,
     build_mhd_numerical_verification_packet,
     cylindrical_convergence_evidence_from_results,
+    limiter_zero_evidence_from_limiter_ledger,
     mhd_numerical_fidelity_evidence_from_result,
     mhd_numerical_verification_packet_status,
     mhd_scope_limit_evidence_from_phases,
@@ -469,6 +470,60 @@ def test_mhd_scope_limit_evidence_supports_scope_audit_channel_only():
     assert required["finite_volume_mhd_verification"]["status"] == "absent"
 
 
+def test_limiter_zero_evidence_passes_no_acceptance_blocking_ledger():
+    limiter_zero = limiter_zero_evidence_from_limiter_ledger({
+        "status": "clear",
+        "entry_count": 4,
+        "acceptance_blocking_activation_count": 0,
+        "verified_numerical_method_activation_count": 4,
+        "acceptance_blocking_limiter_ids": [],
+    })
+
+    assert limiter_zero["passed"] is True
+    assert limiter_zero["validation_tier"] == 3
+    assert limiter_zero["model_role"] == "code_verification_limiter_zero_acceptance"
+    assert limiter_zero["metrics"]["no_acceptance_blocking_limiter_activations"] is True
+    assert limiter_zero["experimental_dpf_validation"] is False
+    assert limiter_zero["supports_predictive_scientific_claims"] is False
+
+
+def test_limiter_zero_evidence_rejects_hidden_acceptance_blocking_activity():
+    missing = limiter_zero_evidence_from_limiter_ledger({})
+    active = limiter_zero_evidence_from_limiter_ledger({
+        "status": "blocked",
+        "entry_count": 3,
+        "acceptance_blocking_activation_count": 2,
+        "acceptance_blocking_limiter_ids": ["density_floor", "temperature_floor"],
+    })
+
+    assert missing["passed"] is False
+    assert "ledger_present" in missing["missing_or_failed_metrics"]
+    assert active["passed"] is False
+    assert "no_acceptance_blocking_limiter_activations" in (
+        active["missing_or_failed_metrics"]
+    )
+
+
+def test_limiter_zero_supports_limiter_audit_channel_only():
+    limiter_zero = limiter_zero_evidence_from_limiter_ledger({
+        "status": "clear",
+        "entry_count": 1,
+        "acceptance_blocking_activation_count": 0,
+    })
+    evidence = mhd_numerical_fidelity_evidence_from_result({
+        "limiter_zero_verification": limiter_zero,
+    })
+    required = evidence["required_evidence"]
+
+    assert evidence["passed"] is False
+    assert required["limiter_zero_acceptance"]["status"] == "supported"
+    assert required["limiter_zero_acceptance"]["validated"] is True
+    assert "limiter_zero_verification" in (
+        required["limiter_zero_acceptance"]["evidence_keys"]
+    )
+    assert required["finite_volume_mhd_verification"]["status"] == "absent"
+
+
 def test_complete_mhd_numerical_evidence_packet_can_pass_gap_gate():
     scope_id = "synthetic_mhd_numerical_packet"
     cylindrical = cylindrical_convergence_evidence_from_results({
@@ -506,6 +561,11 @@ def test_complete_mhd_numerical_evidence_packet_can_pass_gap_gate():
         "config_hash": "cfg-sha",
         "restart_config_hash": "cfg-sha",
     }, verification_scope=scope_id)
+    limiter_zero = limiter_zero_evidence_from_limiter_ledger({
+        "status": "clear",
+        "entry_count": 4,
+        "acceptance_blocking_activation_count": 0,
+    }, verification_scope=scope_id)
     scope = mhd_scope_limit_evidence_from_phases(
         applicable_phases=["formation", "first_collapse"],
         invalid_phases=["after_first_collapse", "post_disruption"],
@@ -533,6 +593,7 @@ def test_complete_mhd_numerical_evidence_packet_can_pass_gap_gate():
         "resistive_diffusion_verification": resistive,
         "backend_parity_verification": parity,
         "restart_reproducibility_verification": restart,
+        "limiter_zero_verification": limiter_zero,
         "mhd_scope_limit": scope,
     })
     gaps = {
@@ -588,6 +649,11 @@ def test_complete_mhd_numerical_packet_must_share_verification_scope():
         "config_hash": "cfg-sha",
         "restart_config_hash": "cfg-sha",
     }, verification_scope="scope_restart")
+    limiter_zero = limiter_zero_evidence_from_limiter_ledger({
+        "status": "clear",
+        "entry_count": 4,
+        "acceptance_blocking_activation_count": 0,
+    }, verification_scope="scope_limiter")
     scope = mhd_scope_limit_evidence_from_phases(
         applicable_phases=["formation", "first_collapse"],
         invalid_phases=["after_first_collapse", "post_disruption"],
@@ -615,6 +681,7 @@ def test_complete_mhd_numerical_packet_must_share_verification_scope():
         "resistive_diffusion_verification": resistive,
         "backend_parity_verification": parity,
         "restart_reproducibility_verification": restart,
+        "limiter_zero_verification": limiter_zero,
         "mhd_scope_limit": scope,
     })
     gaps = {
@@ -730,6 +797,11 @@ def test_mhd_numerical_packet_status_passes_complete_same_scope_packet():
         "config_hash": "cfg-sha",
         "restart_config_hash": "cfg-sha",
     }, verification_scope=scope_id)
+    limiter_zero = limiter_zero_evidence_from_limiter_ledger({
+        "status": "clear",
+        "entry_count": 4,
+        "acceptance_blocking_activation_count": 0,
+    }, verification_scope=scope_id)
     scope = mhd_scope_limit_evidence_from_phases(
         applicable_phases=["formation", "first_collapse"],
         invalid_phases=["after_first_collapse", "post_disruption"],
@@ -758,6 +830,7 @@ def test_mhd_numerical_packet_status_passes_complete_same_scope_packet():
         "resistive_diffusion_verification": resistive,
         "backend_parity_verification": parity,
         "restart_reproducibility_verification": restart,
+        "limiter_zero_verification": limiter_zero,
         "mhd_scope_limit": scope,
     })
 
@@ -821,6 +894,7 @@ def test_packet_builder_attaches_scheduled_results_without_promotion():
         "circuit_coupled_energy_verification",
         "backend_parity",
         "restart_reproducibility",
+        "limiter_zero_acceptance",
     }
 
 
@@ -877,6 +951,11 @@ def test_packet_builder_can_close_complete_same_scope_tier3_packet():
             "restart_step": 512,
             "config_hash": "cfg-sha",
             "restart_config_hash": "cfg-sha",
+        },
+        limiter_zero_ledger={
+            "status": "clear",
+            "entry_count": 4,
+            "acceptance_blocking_activation_count": 0,
         },
         applicable_phases=["formation", "first_collapse"],
         invalid_phases=["after_first_collapse", "post_disruption"],

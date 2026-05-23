@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import asdict
 import json
+from dataclasses import asdict
 from pathlib import Path
 
 from dpf.validation.artifacts import stable_json_hash
@@ -57,6 +57,7 @@ def build_packet(
         poynting_power_W=[10.0, 10.0, 10.0],
         stored_energy_J=[0.0, 10.0, 20.0],
         verification_scope=scope,
+        interval_labels=["field_derived_candidate"],
     )
     inputs = {
         "cylindrical_convergence": cylindrical,

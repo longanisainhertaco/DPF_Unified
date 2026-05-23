@@ -1,0 +1,21 @@
+python3 - <<'PY'
+from pathlib import Path
+import re, json
+terms = re.compile(r'\b(publication-grade|fully validated|predictive(?:ly)? validated|first-principles accepted|full-3D accepted|accepted_runtime_claim\s*[:=]\s*true|can_support_first_principles_acceptance\s*[:=]\s*true|promotes_acceptance\s*[:=]\s*true)\b', re.I)
+roots = [Path('README.md'), Path('docs'), Path('src'), Path('tests')]
+findings=[]
+for root in roots:
+    paths=[root] if root.is_file() else [p for p in root.rglob('*') if p.is_file() and p.suffix.lower() in {'.md','.py','.json','.txt','.yaml','.yml'}]
+    for path in paths:
+        if any(part in {'__pycache__'} for part in path.parts):
+            continue
+        try:
+            text=path.read_text(errors='ignore')
+        except Exception:
+            continue
+        for i,line in enumerate(text.splitlines(),1):
+            if terms.search(line):
+                findings.append({'path':str(path),'line':i,'text':line.strip()[:220]})
+print(json.dumps({'matches':findings,'match_count':len(findings)}, indent=2))
+raise SystemExit(1 if findings else 0)
+PY

@@ -111,6 +111,7 @@ _INTERVAL_AUTHORITY_LABELS = (
     "field_derived_candidate",
     "validated_field_coupled",
 )
+_ALLOWED_INTERVAL_AUTHORITY_LABELS = frozenset(_INTERVAL_AUTHORITY_LABELS)
 
 
 def _is_sequence(value: object) -> bool:
@@ -288,15 +289,29 @@ def field_power_diagnostics_from_cylindrical_state(
         load_voltage_V = float("nan")
         source_orientation_voltage_V = float("nan")
     field_interface_power_W = current_value * load_voltage_V
+    residual_scale = max(
+        abs(field_interface_power_W),
+        abs(j_dot_e_power_W),
+        1.0e-300,
+    )
+    poynting_j_dot_e_residual_W = field_interface_power_W - j_dot_e_power_W
+    poynting_j_dot_e_relative_residual = (
+        abs(poynting_j_dot_e_residual_W) / residual_scale
+    )
 
     return {
         "classification": "engineering_field_coupling_diagnostic",
         "validation_status": "not_validation_evidence",
+        "power_port_method": "axisymmetric_j_dot_e_volume_integral",
+        "time_centering": "instantaneous_cell_centered_fields",
+        "terminal_voltage_orientation": "load_positive_opposes_source_current",
         "magnetic_energy_J": magnetic_energy_J,
         "field_derived_inductance_H": field_inductance_H,
         "dL_field_dt_H_s": dL_field_dt_H_s,
         "j_dot_e_power_W": j_dot_e_power_W,
         "poynting_power_W": field_interface_power_W,
+        "poynting_j_dot_e_residual_W": poynting_j_dot_e_residual_W,
+        "poynting_j_dot_e_relative_residual": poynting_j_dot_e_relative_residual,
         "joule_power_W": joule_power_W,
         "field_terminal_voltage_V": load_voltage_V,
         "poynting_voltage_source_orientation_V": source_orientation_voltage_V,
@@ -697,6 +712,7 @@ def circuit_coupled_energy_evidence_from_history(
     *,
     verification_scope: str = "",
     relative_tolerance: float = 0.05,
+    interval_labels: Sequence[str] | None = None,
 ) -> dict[str, object]:
     """Build KR-scoped evidence for circuit/MHD power and energy coupling."""
     times = np.asarray(times_s, dtype=float)
@@ -762,6 +778,10 @@ def circuit_coupled_energy_evidence_from_history(
         accounted_energy = 0.0
         relative_energy_residual = float("inf")
 
+    interval_label_values = [str(label) for label in (interval_labels or [])]
+    recognized_interval_labels = all(
+        label in _ALLOWED_INTERVAL_AUTHORITY_LABELS for label in interval_label_values
+    )
     metrics = {
         "finite_monotonic_samples": bool(has_samples),
         "circuit_power_matches_poynting": (
@@ -770,6 +790,7 @@ def circuit_coupled_energy_evidence_from_history(
         "integrated_energy_accounted": (
             relative_energy_residual <= relative_tolerance
         ),
+        "recognized_interval_labels": recognized_interval_labels,
     }
     passed = all(metrics.values())
     return {
@@ -802,6 +823,10 @@ def circuit_coupled_energy_evidence_from_history(
             "input_energy_J": input_energy,
             "accounted_energy_J": accounted_energy,
             "relative_energy_residual": relative_energy_residual,
+            "interval_labels": interval_label_values,
+            "allowed_interval_labels": list(_INTERVAL_AUTHORITY_LABELS),
+            "sign_convention": "positive_poynting_power_is_load_absorbed_power",
+            "time_centering": "history_samples_are_compared_at_supplied_time_points",
             "circuit_power_W_range": [
                 float(np.min(circuit_power)) if circuit_power.size else 0.0,
                 float(np.max(circuit_power)) if circuit_power.size else 0.0,

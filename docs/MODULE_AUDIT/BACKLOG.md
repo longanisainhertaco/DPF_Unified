@@ -23,6 +23,7 @@ source review, and task sizing before implementation.
 | VAL-011 | Complete 2026-05-11 | Add an Akel Fig. 1 source-integrity verifier before independent review. `scripts/verify_akel_digitization_source_integrity.py` checks local markdown/PDF/JSON parity, PDF/hash matches, Fig. 1 crop hash, page-3 SVG hash, draft packet hash, source caption line window, measured/computed series point counts, and non-review digitization failures. It passes today only as a pre-review guardrail with `accepted_for_validation=false`; Akel review and S1/S2 remain blocked under `VAL-005`. |
 | VAL-012 | Complete 2026-05-11 | Promote local `downloaded_books_papers/Research Papers` intake PDFs into KR text-parity records and remove exact intake duplicates. `scripts/promote_research_papers_to_kr.py --apply` promoted 54 unique PDFs into `KnowledgeReference/`, skipped 7 already represented source-level records, and deleted 16 byte-for-byte duplicate intake files. The generated records are `text_parity_extracted_review_needed`; typed target extraction and validation acceptance remain blocked under `VAL-006`. |
 | VAL-013 | Complete 2026-05-11 | Correct the electron-ion Coulomb-log convention in `src/dpf/validation/pinch_physics.py::coulomb_mean_free_path()` during the formulary audit. The helper no longer defaults to the NRL electron-electron expression for an electron-ion mfp calculation, and focused formulary transport tests cover the branch behavior. |
+| VAL-014 | Complete 2026-05-23 | Add the SS19 UQ/comparator/certificate pipeline evaluator. `build_ss19_certificate_pipeline(...)` now checks comparator mapping, uncertainty-budget completeness, run/source hashes, upstream blockers, negative controls, and review status; it refuses incomplete and complete-production stacks while accepting only a synthetic complete fixture for wiring, with all runtime/first-principles acceptance flags false. |
 
 ## Engine/Core Module
 
@@ -67,6 +68,7 @@ source review, and task sizing before implementation.
 | CIR-008 | Complete 2026-05-09 | Preserve the geometry/loading boundary: `L_coeff` remains unscaled, while circuit-facing helpers apply `fc` and `fcr_eff`. |
 | CIR-009 | Complete 2026-05-11 | Fix `CircuitCoupler` inductive-EMF ownership. The coupler now clamps `dLp_dt` by equivalent `I*dLp/dt` voltage but returns `back_emf=0.0`, because `RLCSolver` already contains the inductive `-I*dLp/dt` term. |
 | CIR-010 | Complete 2026-05-11 | Apply Lee radial `fcr` circuit-loading in `src/dpf/validation/lee_model_comparison.py`. The validation Lee model now carries `radial_current_fraction`, applies `lee_fcr` device overrides, uses `fcr` for radial inductance, radial `dLp/dt`, radial/reflected force, and frozen/post-crowbar radial inductance, and reports `fcr` in metadata. |
+| CIR-011 | Complete 2026-05-23 | Close the SS15 power-port evidence-bound slice without promoting acceptance. `field_power_diagnostics_from_cylindrical_state()` now records the axisymmetric `J·E` volume-integral method, load-positive sign convention, cell-centered time-centering, and Poynting/`J·E` residual metrics; Tier-3 circuit-energy evidence validates interval labels; Phase 4-B power-port packets require reviewed residual metadata before the review gate is present. |
 
 ## Collision/Transport Module
 
@@ -86,7 +88,7 @@ source review, and task sizing before implementation.
 | DIA-005 | Complete 2026-05-10 | Build a diagnostics evidence manifest that classifies every formula/output as accepted, blocked-by-review, missing, engineering-probe, or synthetic-only. `src/dpf/diagnostics/evidence_manifest.py` now covers every diagnostics module/public symbol and fails closed with no accepted validation entries. |
 | DIA-006 | Complete 2026-05-10 | Split engineering smoke tests from source-backed physics validation tests. `src/dpf/diagnostics/test_lanes.py` and pytest collection markers now classify diagnostics tests as engineering-smoke, source-component-check, source-blocked, or synthetic-only; no diagnostics test is currently in the source-backed validation lane. |
 | DIA-007 | Complete 2026-05-09 | Update stale diagnostics troubleshooting notes after the audit is complete. |
-| DIA-008 | Blocked | Add same-scope diagnostic validation packets for neutron yield, timing, spectrum, anisotropy, detector response, and uncertainty. |
+| DIA-008 | Blocked; packet scaffold added 2026-05-23 | Add same-scope diagnostic validation packets for neutron yield, timing, spectrum, anisotropy, detector response, and uncertainty. SS18 now adds a mechanism-separated fail-closed neutron diagnostic packet and validator for yield, timing, spectrum, anisotropy, detector/activation response, diagnostic mapping, and uncertainty blockers, but it deliberately remains non-accepting until spectrum, response matrix, UQ, comparator, and review certificate close. |
 | DIA-009 | Complete 2026-05-11 | Correct NRL electron-ion Coulomb-log and Spitzer-resistivity usage in regime diagnostics. `magnetic_reynolds_number()` now uses centralized corrected resistivity, and `classify_regime()` uses the NRL electron-ion Coulomb-log branches rather than an electron-electron-like expression. |
 
 ## Radiation/Atomic/Neutrons Module
@@ -95,7 +97,7 @@ source review, and task sizing before implementation.
 | --- | --- | --- |
 | RAD-001 | Blocked | Source-close line cooling coefficients or replace them with a KR-backed opacity/EOS/radiation packet. |
 | RAD-002 | Blocked | Add branch-specific Bosch-Hale DD neutron/proton handling and tests tied to local tables and neutron-yield semantics. |
-| RAD-003 | Blocked | Build a neutron validation packet covering yield, timing, spectrum, anisotropy, detector response, and uncertainty. |
+| RAD-003 | Blocked; packet scaffold added 2026-05-23 | Build a neutron validation packet covering yield, timing, spectrum, anisotropy, detector response, and uncertainty. SS18 now provides a fail-closed mechanism-separated neutron diagnostic packet plus validator, but no spectrum, detector-response matrix, uncertainty budget, review certificate, or acceptance claim is promoted. |
 | RAD-004 | Blocked | Add p-B11 reactivity/yield source packets or keep p-B11 outputs permanently marked non-predictive. |
 | RAD-005 | Complete 2026-05-10 | Add a QMF suppression derivation/source packet or quarantine QMF as diagnostic-only heuristic. QMF remains source-missing, but `qmf_model_metadata()` and `QMFDiag` now quarantine outputs as heuristic diagnostics with `validation_status="not_validation_evidence"` and no validation/design-claim support. |
 | RAD-006 | Complete 2026-05-09 | Add tests that enforce conservative metadata/status labels for all unverified radiation and yield paths. |
@@ -152,7 +154,7 @@ source review, and task sizing before implementation.
 | PHX-002 | Blocked | Source-close electrode ablation efficiencies, pulse/fluence ranges, shielding, droplet/ejection assumptions, and impurity-mixing limits before using ablation for predictive high-Z or electrode-erosion claims. |
 | PHX-003 | Blocked | Source-audit two-temperature relaxation and Braginskii ion-viscosity collision-time conventions against local NRL rows, including electron-ion equilibration, ion-ion Coulomb log, and `tau_i` units. |
 | PHX-004 | Blocked | Promote/review Nernst and Ettingshausen coefficient sources before presenting thermomagnetic transport as source-closed DPF physics. |
-| PHX-005 | Blocked | Promote/review anomalous-resistivity, LHDI/Buneman, CIV, Paschen, gas-coefficient, and startup/sheath source packets before using those helpers for restrike, flashover, or anomalous-resistance validation claims. |
+| PHX-005 | Blocked; SS16 packet added 2026-05-23 | Promote/review anomalous-resistivity, LHDI/Buneman, CIV, Paschen, gas-coefficient, and startup/sheath source packets before using those helpers for restrike, flashover, or anomalous-resistance validation claims. `docs/SS16_STARTUP_BVP_EVIDENCE_PACKET_MATRIX_2026_05_23.json` now line-cites PF-1000 startup candidates and explicit blockers, but startup payload, preionization, UQ, and review remain non-promoting. |
 | PHX-006 | Blocked | Keep Sedov/Auluck/GV/verification helpers in method-support lanes unless source-specific numerical constants, validation scopes, and same-scope evidence are accepted. |
 
 ## Project Process / Agent Operations
